@@ -4,7 +4,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Text, StyleSheet, View } from 'react-native';
 import HomeScreen from '../screens/HomeScreen';
 import ScoreScreen from '../screens/ScoreScreen';
-import ConciergeScreen from '../screens/ConciergeScreen';
+import TrajectoryScreen from '../screens/TrajectoryScreen';
 import InsightsScreen from '../screens/InsightsScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import { COLORS, FONTS } from '../constants/theme';
@@ -19,11 +19,13 @@ const ICONS: Record<string, { glyph: string; label: string }> = {
   Feed:       { glyph: '◈', label: 'FEED'    },
   Vault:      { glyph: '◉', label: 'VAULT'   },
   Insights:   { glyph: '◇', label: 'PULSE'   },
-  Concierge:  { glyph: '△', label: 'ADVISE'  },
+  Future:     { glyph: '◬', label: 'FUTURE'  },
   Profile:    { glyph: '○', label: 'PROFILE' },
 };
 
-export default function AppNavigator() {
+interface Props { onResetOnboarding: () => void; }
+
+export default function AppNavigator({ onResetOnboarding }: Props) {
   return (
     <NavigationContainer theme={NAV_THEME}>
       <Tab.Navigator
@@ -46,8 +48,8 @@ export default function AppNavigator() {
         <Tab.Screen name="Feed"      component={HomeScreen} />
         <Tab.Screen name="Vault"     component={ScoreScreen} />
         <Tab.Screen name="Insights"  component={InsightsScreen} />
-        <Tab.Screen name="Concierge" component={ConciergeScreen} />
-        <Tab.Screen name="Profile"   component={ProfileScreen} />
+        <Tab.Screen name="Future"    component={TrajectoryScreen} />
+        <Tab.Screen name="Profile">{() => <ProfileScreen onResetOnboarding={onResetOnboarding} />}</Tab.Screen>
       </Tab.Navigator>
     </NavigationContainer>
   );

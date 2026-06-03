@@ -1,21 +1,26 @@
-import React, { useRef, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, SafeAreaView, Animated, TouchableOpacity } from 'react-native';
+import React, { useRef, useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, SafeAreaView, Animated, TouchableOpacity, Modal, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { MOCK_USER } from '../services/mockData';
-import { GOALS } from '../services/goals';
+import { GOALS, Goal, getGoalProgress, getMonthsToGoal } from '../services/goals';
 import { ACHIEVEMENTS } from '../services/achievements';
-import { WEEKLY_CHALLENGES } from '../services/challenges';
+import { WEEKLY_CHALLENGES, Challenge } from '../services/challenges';
 import ScoreMeter from '../components/ScoreMeter';
 import TierBadge from '../components/TierBadge';
 import GoalCard from '../components/GoalCard';
 import AchievementBadge from '../components/AchievementBadge';
 import ChallengeCard from '../components/ChallengeCard';
 import TierUnlockCelebration from '../components/TierUnlockCelebration';
+import ProgressionLadder from '../components/ProgressionLadder';
+import NetWorthTracker from '../components/NetWorthTracker';
+import WealthWrapped from '../components/WealthWrapped';
+import CohortCard from '../components/CohortCard';
 import { COLORS, FONTS, SPACING, TIERS, RADIUS, CARD_SHADOW } from '../constants/theme';
 import { getNextTier, getPointsToNextTier } from '../services/velocity';
 import { TierName } from '../types';
 
 const TIER_ORDER: TierName[] = ['BRONZE', 'SILVER', 'GOLD', 'PLATINUM', 'BLACK'];
-const TABS = ['Score', 'Goals', 'Challenges', 'Achievements'] as const;
+const TABS = ['Score', 'Cohort', 'Goals', 'Challenges', 'Achievements'] as const;
 type Tab = typeof TABS[number];
 
 export default function ScoreScreen() {
@@ -24,12 +29,98 @@ export default function ScoreScreen() {
   const pointsToNext = getPointsToNextTier(score.total);
   const [activeTab, setActiveTab] = useState<Tab>('Score');
   const [celebrationTier, setCelebrationTier] = useState<TierName | null>(null);
-  const scrollY = useRef(new Animated.Value(0)).current;
+  const [showWrapped, setShowWrapped] = useState(false);
+
+  // Goals state
+  const [goals, setGoals] = useState<Goal[]>(GOALS);
+  const [selectedGoal, setSelectedGoal] = useState<Goal | null>(null);
+  const [showAddGoal, setShowAddGoal] = useState(false);
+  const [newGoalName, setNewGoalName] = useState('');
+  const [newGoalTarget, setNewGoalTarget] = useState('');
+  const [newGoalEmoji, setNewGoalEmoji] = useState('🎯');
+  const [addProgressAmt, setAddProgressAmt] = useState('');
+  const [goalComplete, setGoalComplete] = useState(false);
+
+  // Challenges state
+  const [challenges, setChallenges] = useState<Challenge[]>(WEEKLY_CHALLENGES);
+  const [selectedChallenge, setSelectedChallenge] = useState<Challenge | null>(null);
+  const [challengeComplete, setChallengeComplete] = useState(false);
+  const [earnedXP, setEarnedXP] = useState(0);
+
+  const xpAnim    = useRef(new Animated.Value(0)).current;
+  const xpOpacity = useRef(new Animated.Value(0)).current;
+  const celebScale = useRef(new Animated.Value(0.5)).current;
+  const celebOpacity = useRef(new Animated.Value(0)).current;
+
+  const showXP = (xp: number) => {
+    setEarnedXP(xp);
+    xpAnim.setValue(0);
+    xpOpacity.setValue(1);
+    Animated.parallel([
+      Animated.timing(xpAnim,    { toValue: -50, duration: 700, useNativeDriver: false }),
+      Animated.timing(xpOpacity, { toValue: 0,   duration: 700, delay: 300, useNativeDriver: false }),
+    ]).start();
+  };
+
+  const celebrate = () => {
+    celebScale.setValue(0.5);
+    celebOpacity.setValue(0);
+    Animated.parallel([
+      Animated.spring(celebScale,  { toValue: 1, tension: 80, friction: 7, useNativeDriver: false }),
+      Animated.timing(celebOpacity,{ toValue: 1, duration: 200, useNativeDriver: false }),
+    ]).start();
+    setTimeout(() => {
+      Animated.timing(celebOpacity, { toValue: 0, duration: 400, useNativeDriver: false }).start();
+    }, 2000);
+  };
+
+  const handleAddProgress = () => {
+    if (!selectedGoal || !addProgressAmt) return;
+    const amt = parseFloat(addProgressAmt);
+    if (isNaN(amt) || amt <= 0) return;
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+    const updated = { ...selectedGoal, current: Math.min(selectedGoal.current + amt, selectedGoal.target) };
+    setGoals(prev => prev.map(g => g.id === selectedGoal.id ? updated : g));
+    setSelectedGoal(updated);
+    setAddProgressAmt('');
+    showXP(Math.round(amt / 10));
+    if (updated.current >= updated.target) {
+      setGoalComplete(true);
+      celebrate();
+    }
+  };
+
+  const handleLogChallengeProgress = () => {
+    if (!selectedChallenge) return;
+    const updated = { ...selectedChallenge, progress: Math.min(selectedChallenge.progress + 1, selectedChallenge.target) };
+    const done = updated.progress >= updated.target;
+    if (done) updated.completed = true;
+    Haptics.impactAsync(done ? Haptics.ImpactFeedbackStyle.Heavy : Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+    setChallenges(prev => prev.map(c => c.id === selectedChallenge.id ? updated : c));
+    setSelectedChallenge(updated);
+    showXP(done ? updated.reward : Math.round(updated.reward / updated.target));
+    if (done) { setChallengeComplete(true); celebrate(); }
+  };
+
+  const handleCreateGoal = () => {
+    if (!newGoalName.trim() || !newGoalTarget) return;
+    const target = parseFloat(newGoalTarget);
+    if (isNaN(target) || target <= 0) return;
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+    const newGoal: Goal = {
+      id: `g${Date.now()}`, title: newGoalName.trim(), emoji: newGoalEmoji,
+      target, current: 0, monthlyContribution: 0, color: COLORS.gold, category: 'savings',
+    };
+    setGoals(prev => [...prev, newGoal]);
+    setNewGoalName(''); setNewGoalTarget(''); setNewGoalEmoji('🎯');
+    setShowAddGoal(false);
+  };
 
   const unlockedCount = ACHIEVEMENTS.filter(a => a.unlocked).length;
 
   return (
     <SafeAreaView style={styles.container}>
+      <WealthWrapped visible={showWrapped} onClose={() => setShowWrapped(false)} />
       {/* Page header */}
       <View style={styles.pageHeader}>
         <Text style={styles.pageTitle}>Your Vault</Text>
@@ -58,6 +149,19 @@ export default function ScoreScreen() {
         {/* SCORE TAB */}
         {activeTab === 'Score' && (
           <>
+            {/* Monthly Recap banner */}
+            <TouchableOpacity
+              style={styles.recapBanner}
+              onPress={() => setShowWrapped(true)}
+              activeOpacity={0.85}
+            >
+              <View style={styles.recapBannerLeft}>
+                <Text style={styles.recapBannerEye}>✦  MAY 2026</Text>
+                <Text style={styles.recapBannerTitle}>Your monthly recap is ready</Text>
+              </View>
+              <Text style={styles.recapBannerArrow}>→</Text>
+            </TouchableOpacity>
+
             <TierUnlockCelebration
               tier={celebrationTier ?? tier}
               visible={!!celebrationTier}
@@ -91,6 +195,15 @@ export default function ScoreScreen() {
               </View>
             )}
 
+            <Text style={styles.sectionLabel}>YOUR PROGRESS</Text>
+            <NetWorthTracker />
+
+            <Text style={styles.sectionLabel}>YOUR PATH TO {nextTier ?? 'BLACK'}</Text>
+            <ProgressionLadder
+              tier={tier}
+              onTierUnlock={() => setCelebrationTier(tier)}
+            />
+
             <Text style={styles.sectionLabel}>MEMBER LADDER</Text>
             <View style={styles.ladder}>
               {TIER_ORDER.map((t, i) => {
@@ -116,15 +229,30 @@ export default function ScoreScreen() {
           </>
         )}
 
+        {/* COHORT TAB */}
+        {activeTab === 'Cohort' && (
+          <>
+            <View style={styles.tabIntro}>
+              <Text style={styles.tabIntroTitle}>Your Cohort</Text>
+              <Text style={styles.tabIntroSub}>6 members at your exact financial stage.</Text>
+            </View>
+            <CohortCard />
+          </>
+        )}
+
         {/* GOALS TAB */}
         {activeTab === 'Goals' && (
           <>
             <View style={styles.tabIntro}>
               <Text style={styles.tabIntroTitle}>Savings Goals</Text>
-              <Text style={styles.tabIntroSub}>Track your progress toward what matters most.</Text>
+              <Text style={styles.tabIntroSub}>Tap any goal to log progress.</Text>
             </View>
-            {GOALS.map(g => <GoalCard key={g.id} goal={g} />)}
-            <TouchableOpacity style={[styles.addGoalBtn, CARD_SHADOW, { shadowOpacity: 0.06 }]}>
+            {goals.map(g => (
+              <TouchableOpacity key={g.id} onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {}); setSelectedGoal(g); setGoalComplete(g.current >= g.target); }} activeOpacity={0.85}>
+                <GoalCard goal={g} />
+              </TouchableOpacity>
+            ))}
+            <TouchableOpacity style={[styles.addGoalBtn, CARD_SHADOW, { shadowOpacity: 0.06 }]} onPress={() => setShowAddGoal(true)} activeOpacity={0.85}>
               <Text style={styles.addGoalIcon}>+</Text>
               <Text style={styles.addGoalTxt}>Add a new goal</Text>
             </TouchableOpacity>
@@ -136,25 +264,28 @@ export default function ScoreScreen() {
           <>
             <View style={styles.tabIntro}>
               <Text style={styles.tabIntroTitle}>Weekly Challenges</Text>
-              <Text style={styles.tabIntroSub}>Bigger moves, bigger rewards. Resets every Monday.</Text>
+              <Text style={styles.tabIntroSub}>Tap any challenge to log progress.</Text>
             </View>
-            {WEEKLY_CHALLENGES.map(c => (
-              <View key={c.id} style={[styles.weeklyChallenge, CARD_SHADOW, { shadowOpacity: 0.07 }]}>
-                <View style={styles.wTop}>
-                  <Text style={styles.wIcon}>{c.icon}</Text>
-                  <View style={styles.wReward}>
-                    <Text style={styles.wRewardTxt}>+{c.reward} pts</Text>
+            {challenges.map(c => (
+              <TouchableOpacity key={c.id} onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {}); setSelectedChallenge(c); setChallengeComplete(c.completed); }} activeOpacity={0.85}>
+                <View style={[styles.weeklyChallenge, CARD_SHADOW, { shadowOpacity: 0.07 }, c.completed && styles.weeklyChallengeDone]}>
+                  <View style={styles.wTop}>
+                    <Text style={styles.wIcon}>{c.icon}</Text>
+                    <View style={[styles.wReward, c.completed && styles.wRewardDone]}>
+                      <Text style={[styles.wRewardTxt, c.completed && styles.wRewardTxtDone]}>{c.completed ? '✓ Earned' : `+${c.reward} pts`}</Text>
+                    </View>
                   </View>
-                </View>
-                <Text style={styles.wTitle}>{c.title}</Text>
-                <Text style={styles.wDesc}>{c.description}</Text>
-                <View style={styles.wBarRow}>
-                  <View style={styles.wTrack}>
-                    <View style={[styles.wFill, { width: `${Math.round((c.progress / c.target) * 100)}%` as any }]} />
+                  <Text style={styles.wTitle}>{c.title}</Text>
+                  <Text style={styles.wDesc}>{c.description}</Text>
+                  <View style={styles.wBarRow}>
+                    <View style={styles.wTrack}>
+                      <View style={[styles.wFill, { width: `${Math.round((c.progress / c.target) * 100)}%` as any }, c.completed && { backgroundColor: '#7EB8A4' }]} />
+                    </View>
+                    <Text style={styles.wProgress}>{c.progress} / {c.target}</Text>
                   </View>
-                  <Text style={styles.wProgress}>{c.progress} / {c.target}</Text>
+                  <Text style={styles.tapHint}>{c.completed ? 'Completed ✓' : 'Tap to log progress →'}</Text>
                 </View>
-              </View>
+              </TouchableOpacity>
             ))}
           </>
         )}
@@ -175,6 +306,197 @@ export default function ScoreScreen() {
         )}
 
       </ScrollView>
+
+      {/* ── GOAL DETAIL SHEET ─────────────────────────────────── */}
+      <Modal visible={!!selectedGoal} transparent animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setSelectedGoal(null)}>
+        {selectedGoal && (
+          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
+            <View style={mStyles.root}>
+              <View style={mStyles.handle} />
+              <View style={mStyles.sheetHeader}>
+                <Text style={mStyles.sheetEmoji}>{selectedGoal.emoji}</Text>
+                <View style={mStyles.sheetTitleWrap}>
+                  <Text style={mStyles.sheetTitle}>{selectedGoal.title}</Text>
+                  <Text style={mStyles.sheetSub}>{Math.round(getGoalProgress(selectedGoal) * 100)}% complete · {getMonthsToGoal(selectedGoal)} months left</Text>
+                </View>
+                <TouchableOpacity onPress={() => setSelectedGoal(null)} style={mStyles.closeBtn}>
+                  <Text style={mStyles.closeTxt}>✕</Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Progress bar */}
+              <View style={mStyles.section}>
+                <View style={mStyles.progressRow}>
+                  <Text style={mStyles.progressAmt}>${selectedGoal.current.toLocaleString()}</Text>
+                  <Text style={mStyles.progressOf}>of ${selectedGoal.target.toLocaleString()}</Text>
+                </View>
+                <View style={mStyles.track}>
+                  <View style={[mStyles.fill, { width: `${Math.round(getGoalProgress(selectedGoal) * 100)}%` as any, backgroundColor: selectedGoal.color }]} />
+                </View>
+              </View>
+
+              {goalComplete ? (
+                <View style={mStyles.completeCard}>
+                  <Text style={mStyles.completeEmoji}>🎉</Text>
+                  <Text style={mStyles.completeTitle}>Goal Reached!</Text>
+                  <Text style={mStyles.completeSub}>You hit your {selectedGoal.title} goal. Incredible.</Text>
+                </View>
+              ) : (
+                <View style={mStyles.section}>
+                  <Text style={mStyles.inputLabel}>LOG PROGRESS</Text>
+                  <View style={mStyles.inputRow}>
+                    <Text style={mStyles.inputPrefix}>$</Text>
+                    <TextInput
+                      style={mStyles.input}
+                      placeholder="Amount"
+                      placeholderTextColor={COLORS.textMuted}
+                      keyboardType="numeric"
+                      value={addProgressAmt}
+                      onChangeText={setAddProgressAmt}
+                      // @ts-ignore
+                      outlineStyle="none"
+                    />
+                    <TouchableOpacity style={[mStyles.logBtn, { backgroundColor: selectedGoal.color }]} onPress={handleAddProgress} activeOpacity={0.85}>
+                      <Text style={mStyles.logBtnTxt}>Add</Text>
+                    </TouchableOpacity>
+                  </View>
+                  <View style={mStyles.quickAmts}>
+                    {[100, 250, 500, 1000].map(amt => (
+                      <TouchableOpacity key={amt} style={mStyles.quickAmt} onPress={() => setAddProgressAmt(String(amt))} activeOpacity={0.8}>
+                        <Text style={mStyles.quickAmtTxt}>+${amt}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+              )}
+
+              {/* XP float */}
+              <Animated.Text style={[mStyles.xpFloat, { opacity: xpOpacity, transform: [{ translateY: xpAnim }] }]}>
+                +{earnedXP} XP
+              </Animated.Text>
+            </View>
+          </KeyboardAvoidingView>
+        )}
+      </Modal>
+
+      {/* ── ADD GOAL SHEET ────────────────────────────────────── */}
+      <Modal visible={showAddGoal} transparent animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowAddGoal(false)}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
+          <View style={mStyles.root}>
+            <View style={mStyles.handle} />
+            <View style={mStyles.sheetHeader}>
+              <Text style={mStyles.sheetTitle}>New Goal</Text>
+              <TouchableOpacity onPress={() => setShowAddGoal(false)} style={mStyles.closeBtn}>
+                <Text style={mStyles.closeTxt}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={mStyles.section}>
+              <Text style={mStyles.inputLabel}>EMOJI</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={mStyles.emojiRow}>
+                {['🎯','🏠','🚗','✈️','🎓','💍','🏖️','💰','📈','🛡','🎮','👶'].map(e => (
+                  <TouchableOpacity key={e} style={[mStyles.emojiBtn, newGoalEmoji === e && mStyles.emojiBtnActive]} onPress={() => setNewGoalEmoji(e)}>
+                    <Text style={mStyles.emojiTxt}>{e}</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+
+            <View style={mStyles.section}>
+              <Text style={mStyles.inputLabel}>GOAL NAME</Text>
+              <TextInput
+                style={mStyles.fullInput}
+                placeholder="e.g. Emergency Fund"
+                placeholderTextColor={COLORS.textMuted}
+                value={newGoalName}
+                onChangeText={setNewGoalName}
+                // @ts-ignore
+                outlineStyle="none"
+              />
+            </View>
+
+            <View style={mStyles.section}>
+              <Text style={mStyles.inputLabel}>TARGET AMOUNT</Text>
+              <View style={mStyles.inputRow}>
+                <Text style={mStyles.inputPrefix}>$</Text>
+                <TextInput
+                  style={mStyles.input}
+                  placeholder="10,000"
+                  placeholderTextColor={COLORS.textMuted}
+                  keyboardType="numeric"
+                  value={newGoalTarget}
+                  onChangeText={setNewGoalTarget}
+                  // @ts-ignore
+                  outlineStyle="none"
+                />
+              </View>
+            </View>
+
+            <View style={mStyles.section}>
+              <TouchableOpacity style={mStyles.createBtn} onPress={handleCreateGoal} activeOpacity={0.85}>
+                <Text style={mStyles.createBtnTxt}>Create Goal</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
+      {/* ── CHALLENGE DETAIL SHEET ────────────────────────────── */}
+      <Modal visible={!!selectedChallenge} transparent animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setSelectedChallenge(null)}>
+        {selectedChallenge && (
+          <View style={mStyles.root}>
+            <View style={mStyles.handle} />
+            <View style={mStyles.sheetHeader}>
+              <Text style={mStyles.sheetEmoji}>{selectedChallenge.icon}</Text>
+              <View style={mStyles.sheetTitleWrap}>
+                <Text style={mStyles.sheetTitle}>{selectedChallenge.title}</Text>
+                <Text style={mStyles.sheetSub}>{selectedChallenge.description}</Text>
+              </View>
+              <TouchableOpacity onPress={() => setSelectedChallenge(null)} style={mStyles.closeBtn}>
+                <Text style={mStyles.closeTxt}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={mStyles.section}>
+              <View style={mStyles.rewardRow}>
+                <View style={mStyles.rewardBadge}>
+                  <Text style={mStyles.rewardTxt}>+{selectedChallenge.reward} pts on completion</Text>
+                </View>
+              </View>
+              <View style={mStyles.progressRow}>
+                <Text style={mStyles.progressAmt}>{selectedChallenge.progress}</Text>
+                <Text style={mStyles.progressOf}>of {selectedChallenge.target}</Text>
+              </View>
+              <View style={mStyles.track}>
+                <View style={[mStyles.fill, {
+                  width: `${Math.round((selectedChallenge.progress / selectedChallenge.target) * 100)}%` as any,
+                  backgroundColor: selectedChallenge.completed ? '#7EB8A4' : COLORS.gold,
+                }]} />
+              </View>
+            </View>
+
+            {challengeComplete ? (
+              <View style={mStyles.completeCard}>
+                <Text style={mStyles.completeEmoji}>🏆</Text>
+                <Text style={mStyles.completeTitle}>Challenge Complete!</Text>
+                <Text style={mStyles.completeSub}>+{selectedChallenge.reward} pts added to your Vault score.</Text>
+              </View>
+            ) : (
+              <View style={mStyles.section}>
+                <TouchableOpacity style={mStyles.logProgressBtn} onPress={handleLogChallengeProgress} activeOpacity={0.85}>
+                  <Text style={mStyles.logProgressTxt}>Log Progress  +1</Text>
+                </TouchableOpacity>
+                <Text style={mStyles.challengeHint}>Each tap logs one unit of progress toward your goal.</Text>
+              </View>
+            )}
+
+            <Animated.Text style={[mStyles.xpFloat, { opacity: xpOpacity, transform: [{ translateY: xpAnim }] }]}>
+              +{earnedXP} XP
+            </Animated.Text>
+          </View>
+        )}
+      </Modal>
+
     </SafeAreaView>
   );
 }
@@ -217,6 +539,30 @@ const styles = StyleSheet.create({
   },
   tabTxt: { fontSize: FONTS.sizes.xs, color: COLORS.textDim, fontWeight: FONTS.weights.medium, letterSpacing: FONTS.tracking.wide },
   tabTxtActive: { color: COLORS.background },
+
+  recapBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: COLORS.text,
+    borderRadius: RADIUS.lg,
+    paddingVertical: SPACING.md,
+    paddingHorizontal: SPACING.lg,
+  },
+  recapBannerLeft: { gap: 3 },
+  recapBannerEye: {
+    fontSize: 9,
+    color: COLORS.gold,
+    fontWeight: FONTS.weights.bold,
+    letterSpacing: FONTS.tracking.widest,
+  },
+  recapBannerTitle: {
+    fontSize: FONTS.sizes.md,
+    fontWeight: FONTS.weights.semibold,
+    color: COLORS.background,
+    letterSpacing: FONTS.tracking.tight,
+  },
+  recapBannerArrow: { fontSize: FONTS.sizes.lg, color: COLORS.gold },
 
   scoreCard: { backgroundColor: COLORS.card, borderRadius: RADIUS.xl, borderWidth: StyleSheet.hairlineWidth, borderColor: COLORS.border, padding: SPACING.lg, gap: SPACING.lg },
   tierRow: { alignItems: 'center', paddingVertical: SPACING.sm, gap: 6 },
@@ -270,4 +616,76 @@ const styles = StyleSheet.create({
   wProgress: { fontSize: FONTS.sizes.xs, color: COLORS.textMuted, letterSpacing: FONTS.tracking.wide, width: 40, textAlign: 'right' },
 
   achieveGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: SPACING.sm },
+
+  weeklyChallengeDone: { borderColor: '#7EB8A4' + '40', backgroundColor: 'rgba(126,184,164,0.04)' },
+  wRewardDone: { backgroundColor: 'rgba(126,184,164,0.15)', borderColor: '#7EB8A4' + '40' },
+  wRewardTxtDone: { color: '#7EB8A4' },
+  tapHint: { fontSize: FONTS.sizes.xs, color: COLORS.textMuted, letterSpacing: FONTS.tracking.wide, marginTop: 2 },
+});
+
+const mStyles = StyleSheet.create({
+  root: {
+    flex: 1,
+    backgroundColor: COLORS.surface,
+    borderTopLeftRadius: 24, borderTopRightRadius: 24,
+    marginTop: 'auto',
+    paddingBottom: 40,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: COLORS.border,
+    borderBottomWidth: 0,
+    maxHeight: '85%',
+  },
+  handle: { width: 36, height: 4, borderRadius: 2, backgroundColor: COLORS.border, alignSelf: 'center', marginTop: SPACING.md, marginBottom: SPACING.sm },
+
+  sheetHeader: { flexDirection: 'row', alignItems: 'center', gap: SPACING.md, paddingHorizontal: SPACING.lg, paddingBottom: SPACING.md, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: COLORS.border },
+  sheetEmoji: { fontSize: 32 },
+  sheetTitleWrap: { flex: 1, gap: 3 },
+  sheetTitle: { fontSize: FONTS.sizes.xl, fontWeight: FONTS.weights.bold, color: COLORS.text, letterSpacing: -0.5 },
+  sheetSub: { fontSize: FONTS.sizes.sm, color: COLORS.textDim },
+  closeBtn: { width: 30, height: 30, borderRadius: 15, backgroundColor: COLORS.card, alignItems: 'center', justifyContent: 'center', borderWidth: StyleSheet.hairlineWidth, borderColor: COLORS.border },
+  closeTxt: { fontSize: 12, color: COLORS.textDim, fontWeight: FONTS.weights.bold },
+
+  section: { paddingHorizontal: SPACING.lg, paddingTop: SPACING.lg, gap: SPACING.md },
+  inputLabel: { fontSize: 9, color: COLORS.textMuted, fontWeight: FONTS.weights.bold, letterSpacing: FONTS.tracking.widest },
+
+  progressRow: { flexDirection: 'row', alignItems: 'baseline', gap: SPACING.sm },
+  progressAmt: { fontSize: 36, fontWeight: FONTS.weights.bold, color: COLORS.text, letterSpacing: -1 },
+  progressOf: { fontSize: FONTS.sizes.sm, color: COLORS.textMuted },
+
+  track: { height: 8, backgroundColor: COLORS.border, borderRadius: 4, overflow: 'hidden' },
+  fill: { height: '100%', borderRadius: 4 },
+
+  inputRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.card, borderRadius: RADIUS.md, borderWidth: StyleSheet.hairlineWidth, borderColor: COLORS.border, paddingLeft: SPACING.md, overflow: 'hidden' },
+  inputPrefix: { fontSize: FONTS.sizes.lg, color: COLORS.textDim, fontWeight: FONTS.weights.semibold },
+  input: { flex: 1, fontSize: FONTS.sizes.lg, color: COLORS.text, paddingVertical: 12, paddingHorizontal: SPACING.sm },
+  logBtn: { paddingHorizontal: SPACING.lg, paddingVertical: 14 },
+  logBtnTxt: { fontSize: FONTS.sizes.sm, fontWeight: FONTS.weights.bold, color: '#FFF', letterSpacing: 0.3 },
+
+  quickAmts: { flexDirection: 'row', gap: SPACING.sm },
+  quickAmt: { flex: 1, paddingVertical: 8, alignItems: 'center', backgroundColor: COLORS.card, borderRadius: RADIUS.full, borderWidth: StyleSheet.hairlineWidth, borderColor: COLORS.border },
+  quickAmtTxt: { fontSize: FONTS.sizes.xs, fontWeight: FONTS.weights.bold, color: COLORS.gold },
+
+  completeCard: { margin: SPACING.lg, padding: SPACING.xl, backgroundColor: 'rgba(126,184,164,0.12)', borderRadius: RADIUS.xl, borderWidth: 1, borderColor: '#7EB8A4' + '40', alignItems: 'center', gap: SPACING.sm },
+  completeEmoji: { fontSize: 48 },
+  completeTitle: { fontSize: FONTS.sizes.xl, fontWeight: FONTS.weights.bold, color: COLORS.text },
+  completeSub: { fontSize: FONTS.sizes.sm, color: COLORS.textDim, textAlign: 'center' },
+
+  xpFloat: { position: 'absolute', top: 80, alignSelf: 'center', fontSize: FONTS.sizes.xl, fontWeight: FONTS.weights.heavy, color: COLORS.gold, letterSpacing: 0.5 },
+
+  // Add goal
+  emojiRow: { gap: SPACING.sm, paddingVertical: SPACING.xs },
+  emojiBtn: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.card, borderWidth: StyleSheet.hairlineWidth, borderColor: COLORS.border },
+  emojiBtnActive: { borderColor: COLORS.gold, backgroundColor: COLORS.goldGlow },
+  emojiTxt: { fontSize: 22 },
+  fullInput: { backgroundColor: COLORS.card, borderRadius: RADIUS.md, borderWidth: StyleSheet.hairlineWidth, borderColor: COLORS.border, padding: SPACING.md, fontSize: FONTS.sizes.md, color: COLORS.text },
+  createBtn: { backgroundColor: COLORS.text, borderRadius: RADIUS.full, paddingVertical: 16, alignItems: 'center' },
+  createBtnTxt: { fontSize: FONTS.sizes.md, fontWeight: FONTS.weights.bold, color: COLORS.background, letterSpacing: 0.3 },
+
+  // Challenge
+  rewardRow: { alignItems: 'flex-start' },
+  rewardBadge: { paddingHorizontal: 12, paddingVertical: 5, backgroundColor: COLORS.goldGlow, borderRadius: RADIUS.full, borderWidth: StyleSheet.hairlineWidth, borderColor: COLORS.gold + '40' },
+  rewardTxt: { fontSize: FONTS.sizes.xs, fontWeight: FONTS.weights.bold, color: COLORS.goldDark, letterSpacing: 0.3 },
+  logProgressBtn: { backgroundColor: COLORS.gold, borderRadius: RADIUS.full, paddingVertical: 16, alignItems: 'center' },
+  logProgressTxt: { fontSize: FONTS.sizes.md, fontWeight: FONTS.weights.bold, color: '#FFF', letterSpacing: 0.3 },
+  challengeHint: { fontSize: FONTS.sizes.xs, color: COLORS.textMuted, textAlign: 'center', letterSpacing: 0.3 },
 });

@@ -7,7 +7,7 @@ import * as Haptics from 'expo-haptics';
 import { MOCK_USER } from '../services/mockData';
 import TierBadge from '../components/TierBadge';
 import { COLORS, FONTS, SPACING, RADIUS, TIERS, CARD_SHADOW } from '../constants/theme';
-import { resetOnboarding } from '../services/onboarding';
+import { resetOnboarding, useUserName } from '../services/onboarding';
 
 interface ToggleRowProps {
   label: string;
@@ -75,7 +75,8 @@ interface Props {
 }
 
 export default function SettingsScreen({ onClose, onResetOnboarding }: Props) {
-  const { name, tier } = MOCK_USER;
+  const { tier } = MOCK_USER;
+  const name = useUserName(MOCK_USER.name);
   const info = TIERS[tier];
 
   // Notification toggles

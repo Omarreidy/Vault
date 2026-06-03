@@ -21,7 +21,7 @@ export default function App() {
     <GestureHandlerRootView style={styles.root}>
       <StatusBar style={onboarded ? 'dark' : 'light'} />
       {onboarded ? (
-        <AppNavigator />
+        <AppNavigator onResetOnboarding={() => setOnboarded(false)} />
       ) : (
         <OnboardingScreen onComplete={() => setOnboarded(true)} />
       )}

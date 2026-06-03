@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useState, useEffect } from 'react';
 import { TierName } from '../types';
 import { getTierFromScore, getTierProgress } from './velocity';
 
@@ -10,6 +11,7 @@ export interface OnboardingAnswers {
 }
 
 export interface OnboardingResult {
+  name: string;
   score: number;
   tier: TierName;
   tierProgress: number;
@@ -97,4 +99,18 @@ export async function hasCompletedOnboarding(): Promise<boolean> {
 export async function resetOnboarding(): Promise<void> {
   await AsyncStorage.removeItem(ONBOARDING_KEY);
   await AsyncStorage.removeItem(ONBOARDING_RESULT_KEY);
+}
+
+export function useUserName(fallback = 'Alex'): string {
+  const [name, setName] = useState(fallback);
+  useEffect(() => {
+    AsyncStorage.getItem(ONBOARDING_RESULT_KEY).then(json => {
+      if (!json) return;
+      try {
+        const result = JSON.parse(json) as OnboardingResult;
+        if (result?.name) setName(result.name);
+      } catch {}
+    });
+  }, []);
+  return name;
 }

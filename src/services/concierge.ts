@@ -18,7 +18,7 @@ function buildResponse(input: string): string {
     return `This is where most people leave serious money on the table.\n\nFor your role and location, the market rate is roughly $12K above your current salary. You're 9 months in — that's prime timing. Too early looks desperate, 12+ months looks like you've accepted it.\n\nThree moves before you ask:\n1. Get a competing offer (even one you don't take)\n2. Document 2–3 specific wins with dollar impact\n3. Anchor $15K above what you actually want\n\nMost managers have budget flexibility they never volunteer. You have to make them use it.`;
   }
 
-  if (q.includes('debt') && q.includes('invest') || q.includes('pay off') || q.includes('invest or')) {
+  if (q.includes('debt') && (q.includes('invest') || q.includes('pay off') || q.includes('invest or'))) {
     return `The math answer: if your debt rate is above 7%, pay it down first. Below 7%, invest the difference.\n\nThe psychology answer: carrying high-interest debt while investing feels productive but isn't — you're paying 22% on a credit card while earning 8% in the market. That's a guaranteed -14% return.\n\nYour debt velocity score is ${score.debt}/100. You're making progress. If you have any credit card debt above 18%, that's your highest-return investment right now — guaranteed, risk-free.`;
   }
 

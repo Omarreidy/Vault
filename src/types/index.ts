@@ -9,6 +9,7 @@ export interface WealthMove {
   category: 'savings' | 'investment' | 'debt' | 'spending' | 'opportunity';
   effort: 'instant' | 'quick' | 'medium';
   actionLabel: string;
+  lesson?: { headline: string; body: string; xp: number };
 }
 
 export interface VelocityScore {

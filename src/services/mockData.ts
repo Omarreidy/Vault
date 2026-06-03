@@ -23,6 +23,11 @@ export const ALL_MOVES: WealthMove[] = [
     category: 'savings',
     effort: 'quick',
     actionLabel: 'Move to HYSA',
+    lesson: {
+      headline: 'The inflation tax on idle cash',
+      body: 'Inflation runs ~3%/yr. Money at 0.01% loses real value every day. A HYSA at 5% turns your $2,340 into $3,000 in 5 years — same money, zero added risk.',
+      xp: 10,
+    },
   },
   {
     id: 's2',
@@ -33,6 +38,11 @@ export const ALL_MOVES: WealthMove[] = [
     category: 'savings',
     effort: 'medium',
     actionLabel: 'Set up auto-save',
+    lesson: {
+      headline: 'Why 5 months is the magic number',
+      body: '3 months covers a short job loss. 5 months covers a real crisis — medical, layoff, unexpected expense. The difference is whether you go into debt or not.',
+      xp: 10,
+    },
   },
   {
     id: 's3',
@@ -43,6 +53,11 @@ export const ALL_MOVES: WealthMove[] = [
     category: 'savings',
     effort: 'quick',
     actionLabel: 'Adjust auto-transfer',
+    lesson: {
+      headline: 'Your savings rate is your financial speed',
+      body: 'Income matters less than what you keep. Every 1% more you save compounds over decades. 4% more is $2,800/yr — that\'s $84,000 more at retirement if invested consistently.',
+      xp: 10,
+    },
   },
   {
     id: 's4',
@@ -53,6 +68,11 @@ export const ALL_MOVES: WealthMove[] = [
     category: 'savings',
     effort: 'medium',
     actionLabel: 'Compare options',
+    lesson: {
+      headline: 'Round-ups feel good but think small',
+      body: 'Behavioral psychology loves round-ups because they\'re painless. But $12/month is $144/yr. A one-time $144 index fund investment today compounds further than 10 years of round-ups at that pace.',
+      xp: 10,
+    },
   },
 
   // ── INVESTMENT ───────────────────────────────────────────────────────
@@ -65,6 +85,11 @@ export const ALL_MOVES: WealthMove[] = [
     category: 'investment',
     effort: 'quick',
     actionLabel: 'Increase to 6%',
+    lesson: {
+      headline: 'A 100% return, guaranteed',
+      body: 'There is no investment on earth with a 100% instant return. Your employer match is exactly that — every dollar you contribute up to the match threshold is doubled immediately.',
+      xp: 10,
+    },
   },
   {
     id: 'i2',
@@ -75,6 +100,11 @@ export const ALL_MOVES: WealthMove[] = [
     category: 'investment',
     effort: 'medium',
     actionLabel: 'Open Roth IRA',
+    lesson: {
+      headline: 'Pay taxes now, never again',
+      body: 'A Roth IRA uses after-tax dollars — the growth is 100% tax-free forever. Traditional IRA withdrawals are taxed as income at retirement. The younger you start, the bigger the difference.',
+      xp: 10,
+    },
   },
   {
     id: 'i3',
@@ -85,6 +115,11 @@ export const ALL_MOVES: WealthMove[] = [
     category: 'investment',
     effort: 'quick',
     actionLabel: 'Rebalance now',
+    lesson: {
+      headline: 'Time horizon is your biggest asset',
+      body: 'At 30, your money has 35+ years to compound. Bonds reduce volatility but slash returns. A 90/10 split historically returns 7% vs 5% for 60/40 — that 2% gap is $80K over 20 years.',
+      xp: 10,
+    },
   },
   {
     id: 'i4',
@@ -95,6 +130,11 @@ export const ALL_MOVES: WealthMove[] = [
     category: 'investment',
     effort: 'instant',
     actionLabel: 'Invest cash',
+    lesson: {
+      headline: 'Cash in a brokerage is a tax on indecision',
+      body: 'Index funds like VTSAX return ~10%/yr on average. Every day idle cash sits is a day compound interest isn\'t working for you. Indecision is a financial decision.',
+      xp: 10,
+    },
   },
   {
     id: 'i5',
@@ -105,6 +145,11 @@ export const ALL_MOVES: WealthMove[] = [
     category: 'investment',
     effort: 'medium',
     actionLabel: 'Switch funds',
+    lesson: {
+      headline: 'The fee you don\'t see costs the most',
+      body: '0.8% doesn\'t sound like much. But on $50K over 20 years, the difference between 0.8% and 0.03% in fees is $40,000 in compounded returns. Fund fees are the silent destroyer of wealth.',
+      xp: 10,
+    },
   },
 
   // ── DEBT ─────────────────────────────────────────────────────────────
@@ -117,6 +162,11 @@ export const ALL_MOVES: WealthMove[] = [
     category: 'debt',
     effort: 'quick',
     actionLabel: 'Pay extra now',
+    lesson: {
+      headline: 'Compound interest works both ways',
+      body: 'Every principle that makes investing powerful also makes high-interest debt devastating. 22.9% compounding against you is the same math as 22.9% working for you — just in reverse.',
+      xp: 10,
+    },
   },
   {
     id: 'd2',
@@ -127,6 +177,11 @@ export const ALL_MOVES: WealthMove[] = [
     category: 'debt',
     effort: 'medium',
     actionLabel: 'Check offers',
+    lesson: {
+      headline: '0% APR is legal arbitrage',
+      body: 'If you owe money at 22% and can move it to 0%, you\'re not just saving interest — you\'re recapturing 22% guaranteed. That beats any stock market return, risk-free.',
+      xp: 10,
+    },
   },
   {
     id: 'd3',
@@ -137,6 +192,11 @@ export const ALL_MOVES: WealthMove[] = [
     category: 'debt',
     effort: 'medium',
     actionLabel: 'Check rates',
+    lesson: {
+      headline: 'Interest rate gaps are permanent wealth leaks',
+      body: '1.7% less on a loan sounds small. But on a $30K balance over 10 years, that\'s $5,000+ you pay or don\'t pay. Refinancing is free to apply for and takes 20 minutes.',
+      xp: 10,
+    },
   },
   {
     id: 'd4',
@@ -147,6 +207,11 @@ export const ALL_MOVES: WealthMove[] = [
     category: 'debt',
     effort: 'quick',
     actionLabel: 'Adjust payment',
+    lesson: {
+      headline: 'Minimums are designed to make banks rich',
+      body: 'Card companies calculate minimums to maximize interest paid over time. Paying $120/month more doesn\'t just save interest — it changes the math entirely, cutting years off your payoff date.',
+      xp: 10,
+    },
   },
 
   // ── SPENDING ─────────────────────────────────────────────────────────
@@ -159,6 +224,11 @@ export const ALL_MOVES: WealthMove[] = [
     category: 'spending',
     effort: 'instant',
     actionLabel: 'Cancel it',
+    lesson: {
+      headline: 'Ghost subscriptions are the sneakiest wealth drain',
+      body: 'Most people underestimate monthly subscriptions by 2–3x. $15/month feels trivial, but 10 of them is $1,800/yr. The ROI test: if you forgot about it, you don\'t need it.',
+      xp: 10,
+    },
   },
   {
     id: 'sp2',
@@ -169,6 +239,11 @@ export const ALL_MOVES: WealthMove[] = [
     category: 'spending',
     effort: 'instant',
     actionLabel: 'Claim rewards',
+    lesson: {
+      headline: 'Points are a currency with an expiration date',
+      body: 'Credit card rewards are real money in a different form. They expire, devalue, or get clawed back. Treating them like any other asset — actively managed — adds hundreds of dollars a year.',
+      xp: 10,
+    },
   },
   {
     id: 'sp3',
@@ -179,6 +254,11 @@ export const ALL_MOVES: WealthMove[] = [
     category: 'spending',
     effort: 'medium',
     actionLabel: 'Get quotes',
+    lesson: {
+      headline: 'Loyalty is punished in insurance',
+      body: 'Insurance companies offer best prices to new customers and quietly raise rates on existing ones. Shopping every 2 years is a documented, repeatable way to save $400–500/yr in 20 minutes.',
+      xp: 10,
+    },
   },
   {
     id: 'sp4',
@@ -189,6 +269,11 @@ export const ALL_MOVES: WealthMove[] = [
     category: 'spending',
     effort: 'medium',
     actionLabel: 'Set a target',
+    lesson: {
+      headline: 'Dining is the most visible savings lever',
+      body: 'Dining spend is social and emotional — which is why it scales without you noticing. The $510/month gap isn\'t about deprivation. Redirected, it\'s $6,120/yr compounding toward wealth.',
+      xp: 10,
+    },
   },
   {
     id: 'sp5',
@@ -199,6 +284,11 @@ export const ALL_MOVES: WealthMove[] = [
     category: 'spending',
     effort: 'instant',
     actionLabel: 'Pause membership',
+    lesson: {
+      headline: 'Sunk cost blindness keeps subscriptions alive',
+      body: 'The money is already gone — that\'s not the question. The question is whether continuing serves you. Per-use cost math cuts through emotional justification. $196/visit is not worth it.',
+      xp: 10,
+    },
   },
   {
     id: 'sp6',
@@ -209,6 +299,11 @@ export const ALL_MOVES: WealthMove[] = [
     category: 'spending',
     effort: 'quick',
     actionLabel: 'See eligible items',
+    lesson: {
+      headline: 'FSA money is pre-tax — losing it is a double loss',
+      body: 'You already paid tax before the FSA contribution was withheld. Letting it expire means you paid taxes on money you spent on nothing. Use-it-or-lose-it is real — and preventable.',
+      xp: 10,
+    },
   },
 
   // ── OPPORTUNITY ──────────────────────────────────────────────────────
@@ -221,6 +316,11 @@ export const ALL_MOVES: WealthMove[] = [
     category: 'opportunity',
     effort: 'medium',
     actionLabel: 'See the data',
+    lesson: {
+      headline: 'Every salary dollar compounds for life',
+      body: 'A $5K raise at 30 isn\'t just $5K/yr. It\'s the base for every future raise, bonus percentage, and 401k match. A single successful negotiation is worth $200K+ over a career.',
+      xp: 10,
+    },
   },
   {
     id: 'o2',
@@ -231,6 +331,11 @@ export const ALL_MOVES: WealthMove[] = [
     category: 'opportunity',
     effort: 'medium',
     actionLabel: 'Review positions',
+    lesson: {
+      headline: 'The government shares your losses if you ask',
+      body: 'Tax loss harvesting lets you sell a losing position to offset gains and reduce your tax bill. You can buy it back after 30 days. It\'s a legal rule almost nobody uses.',
+      xp: 10,
+    },
   },
   {
     id: 'o3',
@@ -241,6 +346,11 @@ export const ALL_MOVES: WealthMove[] = [
     category: 'opportunity',
     effort: 'medium',
     actionLabel: 'Check eligibility',
+    lesson: {
+      headline: 'Triple tax advantage — most people ignore it',
+      body: 'Contributions pre-tax. Growth tax-free. Withdrawals for medical tax-free. After 65, use it for anything. Most people treat an HSA as a checking account — it\'s actually the most powerful account you can have.',
+      xp: 10,
+    },
   },
   {
     id: 'o4',
@@ -251,6 +361,11 @@ export const ALL_MOVES: WealthMove[] = [
     category: 'opportunity',
     effort: 'medium',
     actionLabel: 'See quick wins',
+    lesson: {
+      headline: 'Your credit score is a price tag on every loan',
+      body: 'A 22-point score difference can change your mortgage rate by 0.5%. On a $300K loan, that\'s $30,000 over the life of the loan. The 18 points you need come from on-time payments and utilization below 30%.',
+      xp: 10,
+    },
   },
   {
     id: 'o5',
@@ -261,6 +376,11 @@ export const ALL_MOVES: WealthMove[] = [
     category: 'opportunity',
     effort: 'quick',
     actionLabel: 'Get referral links',
+    lesson: {
+      headline: 'Bank bonuses are the cleanest arbitrage',
+      body: 'Referral and signup bonuses are free money for behavior you\'d do anyway. Banks pay to acquire customers — you\'re just capturing that value. $200 across 3 banks is $600 in 20 minutes total.',
+      xp: 10,
+    },
   },
 ];
 

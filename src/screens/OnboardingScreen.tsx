@@ -113,7 +113,6 @@ export default function OnboardingScreen({ onComplete }: Props) {
   const [goal, setGoal]       = useState('');
   const [result, setResult]   = useState<OnboardingResult | null>(null);
   const [scoreReady, setScoreReady] = useState(false);
-  const [gapsVisible, setGapsVisible] = useState(false);
 
   // Screen fade
   const fadeAnim  = useRef(new Animated.Value(0)).current;
@@ -156,22 +155,15 @@ export default function OnboardingScreen({ onComplete }: Props) {
     return () => clearTimeout(t);
   }, [step]);
 
-  // Gap stagger after score ready
-  useEffect(() => {
-    if (!scoreReady) return;
-    setGapsVisible(false);
-  }, [scoreReady]);
-
   const handleGapStagger = () => {
     gapAnims.forEach((a, i) => {
       Animated.timing(a, { toValue: 1, duration: 400, delay: i * 180, useNativeDriver: false }).start();
     });
-    setGapsVisible(true);
   };
 
   const handleComplete = async () => {
     if (!result) return;
-    await markOnboardingComplete(result);
+    await markOnboardingComplete({ ...result, name: name.trim() });
     onComplete();
   };
 

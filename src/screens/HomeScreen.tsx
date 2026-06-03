@@ -1,235 +1,518 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import {
-  View, Text, StyleSheet, Animated, PanResponder,
-  Dimensions, SafeAreaView, TouchableOpacity, ScrollView, Modal,
+  View, Text, StyleSheet, FlatList, TouchableOpacity,
+  Modal, Dimensions, Animated,
 } from 'react-native';
+import { SafeAreaView } from 'react-native';
 import * as Haptics from 'expo-haptics';
-import { MOCK_MOVES, MOCK_USER } from '../services/mockData';
-import { DAILY_CHALLENGES, Challenge } from '../services/challenges';
+
+import { buildFeed, FeedItem } from '../services/feed';
+import { ALL_MOVES, MOCK_WINS, MOCK_USER } from '../services/mockData';
+import { useUserName } from '../services/onboarding';
+import { INSIGHTS, Insight } from '../services/insights';
 import { MOCK_NOTIFICATIONS } from '../services/notifications';
-import { WealthMove } from '../types';
-import WealthCard from '../components/WealthCard';
+import { WealthMove, WealthWin } from '../types';
+
+import FeedMoveCard from '../components/FeedMoveCard';
+import FeedPulseCard from '../components/FeedPulseCard';
+import FeedWinCard from '../components/FeedWinCard';
+import BeliefsAuditCard from '../components/BeliefsAuditCard';
+import CohortActivityFeed from '../components/CohortActivityFeed';
+import CohortReactionOverlay from '../components/CohortReactionOverlay';
+import FinancialScanner from '../components/FinancialScanner';
+import ConciergeScreen from './ConciergeScreen';
 import TierBadge from '../components/TierBadge';
-import ChallengeCard from '../components/ChallengeCard';
 import NotificationsScreen from './NotificationsScreen';
-import MoveLibraryScreen from './MoveLibraryScreen';
+
 import { COLORS, FONTS, SPACING, RADIUS, CARD_SHADOW } from '../constants/theme';
 
-const { width } = Dimensions.get('window');
-const SWIPE_THRESHOLD = 80;
-const CARD_W = Math.min(width - SPACING.xl * 2, 420);
+const FEED = buildFeed(ALL_MOVES, INSIGHTS, MOCK_WINS);
 
-export default function HomeScreen() {
-  const [moves] = useState<WealthMove[]>(MOCK_MOVES);
-  const [accepted, setAccepted] = useState(0);
-  const [totalImpact, setTotalImpact] = useState(0);
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [challenges, setChallenges] = useState<Challenge[]>(DAILY_CHALLENGES);
-  const [showNotifs, setShowNotifs] = useState(false);
-  const [showLibrary, setShowLibrary] = useState(false);
-  const [notifCount, setNotifCount] = useState(MOCK_NOTIFICATIONS.filter(n => !n.read).length);
-  const position = useRef(new Animated.ValueXY()).current;
-  const headerFade = useRef(new Animated.Value(0)).current;
+const REWARD_MESSAGES = [
+  'Smart move.',
+  'Building momentum.',
+  "That's how wealth is built.",
+  "You're ahead of 71% today.",
+  'Your future self thanks you.',
+  'Elite habit.',
+  'One step closer.',
+  'Compounding starts now.',
+];
 
-  const completedChallenges = challenges.filter(c => c.completed).length;
-  const totalChallenges = challenges.length;
+// Variable reward — unpredictable XP keeps users coming back
+const XP_POOL = [15, 20, 25, 30, 40, 47, 55, 60, 75];
+const pickXP  = () => XP_POOL[Math.floor(Math.random() * XP_POOL.length)];
+const pickMsg = () => REWARD_MESSAGES[Math.floor(Math.random() * REWARD_MESSAGES.length)];
 
-  const completeChallenge = (id: string) => {
-    setChallenges(prev => prev.map(c =>
-      c.id === id ? { ...c, completed: true, progress: c.target } : c
-    ));
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-  };
+function EndOfFeedCard({ streakDays, onBackToTop }: { streakDays: number; onBackToTop: () => void }) {
+  const scale   = useRef(new Animated.Value(0.92)).current;
+  const opacity = useRef(new Animated.Value(0)).current;
 
-  React.useEffect(() => {
-    Animated.timing(headerFade, { toValue: 1, duration: 600, useNativeDriver: true }).start();
+  useEffect(() => {
+    Animated.parallel([
+      Animated.spring(scale,   { toValue: 1, useNativeDriver: false, tension: 60, friction: 9 }),
+      Animated.timing(opacity, { toValue: 1, duration: 500, useNativeDriver: false }),
+    ]).start();
   }, []);
 
-  const rotate = position.x.interpolate({ inputRange: [-width / 2, 0, width / 2], outputRange: ['-5deg', '0deg', '5deg'], extrapolate: 'clamp' });
-  const acceptOpacity = position.x.interpolate({ inputRange: [0, SWIPE_THRESHOLD], outputRange: [0, 1], extrapolate: 'clamp' });
-  const skipOpacity   = position.x.interpolate({ inputRange: [-SWIPE_THRESHOLD, 0], outputRange: [1, 0], extrapolate: 'clamp' });
-  const liftScale     = position.x.interpolate({ inputRange: [-width / 2, 0, width / 2], outputRange: [0.97, 1.02, 0.97], extrapolate: 'clamp' });
+  return (
+    <View style={eofStyles.root}>
+      <Animated.View style={[eofStyles.inner, { opacity, transform: [{ scale }] }]}>
+        <Text style={eofStyles.mark}>VAULT</Text>
+        <Text style={eofStyles.title}>You're all caught up.</Text>
+        <Text style={eofStyles.sub}>
+          New moves drop daily. Come back tomorrow{'\n'}to keep your {streakDays}-day streak alive.
+        </Text>
+        <View style={eofStyles.streakRow}>
+          <Text style={eofStyles.streakEmoji}>🔥</Text>
+          <Text style={eofStyles.streakTxt}>{streakDays} day streak · Keep it going</Text>
+        </View>
+        <TouchableOpacity style={eofStyles.btn} onPress={onBackToTop} activeOpacity={0.85}>
+          <Text style={eofStyles.btnTxt}>↑  Back to top</Text>
+        </TouchableOpacity>
+      </Animated.View>
+    </View>
+  );
+}
 
-  const panResponder = PanResponder.create({
-    onStartShouldSetPanResponder: () => true,
-    onPanResponderMove: (_, g) => position.setValue({ x: g.dx, y: g.dy * 0.1 }),
-    onPanResponderRelease: (_, g) => {
-      if (g.dx > SWIPE_THRESHOLD)       swipeRight();
-      else if (g.dx < -SWIPE_THRESHOLD) swipeLeft();
-      else Animated.spring(position, { toValue: { x: 0, y: 0 }, useNativeDriver: false, tension: 60, friction: 9 }).start();
-    },
-  });
+const eofStyles = StyleSheet.create({
+  root: {
+    flex: 1,
+    backgroundColor: '#08080C',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: SPACING.xl,
+  },
+  inner: { alignItems: 'center', gap: SPACING.lg },
+  mark: {
+    fontSize: FONTS.sizes.xs,
+    color: COLORS.gold,
+    letterSpacing: FONTS.tracking.widest * 2,
+    fontWeight: FONTS.weights.semibold,
+  },
+  title: {
+    fontFamily: FONTS.display,
+    fontSize: 36,
+    fontWeight: FONTS.weights.light,
+    color: '#F2EFE9',
+    letterSpacing: -0.5,
+    textAlign: 'center',
+  },
+  sub: {
+    fontSize: FONTS.sizes.sm,
+    color: 'rgba(242,239,233,0.45)',
+    textAlign: 'center',
+    lineHeight: 22,
+    letterSpacing: FONTS.tracking.wide,
+  },
+  streakRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.sm,
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.sm,
+    borderRadius: RADIUS.full,
+    borderWidth: 1,
+    borderColor: 'rgba(201,169,110,0.25)',
+    backgroundColor: 'rgba(201,169,110,0.08)',
+  },
+  streakEmoji: { fontSize: 16 },
+  streakTxt: {
+    fontSize: FONTS.sizes.sm,
+    color: COLORS.gold,
+    fontWeight: FONTS.weights.medium,
+    letterSpacing: FONTS.tracking.wide,
+  },
+  btn: {
+    marginTop: SPACING.md,
+    paddingVertical: 14,
+    paddingHorizontal: SPACING.xl,
+    borderRadius: RADIUS.full,
+    borderWidth: 1,
+    borderColor: 'rgba(242,239,233,0.15)',
+  },
+  btnTxt: {
+    fontSize: FONTS.sizes.md,
+    color: 'rgba(242,239,233,0.6)',
+    letterSpacing: FONTS.tracking.wide,
+  },
+});
 
-  const swipeRight = () => {
-    const move = moves[currentIndex];
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-    Animated.timing(position, { toValue: { x: width + 120, y: -40 }, duration: 280, useNativeDriver: false }).start(() => {
-      setAccepted(a => a + 1);
-      setTotalImpact(t => t + move.impactValue);
-      setCurrentIndex(i => i + 1);
-      position.setValue({ x: 0, y: 0 });
+export default function HomeScreen() {
+  const userName = useUserName(MOCK_USER.name);
+  const [feedTab, setFeedTab] = useState<'foryou' | 'cohort'>('foryou');
+  const [totalXP, setTotalXP]       = useState(0);
+  const [actedCount, setActedCount] = useState(0);
+  const [showNotifs, setShowNotifs] = useState(false);
+  const [showCohortReaction, setShowCohortReaction] = useState(false);
+  const [completedMoveTitle, setCompletedMoveTitle] = useState('');
+  const [showScanner, setShowScanner] = useState(false);
+  const [showConcierge, setShowConcierge] = useState(false);
+  const [notifCount, setNotifCount] = useState(
+    MOCK_NOTIFICATIONS.filter(n => !n.read).length,
+  );
+  const [itemHeight, setItemHeight] = useState(Dimensions.get('window').height);
+
+  // Reward toast state
+  const [rewardXP,  setRewardXP]  = useState(0);
+  const [rewardMsg, setRewardMsg] = useState('');
+  const toastOpacity  = useRef(new Animated.Value(0)).current;
+  const toastScale    = useRef(new Animated.Value(0.88)).current;
+  const toastY        = useRef(new Animated.Value(16)).current;
+  const xpNumScale    = useRef(new Animated.Value(1)).current;
+
+  // Feed navigation
+  const flatListRef      = useRef<FlatList>(null);
+  const currentIndexRef  = useRef(0);
+  const isAnimating      = useRef(false);
+
+  const itemHeightRef = useRef(Dimensions.get('window').height);
+
+  const scrollToNext = useCallback(() => {
+    const next = currentIndexRef.current + 1;
+    if (next <= FEED.length) {
+      currentIndexRef.current = next; // update immediately — don't wait for viewable callback
+      flatListRef.current?.scrollToOffset({
+        offset: itemHeightRef.current * next,
+        animated: true,
+      });
+    }
+  }, []);
+
+  const showReward = useCallback((xp: number, msg: string, moveTitle: string) => {
+    if (isAnimating.current) return;
+    isAnimating.current = true;
+
+    setRewardXP(xp);
+    setRewardMsg(msg);
+
+    toastOpacity.setValue(0);
+    toastScale.setValue(0.88);
+    toastY.setValue(16);
+
+    Animated.sequence([
+      // Pop in
+      Animated.parallel([
+        Animated.timing(toastOpacity, { toValue: 1, duration: 220, useNativeDriver: true }),
+        Animated.spring(toastScale,   { toValue: 1, useNativeDriver: true, tension: 260, friction: 12 }),
+        Animated.timing(toastY,       { toValue: 0, duration: 220, useNativeDriver: true }),
+      ]),
+      // XP number pulse
+      Animated.sequence([
+        Animated.timing(xpNumScale, { toValue: 1.15, duration: 120, useNativeDriver: true }),
+        Animated.timing(xpNumScale, { toValue: 1,    duration: 120, useNativeDriver: true }),
+      ]),
+      Animated.delay(900),
+      // Fade out
+      Animated.timing(toastOpacity, { toValue: 0, duration: 200, useNativeDriver: true }),
+    ]).start(() => {
+      isAnimating.current = false;
+      setCompletedMoveTitle(moveTitle);
+      setShowCohortReaction(true);
     });
-  };
+  }, []);
 
-  const swipeLeft = () => {
+  const handleAct = useCallback((moveTitle: string) => {
+    const xp  = pickXP();
+    const msg = pickMsg();
+    setActedCount(c => c + 1);
+    setTotalXP(prev => prev + xp);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+    setTimeout(() => {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+    }, 80);
+    showReward(xp, msg, moveTitle);
+  }, [showReward]);
+
+  const handleSkip = useCallback(() => {
+    if (isAnimating.current) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-    Animated.timing(position, { toValue: { x: -width - 120, y: -40 }, duration: 280, useNativeDriver: false }).start(() => {
-      setCurrentIndex(i => i + 1);
-      position.setValue({ x: 0, y: 0 });
-    });
-  };
+    isAnimating.current = true;
+    scrollToNext();
+    setTimeout(() => { isAnimating.current = false; }, 500);
+  }, [scrollToNext]);
 
-  const currentMove = moves[currentIndex];
-  const remaining = moves.length - currentIndex;
+  const handleSave = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+  }, []);
+
+  const onViewableItemsChanged = useRef(({ viewableItems }: any) => {
+    if (viewableItems.length > 0 && viewableItems[0].index != null) {
+      currentIndexRef.current = viewableItems[0].index;
+    }
+  }).current;
+
+  const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 50 }).current;
+
+  const renderItem = useCallback(({ item, index }: { item: FeedItem; index: number }) => (
+    <View style={{ height: itemHeight, width: '100%' }}>
+      {item.type === 'move' && (
+        <FeedMoveCard
+          move={item.data as WealthMove}
+          onAct={() => handleAct((item.data as WealthMove).title)}
+          onSkip={handleSkip}
+          index={index}
+          total={FEED.length}
+        />
+      )}
+      {item.type === 'pulse' && (
+        <FeedPulseCard
+          insight={item.data as Insight}
+          onSave={handleSave}
+          index={index}
+          total={FEED.length}
+        />
+      )}
+      {item.type === 'win' && (
+        <FeedWinCard
+          win={item.data as WealthWin}
+          index={index}
+          total={FEED.length}
+        />
+      )}
+      {item.type === 'beliefs' && (
+        <BeliefsAuditCard
+          index={index}
+          total={FEED.length}
+          onComplete={scrollToNext}
+        />
+      )}
+    </View>
+  ), [itemHeight, handleAct, handleSkip, handleSave]);
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.root}>
 
-      {/* Hero header */}
-      <Animated.View style={[styles.header, { opacity: headerFade }]}>
-        <View>
-          <Text style={styles.eyebrow}>GOOD MORNING</Text>
-          <Text style={styles.name}>{MOCK_USER.name}</Text>
-        </View>
-        <View style={styles.headerRight}>
-          <View style={styles.streakChip}>
-            <Text style={styles.streakTxt}>🔥 {MOCK_USER.streakDays}d</Text>
+      {/* Header — normal flow, feed sits below it */}
+      <SafeAreaView style={styles.headerArea}>
+        <View style={styles.header}>
+          <View>
+            <Text style={styles.greeting}>GOOD MORNING</Text>
+            <Text style={styles.name}>{userName}</Text>
           </View>
-          <TierBadge tier={MOCK_USER.tier} size="sm" showLabel={false} />
-          {/* Bell */}
-          <TouchableOpacity
-            style={styles.bellBtn}
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-              setShowNotifs(true);
-            }}
-            activeOpacity={0.75}
-          >
-            <Text style={styles.bellIcon}>◎</Text>
-            {notifCount > 0 && (
-              <View style={styles.badge}>
-                <Text style={styles.badgeTxt}>{notifCount > 9 ? '9+' : notifCount}</Text>
+          <View style={styles.headerRight}>
+            {totalXP > 0 && (
+              <View style={styles.xpChip}>
+                <Text style={styles.xpTxt}>+{totalXP} XP</Text>
               </View>
             )}
-          </TouchableOpacity>
+            <View style={styles.streakChip}>
+              <Text style={styles.streakTxt}>🔥 {MOCK_USER.streakDays}d</Text>
+            </View>
+            <TierBadge tier={MOCK_USER.tier} size="sm" showLabel={false} />
+            <TouchableOpacity
+              style={styles.scanBtn}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+                setShowScanner(true);
+              }}
+              activeOpacity={0.75}
+            >
+              <Text style={styles.scanIcon}>◎</Text>
+              <Text style={styles.scanLabel}>SCAN</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.bellBtn}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+                setShowNotifs(true);
+              }}
+              activeOpacity={0.75}
+            >
+              <Text style={styles.bellIcon}>◎</Text>
+              {notifCount > 0 && (
+                <View style={styles.badge}>
+                  <Text style={styles.badgeTxt}>{notifCount > 9 ? '9+' : notifCount}</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Feed toggle + Ask button */}
+        <View style={styles.toggleRow}>
+          <View style={styles.toggle}>
+            <TouchableOpacity
+              style={[styles.toggleBtn, feedTab === 'foryou' && styles.toggleBtnActive]}
+              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {}); setFeedTab('foryou'); }}
+              activeOpacity={0.8}
+            >
+              <Text style={[styles.toggleTxt, feedTab === 'foryou' && styles.toggleTxtActive]}>For You</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.toggleBtn, feedTab === 'cohort' && styles.toggleBtnActive]}
+              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {}); setFeedTab('cohort'); }}
+              activeOpacity={0.8}
+            >
+              <Text style={[styles.toggleTxt, feedTab === 'cohort' && styles.toggleTxtActive]}>Cohort</Text>
+              {feedTab !== 'cohort' && <View style={styles.cohortDot} />}
+            </TouchableOpacity>
+          </View>
+
+        </View>
+      </SafeAreaView>
+
+      {/* Feed — fills remaining space */}
+      <View
+        style={styles.feedContainer}
+        onLayout={e => {
+          const h = e.nativeEvent.layout.height;
+          setItemHeight(h);
+          itemHeightRef.current = h;
+        }}
+      >
+        {feedTab === 'foryou' ? (
+          <FlatList
+            ref={flatListRef}
+            data={FEED}
+            keyExtractor={item => item.id}
+            renderItem={renderItem}
+            pagingEnabled
+            showsVerticalScrollIndicator={false}
+            decelerationRate="fast"
+            onViewableItemsChanged={onViewableItemsChanged}
+            viewabilityConfig={viewabilityConfig}
+            windowSize={3}
+            maxToRenderPerBatch={2}
+            initialNumToRender={1}
+            ListFooterComponent={
+              <View style={{ height: itemHeight, width: '100%' }}>
+                <EndOfFeedCard
+                  streakDays={MOCK_USER.streakDays}
+                  onBackToTop={() => flatListRef.current?.scrollToOffset({ offset: 0, animated: true })}
+                />
+              </View>
+            }
+          />
+        ) : (
+          <CohortActivityFeed />
+        )}
+      </View>
+
+      {/* Reward toast */}
+      <Animated.View
+        style={[
+          styles.toast,
+          {
+            opacity: toastOpacity,
+            transform: [{ scale: toastScale }, { translateY: toastY }],
+          },
+        ]}
+        pointerEvents="none"
+      >
+        <View style={styles.toastInner}>
+          <Animated.Text style={[styles.toastXP, { transform: [{ scale: xpNumScale }] }]}>
+            +{rewardXP} XP
+          </Animated.Text>
+          <View style={styles.toastDivider} />
+          <Text style={styles.toastMsg}>{rewardMsg}</Text>
         </View>
       </Animated.View>
 
-      {/* Notifications modal */}
+      <FinancialScanner visible={showScanner} onClose={() => setShowScanner(false)} />
+
+      <Modal visible={showConcierge} animationType="slide" presentationStyle="pageSheet">
+        <ConciergeScreen onClose={() => setShowConcierge(false)} />
+      </Modal>
+
+      <CohortReactionOverlay
+        visible={showCohortReaction}
+        moveTitle={completedMoveTitle}
+        onDismiss={() => {
+          setShowCohortReaction(false);
+          scrollToNext();
+        }}
+      />
+
       <Modal visible={showNotifs} animationType="slide" presentationStyle="pageSheet">
         <NotificationsScreen onClose={() => { setShowNotifs(false); setNotifCount(0); }} />
       </Modal>
-
-      {/* Move library modal */}
-      <Modal visible={showLibrary} animationType="slide" presentationStyle="pageSheet">
-        <MoveLibraryScreen onClose={() => setShowLibrary(false)} />
-      </Modal>
-
-      {/* Daily challenges strip */}
-      <View style={styles.challengeSection}>
-        <View style={styles.challengeHeader}>
-          <Text style={styles.challengeTitle}>Daily Challenges</Text>
-          <Text style={styles.challengeCount}>{completedChallenges}/{totalChallenges} complete</Text>
-        </View>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.challengeScroll}>
-          {challenges.map(c => (
-            <ChallengeCard key={c.id} challenge={c} onComplete={completeChallenge} />
-          ))}
-        </ScrollView>
-      </View>
-
-      {/* Impact bar */}
-      {accepted > 0 && (
-        <View style={styles.impactBar}>
-          <Text style={styles.impactBarLeft}>{accepted} move{accepted !== 1 ? 's' : ''} taken today</Text>
-          <Text style={styles.impactBarRight}>+${totalImpact.toLocaleString()} potential</Text>
-        </View>
-      )}
-
-      {/* Card stack */}
-      <View style={styles.cardArea}>
-        {!currentMove ? (
-          <View style={[styles.doneCard, CARD_SHADOW]}>
-            <Text style={styles.doneMark}>◇</Text>
-            <Text style={styles.doneTitle}>All Done</Text>
-            <Text style={styles.doneSub}>New moves arrive tomorrow.{'\n'}Your streak is building.</Text>
-            <TouchableOpacity
-              style={styles.libraryBtn}
-              onPress={() => setShowLibrary(true)}
-              activeOpacity={0.85}
-            >
-              <Text style={styles.libraryBtnTxt}>Browse all 25 moves →</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.replayBtn} onPress={() => { setCurrentIndex(0); setAccepted(0); setTotalImpact(0); }}>
-              <Text style={styles.replayTxt}>REPLAY TODAY</Text>
-            </TouchableOpacity>
-          </View>
-        ) : (
-          <>
-            {/* "DO IT" label */}
-            <Animated.View style={[styles.labelWrap, styles.labelLeft, { opacity: acceptOpacity }]}>
-              <Text style={[styles.labelTxt, { color: COLORS.green, borderColor: COLORS.green }]}>DO IT</Text>
-            </Animated.View>
-            <Animated.View style={[styles.labelWrap, styles.labelRight, { opacity: skipOpacity }]}>
-              <Text style={[styles.labelTxt, { color: COLORS.textDim, borderColor: COLORS.border }]}>SKIP</Text>
-            </Animated.View>
-
-            {/* Stack shadows */}
-            {remaining > 2 && (
-              <View style={[styles.stackCard, { top: 28, width: CARD_W - 32, opacity: 0.25 }]} />
-            )}
-            {remaining > 1 && (
-              <View style={[styles.stackCard, { top: 14, width: CARD_W - 16, opacity: 0.5 }]} />
-            )}
-
-            <Animated.View
-              style={{ transform: [{ translateX: position.x }, { translateY: position.y }, { rotate }, { scale: liftScale }] }}
-              {...panResponder.panHandlers}
-            >
-              <WealthCard move={currentMove} onAccept={swipeRight} onSkip={swipeLeft} />
-            </Animated.View>
-
-            {/* Progress dots */}
-            <View style={styles.dots}>
-              {moves.map((_, i) => (
-                <View
-                  key={i}
-                  style={[styles.dot, i === currentIndex && styles.dotActive, i < currentIndex && styles.dotDone]}
-                />
-              ))}
-            </View>
-          </>
-        )}
-      </View>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.background },
+  root: { flex: 1, backgroundColor: COLORS.background },
+  feedContainer: { flex: 1 },
 
+  headerArea: {
+    backgroundColor: COLORS.background,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: COLORS.border,
+  },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: SPACING.lg,
-    paddingTop: SPACING.md,
+    paddingTop: SPACING.xs,
     paddingBottom: SPACING.sm,
   },
-  eyebrow: { fontSize: FONTS.sizes.xs, color: COLORS.textMuted, letterSpacing: FONTS.tracking.widest, marginBottom: 3 },
-  name: { fontSize: FONTS.sizes.xl, fontWeight: FONTS.weights.bold, color: COLORS.text, letterSpacing: FONTS.tracking.tight },
+  greeting: {
+    fontSize: FONTS.sizes.xs,
+    color: COLORS.textMuted,
+    letterSpacing: FONTS.tracking.widest,
+    marginBottom: 2,
+  },
+  name: {
+    fontSize: FONTS.sizes.xl,
+    fontWeight: FONTS.weights.bold,
+    color: COLORS.text,
+    letterSpacing: FONTS.tracking.tight,
+  },
   headerRight: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm },
+
+  xpChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    backgroundColor: COLORS.goldGlow,
+    borderRadius: RADIUS.full,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: COLORS.gold + '50',
+  },
+  xpTxt: { fontSize: FONTS.sizes.xs, color: COLORS.goldDark, fontWeight: FONTS.weights.bold, letterSpacing: FONTS.tracking.wide },
+
   streakChip: {
-    paddingHorizontal: 10, paddingVertical: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
     backgroundColor: COLORS.surface,
     borderRadius: RADIUS.full,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: COLORS.border,
-    ...CARD_SHADOW,
-    shadowOpacity: 0.07,
-    shadowRadius: 8,
   },
   streakTxt: { fontSize: FONTS.sizes.xs, color: COLORS.textSub, letterSpacing: FONTS.tracking.wide },
+
+  askBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    backgroundColor: COLORS.text,
+    borderRadius: RADIUS.full,
+    borderWidth: 1,
+    borderColor: COLORS.gold + '50',
+  },
+  askIcon: { fontSize: 12, color: COLORS.gold },
+  askTxt: {
+    fontSize: FONTS.sizes.xs,
+    fontWeight: FONTS.weights.bold,
+    color: COLORS.background,
+    letterSpacing: 0.3,
+  },
+
+  scanBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    backgroundColor: COLORS.text,
+    borderRadius: RADIUS.full,
+  },
+  scanIcon: { fontSize: 12, color: COLORS.gold },
+  scanLabel: { fontSize: 9, fontWeight: FONTS.weights.heavy, color: COLORS.background, letterSpacing: 1.2 },
+
   bellBtn: {
     width: 36, height: 36, borderRadius: 18,
     backgroundColor: COLORS.surface,
@@ -237,102 +520,90 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: COLORS.border,
     position: 'relative',
-    ...CARD_SHADOW, shadowOpacity: 0.07, shadowRadius: 8,
   },
   bellIcon: { fontSize: 15, color: COLORS.textDim },
   badge: {
-    position: 'absolute',
-    top: -3, right: -3,
-    minWidth: 16, height: 16,
-    borderRadius: 8,
+    position: 'absolute', top: -3, right: -3,
+    minWidth: 16, height: 16, borderRadius: 8,
     backgroundColor: COLORS.gold,
     alignItems: 'center', justifyContent: 'center',
     paddingHorizontal: 3,
-    borderWidth: 1.5,
-    borderColor: COLORS.background,
+    borderWidth: 1.5, borderColor: COLORS.background,
   },
   badgeTxt: { fontSize: 8, fontWeight: FONTS.weights.heavy, color: COLORS.background },
 
-  impactBar: {
+  toggleRow: {
+    alignItems: 'center',
+    paddingBottom: SPACING.sm,
+  },
+  toggle: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginHorizontal: SPACING.lg,
-    marginBottom: SPACING.sm,
-    paddingHorizontal: SPACING.md,
-    paddingVertical: 10,
-    backgroundColor: COLORS.green + '10',
-    borderRadius: RADIUS.md,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: COLORS.green + '30',
-  },
-  challengeSection: { gap: SPACING.sm, marginBottom: SPACING.sm },
-  challengeHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: SPACING.lg },
-  challengeTitle: { fontSize: FONTS.sizes.sm, fontWeight: FONTS.weights.semibold, color: COLORS.text, letterSpacing: FONTS.tracking.wide },
-  challengeCount: { fontSize: FONTS.sizes.xs, color: COLORS.textMuted, letterSpacing: FONTS.tracking.widest },
-  challengeScroll: { paddingHorizontal: SPACING.lg, gap: SPACING.sm },
-
-  impactBarLeft: { fontSize: FONTS.sizes.sm, color: COLORS.textDim },
-  impactBarRight: { fontSize: FONTS.sizes.sm, color: COLORS.green, fontWeight: FONTS.weights.semibold },
-
-  cardArea: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-
-  labelWrap: { position: 'absolute', zIndex: 10, top: '12%' },
-  labelLeft: { left: SPACING.lg },
-  labelRight: { right: SPACING.lg },
-  labelTxt: {
-    fontSize: 11,
-    fontWeight: FONTS.weights.bold,
-    letterSpacing: FONTS.tracking.widest,
-    borderWidth: 1.5,
-    borderRadius: 3,
-    paddingHorizontal: 7,
-    paddingVertical: 3,
-  },
-
-  stackCard: {
-    position: 'absolute',
-    height: 340,
-    backgroundColor: COLORS.card,
-    borderRadius: RADIUS.xl,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: COLORS.border,
-    ...CARD_SHADOW,
-  },
-
-  dots: { position: 'absolute', bottom: SPACING.xl, flexDirection: 'row', gap: 6 },
-  dot: { width: 5, height: 5, borderRadius: 2.5, backgroundColor: COLORS.textMuted },
-  dotActive: { backgroundColor: COLORS.gold, width: 18, borderRadius: 2.5 },
-  dotDone: { backgroundColor: COLORS.green },
-
-  doneCard: {
-    backgroundColor: COLORS.card,
-    borderRadius: RADIUS.xl,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: COLORS.border,
-    padding: SPACING.xl,
-    alignItems: 'center',
-    gap: SPACING.md,
-    width: CARD_W,
-  },
-  doneMark: { fontFamily: FONTS.display, fontSize: 40, color: COLORS.gold },
-  doneTitle: { fontFamily: FONTS.display, fontSize: FONTS.sizes.xxl, fontWeight: FONTS.weights.light, color: COLORS.text, letterSpacing: FONTS.tracking.wide },
-  doneSub: { fontSize: FONTS.sizes.sm, color: COLORS.textDim, textAlign: 'center', lineHeight: 20 },
-  libraryBtn: {
-    width: '100%',
-    paddingVertical: 14,
+    backgroundColor: COLORS.surface,
     borderRadius: RADIUS.full,
-    backgroundColor: COLORS.text,
-    alignItems: 'center',
-    marginTop: SPACING.sm,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: COLORS.border,
+    padding: 3,
   },
-  libraryBtnTxt: { fontSize: FONTS.sizes.sm, fontWeight: FONTS.weights.bold, color: COLORS.background, letterSpacing: FONTS.tracking.wide },
-  replayBtn: {
-    marginTop: SPACING.xs,
+  toggleBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
     paddingHorizontal: SPACING.lg,
-    paddingVertical: 10,
+    paddingVertical: 7,
     borderRadius: RADIUS.full,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: COLORS.borderMid,
   },
-  replayTxt: { fontSize: FONTS.sizes.xs, color: COLORS.textDim, letterSpacing: FONTS.tracking.widest },
+  toggleBtnActive: { backgroundColor: COLORS.text },
+  toggleTxt: {
+    fontSize: FONTS.sizes.sm,
+    color: COLORS.textDim,
+    fontWeight: FONTS.weights.medium,
+    letterSpacing: FONTS.tracking.wide,
+  },
+  toggleTxtActive: { color: COLORS.background, fontWeight: FONTS.weights.bold },
+  cohortDot: {
+    width: 6, height: 6, borderRadius: 3,
+    backgroundColor: COLORS.gold,
+  },
+
+  // Reward toast
+  toast: {
+    position: 'absolute',
+    bottom: SPACING.xl,
+    left: SPACING.lg,
+    right: SPACING.lg,
+    zIndex: 20,
+    alignItems: 'center',
+  },
+  toastInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: COLORS.card,
+    borderRadius: RADIUS.full,
+    paddingVertical: 14,
+    paddingHorizontal: SPACING.lg,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: COLORS.gold + '40',
+    ...CARD_SHADOW,
+    shadowOpacity: 0.18,
+    shadowRadius: 20,
+  },
+  toastXP: {
+    fontSize: FONTS.sizes.lg,
+    fontWeight: FONTS.weights.heavy,
+    color: COLORS.gold,
+    letterSpacing: FONTS.tracking.tight,
+    fontFamily: FONTS.display,
+  },
+  toastDivider: {
+    width: 1,
+    height: 16,
+    backgroundColor: COLORS.border,
+  },
+  toastMsg: {
+    fontSize: FONTS.sizes.sm,
+    color: COLORS.textSub,
+    letterSpacing: FONTS.tracking.wide,
+    fontWeight: FONTS.weights.medium,
+  },
 });

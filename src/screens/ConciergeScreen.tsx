@@ -14,7 +14,9 @@ const STARTERS = [
   { q: 'How close am I to Platinum?', icon: '○' },
 ];
 
-export default function ConciergeScreen() {
+interface Props { onClose?: () => void; }
+
+export default function ConciergeScreen({ onClose }: Props = {}) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -56,10 +58,15 @@ export default function ConciergeScreen() {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <View style={styles.onlineDot} />
-        <View>
+        <View style={styles.headerText}>
           <Text style={styles.headerTitle}>Concierge</Text>
           <Text style={styles.headerSub}>VAULT PRIVATE ADVISORY</Text>
         </View>
+        {onClose && (
+          <TouchableOpacity onPress={onClose} style={styles.closeBtn} activeOpacity={0.7}>
+            <Text style={styles.closeTxt}>✕</Text>
+          </TouchableOpacity>
+        )}
       </View>
       <View style={styles.divider} />
 
@@ -156,14 +163,22 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', gap: SPACING.md,
     paddingHorizontal: SPACING.lg, paddingVertical: SPACING.md,
   },
+  headerText: { flex: 1 },
   onlineDot: {
     width: 7, height: 7, borderRadius: 3.5,
-    backgroundColor: COLORS.green,
-    shadowColor: COLORS.green, shadowOpacity: 1, shadowRadius: 6,
+    backgroundColor: COLORS.gold,
+    shadowColor: COLORS.gold, shadowOpacity: 0.8, shadowRadius: 6,
     shadowOffset: { width: 0, height: 0 },
   },
   headerTitle: { fontSize: FONTS.sizes.lg, fontWeight: FONTS.weights.semibold, color: COLORS.text, letterSpacing: FONTS.tracking.tight },
   headerSub: { fontSize: FONTS.sizes.xs, color: COLORS.textMuted, letterSpacing: FONTS.tracking.widest },
+  closeBtn: {
+    width: 32, height: 32, borderRadius: 16,
+    backgroundColor: COLORS.surface,
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: StyleSheet.hairlineWidth, borderColor: COLORS.border,
+  },
+  closeTxt: { fontSize: 12, color: COLORS.textDim },
 
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: SPACING.xl, gap: SPACING.lg },
   emptyGlyph: { fontFamily: FONTS.display, fontSize: 44, color: COLORS.gold },
