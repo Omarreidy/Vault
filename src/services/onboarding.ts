@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useState, useEffect } from 'react';
 import { TierName } from '../types';
 import { getTierFromScore, getTierProgress } from './velocity';
+import { supabase } from './supabase';
 
 export interface OnboardingAnswers {
   name: string;
@@ -83,34 +84,54 @@ export function calculateOnboardingScore(answers: OnboardingAnswers): Onboarding
   return { score, tier, tierProgress, percentile, gaps };
 }
 
-const ONBOARDING_KEY = '@vault_onboarding_complete';
 const ONBOARDING_RESULT_KEY = '@vault_onboarding_result';
 
 export async function markOnboardingComplete(result: OnboardingResult): Promise<void> {
-  await AsyncStorage.setItem(ONBOARDING_KEY, 'true');
+  // Save locally for fast access
   await AsyncStorage.setItem(ONBOARDING_RESULT_KEY, JSON.stringify(result));
-}
 
-export async function hasCompletedOnboarding(): Promise<boolean> {
-  const val = await AsyncStorage.getItem(ONBOARDING_KEY);
-  return val === 'true';
+  // Save to Supabase so it persists across devices
+  const { data: { user } } = await supabase.auth.getUser();
+  if (user) {
+    await supabase.from('profiles').update({
+      name: result.name,
+      score: result.score,
+      tier: result.tier,
+      tier_progress: result.tierProgress,
+      percentile: result.percentile,
+      onboarding_complete: true,
+    }).eq('id', user.id);
+  }
 }
 
 export async function resetOnboarding(): Promise<void> {
-  await AsyncStorage.removeItem(ONBOARDING_KEY);
   await AsyncStorage.removeItem(ONBOARDING_RESULT_KEY);
+  const { data: { user } } = await supabase.auth.getUser();
+  if (user) {
+    await supabase.from('profiles').update({ onboarding_complete: false }).eq('id', user.id);
+  }
 }
 
 export function useUserName(fallback = 'Alex'): string {
   const [name, setName] = useState(fallback);
+
   useEffect(() => {
-    AsyncStorage.getItem(ONBOARDING_RESULT_KEY).then(json => {
-      if (!json) return;
-      try {
-        const result = JSON.parse(json) as OnboardingResult;
-        if (result?.name) setName(result.name);
-      } catch {}
+    // Try Supabase first, fall back to AsyncStorage
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user) return;
+      supabase.from('profiles').select('name').eq('id', user.id).single().then(({ data }) => {
+        if (data?.name) { setName(data.name); return; }
+        // Fallback: local storage
+        AsyncStorage.getItem(ONBOARDING_RESULT_KEY).then(json => {
+          if (!json) return;
+          try {
+            const result = JSON.parse(json) as OnboardingResult;
+            if (result?.name) setName(result.name);
+          } catch {}
+        });
+      });
     });
   }, []);
+
   return name;
 }
