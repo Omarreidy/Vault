@@ -1,3 +1,24 @@
+const SUPABASE_URL = 'https://gvdfypehwmemootjizmd.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_tHoiSHF-49L1_p0OLRPeKw_5mfSi0fs';
+
+export async function fetchCompanyResearch(ticker: string): Promise<any> {
+  const res = await fetch(`${SUPABASE_URL}/functions/v1/company-research`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+      'apikey': SUPABASE_ANON_KEY,
+    },
+    body: JSON.stringify({ ticker: ticker.toUpperCase() }),
+  });
+  if (!res.ok) throw new Error('Research unavailable');
+  const data = await res.json();
+  if (data.error) throw new Error(data.error);
+  return data;
+}
+
+export const POPULAR_TICKERS = ['NVDA', 'AAPL', 'MSFT', 'META', 'GOOGL', 'AMZN', 'TSLA'];
+
 export type Verdict = 'STRONG BUY' | 'BUY' | 'HOLD' | 'SELL' | 'STRONG SELL';
 export type InvestAnswer = 'YES' | 'NO' | 'WATCH';
 

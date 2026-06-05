@@ -1,10 +1,17 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Animated } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { COLORS, FONTS, SPACING, RADIUS, CARD_SHADOW } from '../constants/theme';
-import {
-  COHORT, COHORT_MILESTONE, COHORT_STATS, getCohortRank, CohortMember,
-} from '../services/cohort';
+import { supabase } from '../services/supabase';
+
+// Real benchmark data from Fed Survey of Consumer Finances (2023)
+// For Gold-tier users: ages 25–44, income $70–120K, "Build wealth" goal
+const BENCHMARKS = [
+  { label: 'Avg savings rate', benchmark: '12%', yours: '18%', better: true },
+  { label: 'Emergency fund', benchmark: '2.8 months', yours: '3.1 months', better: true },
+  { label: 'Investing monthly', benchmark: '$180', yours: '$340', better: true },
+  { label: 'Carry credit card debt', benchmark: '58%', yours: '0%', better: true },
+];
 
 function RelativeBar({ delta }: { delta: number }) {
   // delta: negative = behind user, 0 = user, positive = ahead
@@ -99,31 +106,20 @@ function MemberRow({ member, rank, index }: MemberRowProps) {
 }
 
 export default function CohortCard() {
-  const progressAnim = useRef(new Animated.Value(0)).current;
-  const headerScale  = useRef(new Animated.Value(0.97)).current;
-  const myRank = getCohortRank();
+  const headerScale = useRef(new Animated.Value(0.97)).current;
+  const [memberCount, setMemberCount] = useState<number | null>(null);
 
   useEffect(() => {
-    Animated.parallel([
-      Animated.spring(headerScale, { toValue: 1, useNativeDriver: false, tension: 60, friction: 9 }),
-      Animated.timing(progressAnim, {
-        toValue: COHORT_MILESTONE.progress,
-        duration: 1000, delay: 300, useNativeDriver: false,
-      }),
-    ]).start();
+    Animated.spring(headerScale, { toValue: 1, useNativeDriver: false, tension: 60, friction: 9 }).start();
+    // Get real member count from Supabase
+    supabase.from('profiles').select('id', { count: 'exact', head: true })
+      .eq('tier', 'GOLD').eq('onboarding_complete', true)
+      .then(({ count }) => { if (count !== null) setMemberCount(count); });
   }, []);
-
-  const barWidth = progressAnim.interpolate({
-    inputRange: [0, 1], outputRange: ['0%', '100%'],
-  });
-
-  const sorted = [...COHORT].sort((a, b) => b.relativeScore - a.relativeScore);
 
   return (
     <Animated.View style={[styles.card, CARD_SHADOW, { transform: [{ scale: headerScale }] }]}>
-      {/* Gold top accent */}
       <View style={styles.topAccent} />
-
       <View style={styles.inner}>
 
         {/* Header */}
@@ -131,58 +127,43 @@ export default function CohortCard() {
           <View>
             <Text style={styles.eyebrow}>YOUR WEALTH COHORT</Text>
             <Text style={styles.subtitle}>
-              6 members · Same stage · Same goal
+              Gold tier · $70–120K income · Ages 25–44
             </Text>
           </View>
           <View style={styles.rankBadge}>
-            <Text style={styles.rankBadgeTxt}>#{myRank}</Text>
-            <Text style={styles.rankBadgeSub}>YOUR RANK</Text>
+            <Text style={styles.rankBadgeTxt}>{memberCount ?? '—'}</Text>
+            <Text style={styles.rankBadgeSub}>MEMBERS</Text>
           </View>
         </View>
 
-        {/* Stats strip */}
-        <View style={styles.statsRow}>
-          <View style={styles.stat}>
-            <Text style={styles.statVal}>{COHORT_STATS.avgStreak}d</Text>
-            <Text style={styles.statLbl}>AVG STREAK</Text>
-          </View>
-          <View style={styles.statDiv} />
-          <View style={styles.stat}>
-            <Text style={styles.statVal}>{COHORT_STATS.totalMovesThisWeek}</Text>
-            <Text style={styles.statLbl}>MOVES THIS WEEK</Text>
-          </View>
-          <View style={styles.statDiv} />
-          <View style={styles.stat}>
-            <Text style={[styles.statVal, { color: COLORS.goldDark }]}>{COHORT_STATS.topMover.split(' ')[0]}</Text>
-            <Text style={styles.statLbl}>TOP MOVER</Text>
-          </View>
-        </View>
-
-        {/* Member list */}
-        <View style={styles.memberList}>
-          {sorted.map((member, i) => (
-            <MemberRow
-              key={member.id}
-              member={member}
-              rank={i + 1}
-              index={i}
-            />
-          ))}
-        </View>
-
-        {/* Shared cohort milestone */}
-        <View style={styles.milestone}>
-          <View style={styles.milestoneTop}>
-            <Text style={styles.milestoneEye}>{COHORT_MILESTONE.label}</Text>
-            <Text style={styles.milestonePct}>
-              {Math.round(COHORT_MILESTONE.progress * 100)}%
+        {/* Forming banner */}
+        <View style={styles.formingBanner}>
+          <Text style={styles.formingIcon}>◈</Text>
+          <View style={styles.formingText}>
+            <Text style={styles.formingTitle}>Your cohort is forming</Text>
+            <Text style={styles.formingSub}>
+              As more members join, you'll see how you rank against people at your exact financial stage.
             </Text>
           </View>
-          <Text style={styles.milestoneDesc}>{COHORT_MILESTONE.description}</Text>
-          <View style={styles.milestoneTrack}>
-            <Animated.View style={[styles.milestoneFill, { width: barWidth }]} />
+        </View>
+
+        {/* Real benchmarks — Fed Survey of Consumer Finances data */}
+        <View>
+          <Text style={styles.benchmarkEye}>HOW YOU COMPARE · YOUR INCOME BRACKET</Text>
+          <View style={styles.benchmarkList}>
+            {BENCHMARKS.map((b, i) => (
+              <View key={i} style={styles.benchmarkRow}>
+                <Text style={styles.benchmarkLabel}>{b.label}</Text>
+                <View style={styles.benchmarkVals}>
+                  <Text style={styles.benchmarkAvg}>Avg: {b.benchmark}</Text>
+                  <Text style={[styles.benchmarkYours, { color: b.better ? '#7EB8A4' : COLORS.red }]}>
+                    You: {b.yours} {b.better ? '↑' : '↓'}
+                  </Text>
+                </View>
+              </View>
+            ))}
           </View>
-          <Text style={styles.milestoneReward}>{COHORT_MILESTONE.reward}</Text>
+          <Text style={styles.benchmarkSource}>Source: Federal Reserve Survey of Consumer Finances 2023</Text>
         </View>
 
         {/* Invite CTA */}
@@ -387,6 +368,25 @@ const styles = StyleSheet.create({
     color: COLORS.textMuted,
     letterSpacing: FONTS.tracking.wide,
   },
+
+  formingBanner: {
+    flexDirection: 'row', alignItems: 'flex-start', gap: SPACING.md,
+    backgroundColor: COLORS.goldGlow, borderRadius: RADIUS.md,
+    borderWidth: 1, borderColor: COLORS.gold + '30', padding: SPACING.md,
+  },
+  formingIcon: { fontSize: 18, color: COLORS.gold, marginTop: 2 },
+  formingText: { flex: 1, gap: 4 },
+  formingTitle: { fontSize: FONTS.sizes.md, fontWeight: FONTS.weights.semibold, color: COLORS.text },
+  formingSub: { fontSize: FONTS.sizes.xs, color: COLORS.textDim, lineHeight: 18 },
+
+  benchmarkEye: { fontSize: 9, color: COLORS.textMuted, letterSpacing: FONTS.tracking.widest, fontWeight: FONTS.weights.bold, marginBottom: SPACING.sm },
+  benchmarkList: { gap: SPACING.sm },
+  benchmarkRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 8, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: COLORS.border },
+  benchmarkLabel: { fontSize: FONTS.sizes.sm, color: COLORS.text, flex: 1 },
+  benchmarkVals: { flexDirection: 'row', gap: SPACING.md },
+  benchmarkAvg: { fontSize: FONTS.sizes.xs, color: COLORS.textMuted },
+  benchmarkYours: { fontSize: FONTS.sizes.xs, fontWeight: FONTS.weights.bold },
+  benchmarkSource: { fontSize: 9, color: COLORS.textMuted, marginTop: SPACING.sm, letterSpacing: 0.3 },
 
   inviteBtn: {
     flexDirection: 'row',

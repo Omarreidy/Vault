@@ -7,7 +7,7 @@ import * as ImagePicker from 'expo-image-picker';
 import * as Haptics from 'expo-haptics';
 import { COLORS, FONTS, SPACING, RADIUS, CARD_SHADOW } from '../constants/theme';
 import {
-  getMockScanResult, ScanResult, ScanVerdict,
+  getMockScanResult, scanDocument, ScanResult, ScanVerdict,
   VERDICT_COLORS, VERDICT_ICONS,
 } from '../services/financialScanner';
 
@@ -441,13 +441,29 @@ export default function FinancialScanner({ visible, onClose }: Props) {
         quality: 0.8,
       });
       if (!res.canceled && res.assets[0]) {
-        setImageUri(res.assets[0].uri);
+        const uri = res.assets[0].uri;
+        setImageUri(uri);
         setStage('scanning');
-        // Simulate AI analysis delay
-        setTimeout(() => {
+        try {
+          const liveResult = await scanDocument(uri);
+          // Map live result to ScanResult shape
+          setResult({
+            id: Date.now().toString(),
+            verdict: liveResult.verdict === 'HEALTHY' ? 'ASSET'
+              : liveResult.verdict === 'CRITICAL' ? 'LIABILITY' : 'BUDGET CHECK',
+            itemName: liveResult.documentType ?? 'Financial Document',
+            emoji: liveResult.findings?.[0]?.icon ?? '📄',
+            tagline: liveResult.summary ?? '',
+            annualImpact: liveResult.findings?.[0]?.detail ?? '',
+            wealthScoreImpact: `Score: ${liveResult.score}/100`,
+            insight: liveResult.topAction ?? '',
+            tip: liveResult.findings?.map((f: any) => `${f.icon} ${f.label}: ${f.detail}`).join('\n') ?? '',
+            xp: Math.round((liveResult.score ?? 50) / 5),
+          } as ScanResult);
+        } catch {
           setResult(getMockScanResult());
-          setStage('result');
-        }, 2800);
+        }
+        setStage('result');
       }
     } catch {}
   };

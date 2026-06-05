@@ -6,7 +6,7 @@ import {
 import * as Haptics from 'expo-haptics';
 import { COLORS, FONTS, SPACING, RADIUS, CARD_SHADOW } from '../constants/theme';
 import {
-  COMPANY_REPORTS, getOrGenerateReport, CompanyReport,
+  fetchCompanyResearch, POPULAR_TICKERS, CompanyReport,
   VERDICT_COLORS, CONFIDENCE_COLORS, SEVERITY_COLORS, THREAT_COLORS,
   ANSWER_COLORS, ANSWER_BG,
 } from '../services/companyResearch';
@@ -399,19 +399,23 @@ export default function CompanyResearch() {
   const [query, setQuery]               = useState('');
   const [activeReport, setActiveReport] = useState<CompanyReport | null>(null);
   const [loading, setLoading]           = useState(false);
+  const [error, setError]               = useState('');
   const inputRef = useRef<any>(null);
 
-  const runSearch = (ticker: string) => {
+  const runSearch = async (ticker: string) => {
     const t = ticker.trim().toUpperCase();
     if (!t) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
     setLoading(true);
-    // Small delay so the loading state is visible
-    setTimeout(() => {
-      const report = getOrGenerateReport(t);
+    setError('');
+    try {
+      const report = await fetchCompanyResearch(t);
       setActiveReport(report);
+    } catch (err: any) {
+      setError(`Could not load research for ${t}. Check the ticker and try again.`);
+    } finally {
       setLoading(false);
-    }, 1200);
+    }
   };
 
   const handleSearch = () => {
@@ -456,12 +460,17 @@ export default function CompanyResearch() {
 
       {/* Quick access tickers */}
       <View style={styles.quickRow}>
-        {['NVDA', 'AAPL', 'TSLA', 'META'].map(t => (
+        {POPULAR_TICKERS.slice(0, 4).map(t => (
           <TouchableOpacity key={t} style={styles.quickBtn} onPress={() => handleQuickSearch(t)} activeOpacity={0.8}>
             <Text style={styles.quickTxt}>{t}</Text>
           </TouchableOpacity>
         ))}
       </View>
+      {!!error && (
+        <Text style={{ color: COLORS.red, fontSize: FONTS.sizes.xs, textAlign: 'center', marginTop: SPACING.sm }}>
+          {error}
+        </Text>
+      )}
 
       {loading && (
         <View style={styles.loadingCard}>

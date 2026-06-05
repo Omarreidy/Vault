@@ -158,8 +158,46 @@ export const MOCK_SCAN_RESULTS: ScanResult[] = [
   },
 ];
 
-let scanIndex = 0;
+const SUPABASE_URL = 'https://gvdfypehwmemootjizmd.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_tHoiSHF-49L1_p0OLRPeKw_5mfSi0fs';
 
+export interface LiveScanResult {
+  verdict: 'HEALTHY' | 'ATTENTION' | 'ACTION NEEDED' | 'CRITICAL';
+  score: number;
+  summary: string;
+  documentType: string;
+  findings: { icon: string; label: string; detail: string; impact: 'positive' | 'negative' | 'neutral' }[];
+  topAction: string;
+}
+
+export async function scanDocument(imageUri: string): Promise<LiveScanResult> {
+  // Convert image URI to base64
+  const response = await fetch(imageUri);
+  const blob = await response.blob();
+  const reader = new FileReader();
+  const base64 = await new Promise<string>((resolve) => {
+    reader.onloadend = () => resolve((reader.result as string).split(',')[1]);
+    reader.readAsDataURL(blob);
+  });
+
+  const res = await fetch(`${SUPABASE_URL}/functions/v1/financial-scanner`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+      'apikey': SUPABASE_ANON_KEY,
+    },
+    body: JSON.stringify({ imageBase64: base64, mimeType: blob.type || 'image/jpeg' }),
+  });
+
+  if (!res.ok) throw new Error('Scanner unavailable');
+  const data = await res.json();
+  if (data.error) throw new Error(data.error);
+  return data;
+}
+
+// Kept for fallback only
+let scanIndex = 0;
 export function getMockScanResult(): ScanResult {
   const result = MOCK_SCAN_RESULTS[scanIndex % MOCK_SCAN_RESULTS.length];
   scanIndex++;

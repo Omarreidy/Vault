@@ -5,14 +5,15 @@ import {
 import * as Haptics from 'expo-haptics';
 import { COLORS, FONTS, SPACING, RADIUS, CARD_SHADOW } from '../constants/theme';
 import {
-  MARKET_SNAPSHOT, HOT_MOVERS, VOLUME_SPIKES, BREAKING_NEWS, VAULT_ANGLES,
-  Mover, VolumeSpikeStock, NewsItem, VaultAngle,
+  FALLBACK_SNAPSHOT, fetchMarketData, fetchMarketNews,
+  Mover, NewsItem,
   SENTIMENT_COLORS, NEWS_CATEGORY_COLORS, timeAgoNews,
+  MarketSnapshot, LiveMarketData,
 } from '../services/marketSignal';
 
 // ─── Market snapshot header ───────────────────────────────────────────────────
 
-function SnapshotCard() {
+function SnapshotCard({ snap }: { snap: MarketSnapshot }) {
   const scale   = useRef(new Animated.Value(0.96)).current;
   const opacity = useRef(new Animated.Value(0)).current;
 
@@ -22,8 +23,6 @@ function SnapshotCard() {
       Animated.timing(opacity, { toValue: 1, duration: 400, useNativeDriver: false }),
     ]).start();
   }, []);
-
-  const snap = MARKET_SNAPSHOT;
   const statusColor = snap.marketStatus === 'OPEN' ? '#7EB8A4' : COLORS.textMuted;
 
   const IndexPill = ({ label, val }: { label: string; val: number }) => (
@@ -468,9 +467,24 @@ const sectionStyles = StyleSheet.create({
 
 export default function MarketSignal() {
   const [moversTab, setMoversTab] = useState<'gainers' | 'losers'>('gainers');
+  const [snapshot, setSnapshot] = useState<MarketSnapshot>(FALLBACK_SNAPSHOT);
+  const [movers, setMovers] = useState<Mover[]>([]);
+  const [news, setNews] = useState<NewsItem[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const gainers = HOT_MOVERS.filter(m => m.direction === 'up');
-  const losers  = HOT_MOVERS.filter(m => m.direction === 'down');
+  useEffect(() => {
+    Promise.all([fetchMarketData(), fetchMarketNews()])
+      .then(([market, articles]) => {
+        setSnapshot(market.snapshot);
+        setMovers(market.movers);
+        setNews(articles);
+      })
+      .catch(() => {}) // keep fallback on error
+      .finally(() => setLoading(false));
+  }, []);
+
+  const gainers = movers.filter(m => m.direction === 'up');
+  const losers  = movers.filter(m => m.direction === 'down');
   const displayed = moversTab === 'gainers' ? gainers : losers;
 
   return (
@@ -479,14 +493,14 @@ export default function MarketSignal() {
       contentContainerStyle={styles.content}
       showsVerticalScrollIndicator={false}
     >
-      <SnapshotCard />
+      <SnapshotCard snap={snapshot} />
 
       {/* Hot Movers */}
       <View style={styles.section}>
         <View style={styles.sectionTopRow}>
           <SectionHeader
             title="🔥 Hot Movers"
-            sub="Biggest price moves in the last 48 hours"
+            sub="Biggest price moves today"
           />
           <View style={styles.miniToggle}>
             <TouchableOpacity
@@ -506,22 +520,17 @@ export default function MarketSignal() {
           </View>
         </View>
         <View style={styles.card}>
-          {displayed.map((m, i) => (
-            <MoverRow key={m.id} mover={m} index={i} />
-          ))}
-        </View>
-      </View>
-
-      {/* Volume Spikes */}
-      <View style={styles.section}>
-        <SectionHeader
-          title="⚡ Volume Spikes"
-          sub="Stocks trading well above their normal volume"
-        />
-        <View style={styles.card}>
-          {VOLUME_SPIKES.map((v, i) => (
-            <VolumeSpikeRow key={v.id} item={v} index={i} />
-          ))}
+          {loading ? (
+            <View style={{ padding: SPACING.lg, alignItems: 'center' }}>
+              <Text style={{ color: COLORS.textMuted, fontSize: FONTS.sizes.sm }}>Loading live data…</Text>
+            </View>
+          ) : displayed.length > 0 ? displayed.map((m, i) => (
+            <MoverRow key={m.ticker} mover={m as any} index={i} />
+          )) : (
+            <View style={{ padding: SPACING.lg, alignItems: 'center' }}>
+              <Text style={{ color: COLORS.textMuted, fontSize: FONTS.sizes.sm }}>No data available</Text>
+            </View>
+          )}
         </View>
       </View>
 
@@ -529,24 +538,17 @@ export default function MarketSignal() {
       <View style={styles.section}>
         <SectionHeader
           title="📰 What's Moving Markets"
-          sub="Tap any headline for your VAULT angle"
+          sub="Live financial news"
         />
         <View style={styles.card}>
-          {BREAKING_NEWS.map((n, i) => (
+          {loading ? (
+            <View style={{ padding: SPACING.lg, alignItems: 'center' }}>
+              <Text style={{ color: COLORS.textMuted, fontSize: FONTS.sizes.sm }}>Loading headlines…</Text>
+            </View>
+          ) : news.slice(0, 8).map((n, i) => (
             <NewsRow key={n.id} item={n} index={i} />
           ))}
         </View>
-      </View>
-
-      {/* VAULT Angle */}
-      <View style={styles.section}>
-        <SectionHeader
-          title="◆ VAULT Angle"
-          sub="What today's market means for your wealth"
-        />
-        {VAULT_ANGLES.map((a, i) => (
-          <VaultAngleCard key={a.id} angle={a} index={i} />
-        ))}
       </View>
 
       <View style={{ height: SPACING.xxl }} />
