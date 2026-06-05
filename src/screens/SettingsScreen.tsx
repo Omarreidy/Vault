@@ -8,6 +8,7 @@ import { MOCK_USER } from '../services/mockData';
 import TierBadge from '../components/TierBadge';
 import { COLORS, FONTS, SPACING, RADIUS, TIERS, CARD_SHADOW } from '../constants/theme';
 import { resetOnboarding, useUserName } from '../services/onboarding';
+import PlaidLinkScreen from './PlaidLinkScreen';
 
 interface ToggleRowProps {
   label: string;
@@ -88,6 +89,8 @@ export default function SettingsScreen({ onClose, onResetOnboarding }: Props) {
 
   // Preferences
   const [darkMode, setDarkMode] = useState(false);
+  const [showPlaid, setShowPlaid] = useState(false);
+  const [connectedBanks, setConnectedBanks] = useState(0);
 
   const handleResetOnboarding = async () => {
     Alert.alert(
@@ -120,6 +123,15 @@ export default function SettingsScreen({ onClose, onResetOnboarding }: Props) {
 
   return (
     <SafeAreaView style={styles.container}>
+      <PlaidLinkScreen
+        visible={showPlaid}
+        onClose={() => setShowPlaid(false)}
+        onSuccess={(accounts) => {
+          setConnectedBanks(accounts.length);
+          setShowPlaid(false);
+          Alert.alert('Connected!', `${accounts.length} account${accounts.length !== 1 ? 's' : ''} linked successfully.`);
+        }}
+      />
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Settings</Text>
@@ -182,7 +194,12 @@ export default function SettingsScreen({ onClose, onResetOnboarding }: Props) {
 
         {/* Connected accounts */}
         <Section title="CONNECTED ACCOUNTS">
-          <LinkRow label="Bank accounts" sub="Connect via Plaid — coming soon" onPress={() => {}} />
+          <LinkRow
+            label="Bank accounts"
+            sub={connectedBanks > 0 ? `${connectedBanks} account${connectedBanks !== 1 ? 's' : ''} connected` : 'Connect via Plaid'}
+            value={connectedBanks > 0 ? '✓' : ''}
+            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {}); setShowPlaid(true); }}
+          />
           <Divider />
           <LinkRow label="Investment accounts" sub="Brokerage sync — coming soon" onPress={() => {}} />
         </Section>
