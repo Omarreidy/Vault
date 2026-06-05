@@ -16,15 +16,30 @@ import NetWorthTracker from '../components/NetWorthTracker';
 import WealthWrapped from '../components/WealthWrapped';
 import CohortCard from '../components/CohortCard';
 import { COLORS, FONTS, SPACING, TIERS, RADIUS, CARD_SHADOW } from '../constants/theme';
-import { getNextTier, getPointsToNextTier } from '../services/velocity';
-import { TierName } from '../types';
+import { getNextTier, getPointsToNextTier, fetchLiveScore, fetchProfileScore } from '../services/velocity';
+import { TierName, VelocityScore } from '../types';
 
 const TIER_ORDER: TierName[] = ['BRONZE', 'SILVER', 'GOLD', 'PLATINUM', 'BLACK'];
 const TABS = ['Score', 'Cohort', 'Goals', 'Challenges', 'Achievements'] as const;
 type Tab = typeof TABS[number];
 
 export default function ScoreScreen() {
-  const { score, tier, streakDays } = MOCK_USER;
+  const [liveScore, setLiveScore] = useState<VelocityScore | null>(null);
+  const [scoreSource, setScoreSource] = useState<'plaid' | 'profile' | 'mock'>('mock');
+
+  // Try Plaid → profile → mock fallback
+  useEffect(() => {
+    fetchLiveScore().then(s => {
+      if (s) { setLiveScore(s); setScoreSource('plaid'); return; }
+      fetchProfileScore().then(ps => {
+        if (ps) { setLiveScore(ps); setScoreSource('profile'); }
+      });
+    });
+  }, []);
+
+  const score      = liveScore ?? MOCK_USER.score;
+  const tier       = (liveScore?.tier ?? MOCK_USER.tier) as TierName;
+  const streakDays = MOCK_USER.streakDays;
   const nextTier = getNextTier(tier);
   const pointsToNext = getPointsToNextTier(score.total);
   const [activeTab, setActiveTab] = useState<Tab>('Score');
@@ -149,6 +164,18 @@ export default function ScoreScreen() {
         {/* SCORE TAB */}
         {activeTab === 'Score' && (
           <>
+            {/* Data source indicator */}
+            {scoreSource === 'plaid' && (
+              <View style={styles.liveDataBadge}>
+                <View style={styles.liveDot} />
+                <Text style={styles.liveDataTxt}>Live score from your connected accounts</Text>
+              </View>
+            )}
+            {scoreSource === 'profile' && (
+              <View style={styles.estimatedBadge}>
+                <Text style={styles.estimatedTxt}>◇ Estimated score · Connect bank for live data</Text>
+              </View>
+            )}
             {/* Monthly Recap banner */}
             <TouchableOpacity
               style={styles.recapBanner}
@@ -540,6 +567,24 @@ const styles = StyleSheet.create({
   tabTxt: { fontSize: FONTS.sizes.xs, color: COLORS.textDim, fontWeight: FONTS.weights.medium, letterSpacing: FONTS.tracking.wide },
   tabTxtActive: { color: COLORS.background },
 
+  liveDataBadge: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    paddingHorizontal: SPACING.md, paddingVertical: 7,
+    backgroundColor: 'rgba(126,184,164,0.1)',
+    borderRadius: RADIUS.full,
+    borderWidth: 1, borderColor: 'rgba(126,184,164,0.3)',
+    alignSelf: 'flex-start',
+  },
+  liveDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#7EB8A4' },
+  liveDataTxt: { fontSize: FONTS.sizes.xs, color: '#7EB8A4', fontWeight: FONTS.weights.medium },
+  estimatedBadge: {
+    paddingHorizontal: SPACING.md, paddingVertical: 7,
+    backgroundColor: COLORS.goldGlow,
+    borderRadius: RADIUS.full,
+    borderWidth: 1, borderColor: COLORS.gold + '40',
+    alignSelf: 'flex-start',
+  },
+  estimatedTxt: { fontSize: FONTS.sizes.xs, color: COLORS.goldDark, fontWeight: FONTS.weights.medium },
   recapBanner: {
     flexDirection: 'row',
     alignItems: 'center',

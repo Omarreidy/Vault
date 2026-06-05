@@ -6,7 +6,7 @@ import {
 import { SafeAreaView } from 'react-native';
 import * as Haptics from 'expo-haptics';
 
-import { buildFeed, FeedItem } from '../services/feed';
+import { buildFeed, fetchPersonalizedMoves, FeedItem } from '../services/feed';
 import { ALL_MOVES, MOCK_WINS, MOCK_USER } from '../services/mockData';
 import { useUserName } from '../services/onboarding';
 import { INSIGHTS, Insight } from '../services/insights';
@@ -23,10 +23,14 @@ import FinancialScanner from '../components/FinancialScanner';
 import ConciergeScreen from './ConciergeScreen';
 import TierBadge from '../components/TierBadge';
 import NotificationsScreen from './NotificationsScreen';
+import PlaidNudge from '../components/PlaidNudge';
+import PlaidLinkScreen from './PlaidLinkScreen';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { supabase } from '../services/supabase';
 
 import { COLORS, FONTS, SPACING, RADIUS, CARD_SHADOW } from '../constants/theme';
 
-const FEED = buildFeed(ALL_MOVES, INSIGHTS, MOCK_WINS);
+const DEFAULT_FEED = buildFeed(ALL_MOVES, INSIGHTS, MOCK_WINS);
 
 const REWARD_MESSAGES = [
   'Smart move.',
@@ -148,6 +152,39 @@ export default function HomeScreen() {
   const [completedMoveTitle, setCompletedMoveTitle] = useState('');
   const [showScanner, setShowScanner] = useState(false);
   const [showConcierge, setShowConcierge] = useState(false);
+  const [showPlaidNudge, setShowPlaidNudge] = useState(false);
+  const [showPlaid, setShowPlaid] = useState(false);
+  const [plaidConnected, setPlaidConnected] = useState(false);
+
+  const [memberCount, setMemberCount] = useState<number | null>(null);
+  const [feed, setFeed] = useState<FeedItem[]>(DEFAULT_FEED);
+
+  // Check if Plaid already connected + whether to show nudge + get member count
+  useEffect(() => {
+    AsyncStorage.getItem('@vault_plaid_connected').then(val => {
+      if (val === 'true') setPlaidConnected(true);
+    });
+    AsyncStorage.getItem('@vault_plaid_nudge_dismissed').then(val => {
+      if (val === 'true') setShowPlaidNudge(false);
+    });
+    supabase.from('profiles')
+      .select('id', { count: 'exact', head: true })
+      .eq('onboarding_complete', true)
+      .then(({ count }) => { if (count) setMemberCount(count); });
+
+    // Try to load personalized moves from Plaid
+    fetchPersonalizedMoves().then(personalizedMoves => {
+      if (personalizedMoves && personalizedMoves.length > 0) {
+        // Prepend personalized moves to the feed
+        const personalizedFeed = buildFeed(
+          [...personalizedMoves, ...ALL_MOVES],
+          INSIGHTS,
+          MOCK_WINS
+        );
+        setFeed(personalizedFeed);
+      }
+    });
+  }, []);
   const [notifCount, setNotifCount] = useState(
     MOCK_NOTIFICATIONS.filter(n => !n.read).length,
   );
@@ -215,8 +252,15 @@ export default function HomeScreen() {
   const handleAct = useCallback((moveTitle: string) => {
     const xp  = pickXP();
     const msg = pickMsg();
-    setActedCount(c => c + 1);
+    const newCount = actedCount + 1;
+    setActedCount(newCount);
     setTotalXP(prev => prev + xp);
+    // Show Plaid nudge after 3rd move if not connected and not dismissed
+    if (newCount === 3 && !plaidConnected) {
+      AsyncStorage.getItem('@vault_plaid_nudge_dismissed').then(val => {
+        if (val !== 'true') setShowPlaidNudge(true);
+      });
+    }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
     setTimeout(() => {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
@@ -289,6 +333,9 @@ export default function HomeScreen() {
           <View>
             <Text style={styles.greeting}>GOOD MORNING</Text>
             <Text style={styles.name}>{userName}</Text>
+            {memberCount !== null && memberCount > 1 && (
+              <Text style={styles.memberBadge}>◆ {memberCount.toLocaleString()} members building wealth</Text>
+            )}
           </View>
           <View style={styles.headerRight}>
             {totalXP > 0 && (
@@ -364,7 +411,7 @@ export default function HomeScreen() {
         {feedTab === 'foryou' ? (
           <FlatList
             ref={flatListRef}
-            data={FEED}
+            data={feed}
             keyExtractor={item => item.id}
             renderItem={renderItem}
             pagingEnabled
@@ -408,6 +455,28 @@ export default function HomeScreen() {
           <Text style={styles.toastMsg}>{rewardMsg}</Text>
         </View>
       </Animated.View>
+
+      {showPlaidNudge && !plaidConnected && (
+        <PlaidNudge
+          trigger="moves"
+          movesCompleted={actedCount}
+          onConnect={() => { setShowPlaidNudge(false); setShowPlaid(true); }}
+          onDismiss={() => {
+            setShowPlaidNudge(false);
+            AsyncStorage.setItem('@vault_plaid_nudge_dismissed', 'true');
+          }}
+        />
+      )}
+
+      <PlaidLinkScreen
+        visible={showPlaid}
+        onClose={() => setShowPlaid(false)}
+        onSuccess={() => {
+          setShowPlaid(false);
+          setPlaidConnected(true);
+          AsyncStorage.setItem('@vault_plaid_connected', 'true');
+        }}
+      />
 
       <FinancialScanner visible={showScanner} onClose={() => setShowScanner(false)} />
 
@@ -459,6 +528,12 @@ const styles = StyleSheet.create({
     fontWeight: FONTS.weights.bold,
     color: COLORS.text,
     letterSpacing: FONTS.tracking.tight,
+  },
+  memberBadge: {
+    fontSize: 9,
+    color: COLORS.goldDark,
+    letterSpacing: FONTS.tracking.wide,
+    marginTop: 2,
   },
   headerRight: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm },
 
