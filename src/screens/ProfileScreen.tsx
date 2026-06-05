@@ -12,6 +12,7 @@ import WealthIdentityCard from '../components/WealthIdentityCard';
 import WealthWrapped from '../components/WealthWrapped';
 import ReferralCard from '../components/ReferralCard';
 import WinShareModal from '../components/WinShareModal';
+import UpgradeScreen from './UpgradeScreen';
 import { COLORS, FONTS, SPACING, TIERS, RADIUS, CARD_SHADOW, CARD_SHADOW_STRONG } from '../constants/theme';
 import { WealthWin } from '../types';
 import { LEADERBOARD, LEADERBOARD_STATS, FRIENDS_LEADERBOARD, FRIENDS_STATS, FriendEntry } from '../services/leaderboard';
@@ -66,6 +67,7 @@ export default function ProfileScreen({ onResetOnboarding }: ProfileProps = {}) 
   const [shareWin, setShareWin] = useState<WealthWin | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [showConcierge, setShowConcierge] = useState(false);
+  const [showUpgrade, setShowUpgrade] = useState(false);
   const [lbView, setLbView] = useState<'global' | 'friends'>('global');
   const friendsFlash = useRef(new Animated.Value(1)).current;
   useEffect(() => {
@@ -131,6 +133,7 @@ export default function ProfileScreen({ onResetOnboarding }: ProfileProps = {}) 
     <SafeAreaView style={styles.container}>
       <WinShareModal win={shareWin} visible={!!shareWin} onClose={() => setShareWin(null)} />
       <WealthWrapped visible={showWrapped} onClose={() => setShowWrapped(false)} />
+      <UpgradeScreen visible={showUpgrade} onClose={() => setShowUpgrade(false)} />
       <Modal visible={showSettings} animationType="slide" presentationStyle="pageSheet">
         <SettingsScreen onClose={() => setShowSettings(false)} onResetOnboarding={onResetOnboarding} />
       </Modal>

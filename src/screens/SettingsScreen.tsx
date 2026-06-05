@@ -9,6 +9,7 @@ import TierBadge from '../components/TierBadge';
 import { COLORS, FONTS, SPACING, RADIUS, TIERS, CARD_SHADOW } from '../constants/theme';
 import { resetOnboarding, useUserName } from '../services/onboarding';
 import PlaidLinkScreen from './PlaidLinkScreen';
+import UpgradeScreen from './UpgradeScreen';
 
 interface ToggleRowProps {
   label: string;
@@ -91,6 +92,7 @@ export default function SettingsScreen({ onClose, onResetOnboarding }: Props) {
   const [darkMode, setDarkMode] = useState(false);
   const [showPlaid, setShowPlaid] = useState(false);
   const [connectedBanks, setConnectedBanks] = useState(0);
+  const [showUpgrade, setShowUpgrade] = useState(false);
 
   const handleResetOnboarding = async () => {
     Alert.alert(
@@ -123,6 +125,10 @@ export default function SettingsScreen({ onClose, onResetOnboarding }: Props) {
 
   return (
     <SafeAreaView style={styles.container}>
+      <UpgradeScreen
+        visible={showUpgrade}
+        onClose={() => setShowUpgrade(false)}
+      />
       <PlaidLinkScreen
         visible={showPlaid}
         onClose={() => setShowPlaid(false)}
@@ -163,8 +169,8 @@ export default function SettingsScreen({ onClose, onResetOnboarding }: Props) {
           <Divider />
           <LinkRow
             label="Upgrade to Premium"
-            sub="Unlimited concierge · Exclusive rates · All features"
-            onPress={() => {}}
+            sub="$13/mo · Unlimited concierge · All features"
+            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {}); setShowUpgrade(true); }}
           />
           <Divider />
           <LinkRow label="Restore purchase" onPress={() => {}} />
