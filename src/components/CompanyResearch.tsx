@@ -88,10 +88,10 @@ function ReportView({ report, onBack }: { report: CompanyReport; onBack: () => v
             <Text style={rStyles.oneLiner}>{report.oneLiner}</Text>
             <View style={rStyles.keyStats}>
               {[
-                { label: 'MARKET CAP', val: report.marketCap },
-                { label: 'REVENUE', val: report.revenue.split(' ')[0] },
-                { label: 'NET MARGIN', val: `${report.netMargin}%` },
-                { label: 'P/E', val: report.peRatio },
+                { label: 'MARKET CAP', val: report.marketCap ?? 'N/A' },
+                { label: 'REVENUE', val: (report.revenue ?? 'N/A').split(' ')[0] },
+                { label: 'NET MARGIN', val: report.netMargin != null ? `${report.netMargin}%` : report.profitMargin ?? 'N/A' },
+                { label: 'P/E', val: report.peRatio ?? 'N/A' },
               ].map(s => (
                 <View key={s.label} style={rStyles.stat}>
                   <Text style={rStyles.statLabel}>{s.label}</Text>
@@ -154,34 +154,38 @@ function ReportView({ report, onBack }: { report: CompanyReport; onBack: () => v
 
           {/* Business Model */}
           <Section title="Business Model">
-            <Text style={rStyles.body}>{report.businessModel}</Text>
-            <Text style={rStyles.subHead}>HOW THEY MAKE MONEY</Text>
-            {report.revenueStreams.map(s => (
-              <View key={s.name} style={rStyles.streamRow}>
-                <View style={rStyles.streamTop}>
-                  <Text style={rStyles.streamName}>{s.name}</Text>
-                  <Text style={[rStyles.streamPct, { color: verdictColor }]}>{s.pct}%</Text>
-                </View>
-                <View style={rStyles.streamBarBg}>
-                  <View style={[rStyles.streamBarFill, { width: `${s.pct}%`, backgroundColor: verdictColor + '80' }]} />
-                </View>
-                <Text style={rStyles.streamDesc}>{s.description}</Text>
-              </View>
-            ))}
+            <Text style={rStyles.body}>{report.businessModel ?? 'Loading...'}</Text>
+            {(report.revenueStreams ?? []).length > 0 && (
+              <>
+                <Text style={rStyles.subHead}>HOW THEY MAKE MONEY</Text>
+                {(report.revenueStreams ?? []).map((s: any) => (
+                  <View key={s.name} style={rStyles.streamRow}>
+                    <View style={rStyles.streamTop}>
+                      <Text style={rStyles.streamName}>{s.name}</Text>
+                      <Text style={[rStyles.streamPct, { color: verdictColor }]}>{s.pct}%</Text>
+                    </View>
+                    <View style={rStyles.streamBarBg}>
+                      <View style={[rStyles.streamBarFill, { width: `${s.pct}%`, backgroundColor: verdictColor + '80' }]} />
+                    </View>
+                    <Text style={rStyles.streamDesc}>{s.description}</Text>
+                  </View>
+                ))}
+              </>
+            )}
           </Section>
 
           {/* Financials */}
           <Section title="Financials">
             <View style={rStyles.grid}>
               {[
-                { label: 'ANNUAL REVENUE', val: report.revenue },
-                { label: 'REVENUE GROWTH', val: `${report.revenueGrowth > 0 ? '+' : ''}${report.revenueGrowth}% YoY`, color: report.revenueGrowth >= 0 ? '#7EB8A4' : '#C97A6E' },
-                { label: 'NET INCOME', val: report.netIncome },
-                { label: 'NET MARGIN', val: `${report.netMargin}%` },
-                { label: 'OPERATING EXP.', val: report.operatingExpenses },
-                { label: 'CASH ON HAND', val: report.cashOnHand },
-                { label: 'P/E RATIO', val: report.peRatio },
-                { label: 'EMPLOYEES', val: report.employees },
+                { label: 'ANNUAL REVENUE', val: report.revenue ?? 'N/A' },
+                { label: 'REVENUE GROWTH', val: report.revenueGrowth != null ? `${report.revenueGrowth > 0 ? '+' : ''}${report.revenueGrowth}% YoY` : 'N/A', color: (report.revenueGrowth ?? 0) >= 0 ? '#7EB8A4' : '#C97A6E' },
+                { label: 'NET INCOME', val: report.netIncome ?? 'N/A' },
+                { label: 'NET MARGIN', val: report.netMargin != null ? `${report.netMargin}%` : report.profitMargin ?? 'N/A' },
+                { label: 'OPERATING EXP.', val: report.operatingExpenses ?? 'N/A' },
+                { label: 'CASH ON HAND', val: report.cashOnHand ?? 'N/A' },
+                { label: 'P/E RATIO', val: report.peRatio ?? 'N/A' },
+                { label: 'EMPLOYEES', val: report.employees ?? 'N/A' },
               ].map(s => (
                 <View key={s.label} style={rStyles.gridCell}>
                   <Text style={rStyles.gridLabel}>{s.label}</Text>
@@ -192,135 +196,156 @@ function ReportView({ report, onBack }: { report: CompanyReport; onBack: () => v
           </Section>
 
           {/* Market */}
-          <Section title="Market Size & Opportunity">
-            <View style={rStyles.marketCards}>
-              <View style={rStyles.marketCard}>
-                <Text style={rStyles.marketLabel}>TOTAL ADDRESSABLE MARKET</Text>
-                <Text style={[rStyles.marketVal, { color: verdictColor }]}>{report.tam}</Text>
+          {(report.tam || report.marketShare) && (
+            <Section title="Market Size & Opportunity">
+              <View style={rStyles.marketCards}>
+                <View style={rStyles.marketCard}>
+                  <Text style={rStyles.marketLabel}>TOTAL ADDRESSABLE MARKET</Text>
+                  <Text style={[rStyles.marketVal, { color: verdictColor }]}>{report.tam ?? 'N/A'}</Text>
+                </View>
+                <View style={rStyles.marketCard}>
+                  <Text style={rStyles.marketLabel}>CURRENT MARKET SHARE</Text>
+                  <Text style={[rStyles.marketVal, { color: verdictColor }]}>{report.marketShare ?? 'N/A'}</Text>
+                </View>
               </View>
-              <View style={rStyles.marketCard}>
-                <Text style={rStyles.marketLabel}>CURRENT MARKET SHARE</Text>
-                <Text style={[rStyles.marketVal, { color: verdictColor }]}>{report.marketShare}</Text>
-              </View>
-            </View>
-            <Text style={rStyles.subHead}>TARGET CUSTOMER</Text>
-            <Text style={rStyles.body}>{report.targetMarket}</Text>
-          </Section>
+              {report.targetMarket && (
+                <>
+                  <Text style={rStyles.subHead}>TARGET CUSTOMER</Text>
+                  <Text style={rStyles.body}>{report.targetMarket}</Text>
+                </>
+              )}
+            </Section>
+          )}
 
           {/* Moat */}
-          <Section title="Economic Moat">
-            {report.moatFactors.map((f, i) => (
-              <View key={i} style={rStyles.bulletRow}>
-                <View style={[rStyles.bulletDot, { backgroundColor: verdictColor }]} />
-                <Text style={rStyles.bulletTxt}>{f}</Text>
-              </View>
-            ))}
-          </Section>
-
-          {/* Journey + Roadmap Timeline */}
-          <Section title="Journey & Roadmap">
-            <Text style={rStyles.timelineHint}>← Scroll to explore the full timeline →</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={rStyles.timeline}>
-              {/* Past milestones */}
-              {report.journey.map((m, i) => (
-                <View key={`j${i}`} style={rStyles.timelineItem}>
-                  <View style={[rStyles.timelineDot, rStyles.timelineDotPast]} />
-                  {i < report.journey.length - 1 && <View style={[rStyles.timelineLine, rStyles.timelineLinePast]} />}
-                  <Text style={rStyles.timelineYear}>{m.year}</Text>
-                  <Text style={rStyles.timelineEvent}>{m.event}</Text>
-                  <Text style={rStyles.timelineImpact}>{m.impact}</Text>
+          {(report.moatFactors ?? []).length > 0 && (
+            <Section title="Economic Moat">
+              {(report.moatFactors ?? []).map((f: any, i: number) => (
+                <View key={i} style={rStyles.bulletRow}>
+                  <View style={[rStyles.bulletDot, { backgroundColor: verdictColor }]} />
+                  <Text style={rStyles.bulletTxt}>{f}</Text>
                 </View>
               ))}
-              {/* NOW marker */}
-              <View style={rStyles.nowMarker}>
-                <View style={rStyles.nowLine} />
-                <Text style={rStyles.nowLabel}>NOW</Text>
-                <View style={rStyles.nowLine} />
-              </View>
-              {/* Future roadmap */}
-              {report.roadmap.map((r, i) => {
-                const color = CONFIDENCE_COLORS[r.confidence];
+            </Section>
+          )}
+
+          {/* Journey + Roadmap Timeline */}
+          {((report.journey ?? []).length > 0 || (report.roadmap ?? []).length > 0) && (
+            <Section title="Journey & Roadmap">
+              <Text style={rStyles.timelineHint}>← Scroll to explore the full timeline →</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={rStyles.timeline}>
+                {(report.journey ?? []).map((m: any, i: number) => (
+                  <View key={`j${i}`} style={rStyles.timelineItem}>
+                    <View style={[rStyles.timelineDot, rStyles.timelineDotPast]} />
+                    {i < (report.journey ?? []).length - 1 && <View style={[rStyles.timelineLine, rStyles.timelineLinePast]} />}
+                    <Text style={rStyles.timelineYear}>{m.year}</Text>
+                    <Text style={rStyles.timelineEvent}>{m.event}</Text>
+                    <Text style={rStyles.timelineImpact}>{m.impact}</Text>
+                  </View>
+                ))}
+                <View style={rStyles.nowMarker}>
+                  <View style={rStyles.nowLine} />
+                  <Text style={rStyles.nowLabel}>NOW</Text>
+                  <View style={rStyles.nowLine} />
+                </View>
+                {(report.roadmap ?? []).map((r: any, i: number) => {
+                  const color = CONFIDENCE_COLORS[r.confidence as keyof typeof CONFIDENCE_COLORS] ?? COLORS.gold;
+                  return (
+                    <View key={`r${i}`} style={rStyles.timelineItem}>
+                      {i > 0 && <View style={[rStyles.timelineLine, rStyles.timelineLineFuture, { position: 'absolute', left: -40, top: 6 }]} />}
+                      <View style={[rStyles.timelineDot, { backgroundColor: color }]} />
+                      <Text style={[rStyles.timelineYear, { color }]}>{r.timeframe}</Text>
+                      <Text style={rStyles.timelineEvent}>{r.initiative}</Text>
+                      <Text style={rStyles.timelineImpact}>{r.detail}</Text>
+                      <View style={[rStyles.confidencePill, { borderColor: color + '50', backgroundColor: color + '15' }]}>
+                        <Text style={[rStyles.confidenceTxt, { color }]}>{(r.confidence ?? '').toUpperCase()}</Text>
+                      </View>
+                    </View>
+                  );
+                })}
+              </ScrollView>
+            </Section>
+          )}
+
+          {/* Leadership */}
+          {(report.executives ?? []).length > 0 && (
+            <Section title="Leadership">
+              {(report.executives ?? []).map((e: any, i: number) => (
+                <View key={i} style={[rStyles.execCard, i > 0 && rStyles.execCardBorder]}>
+                  <View style={rStyles.execAvatar}>
+                    <Text style={rStyles.execInitials}>{(e.name ?? '??').split(' ').map((n: string) => n[0]).join('').slice(0, 2)}</Text>
+                  </View>
+                  <View style={rStyles.execInfo}>
+                    <Text style={rStyles.execName}>{e.name}</Text>
+                    <Text style={rStyles.execRole}>{e.role}</Text>
+                    {e.prior && <Text style={rStyles.execPrior}>Previously: {e.prior}</Text>}
+                    {e.wins && <Text style={rStyles.execWins}>◆ {e.wins}</Text>}
+                  </View>
+                </View>
+              ))}
+            </Section>
+          )}
+
+          {/* Risks & Weaknesses */}
+          {((report.risks ?? []).length > 0 || (report.weaknesses ?? []).length > 0) && (
+            <Section title="Risks & Weaknesses">
+              {(report.risks ?? []).length > 0 && (
+                <>
+                  <Text style={rStyles.subHead}>STRUCTURAL RISKS</Text>
+                  {(report.risks ?? []).map((r: any, i: number) => {
+                    const color = SEVERITY_COLORS[r.severity as keyof typeof SEVERITY_COLORS] ?? COLORS.gold;
+                    return (
+                      <View key={i} style={[rStyles.riskCard, { borderLeftColor: color }]}>
+                        <View style={rStyles.riskTop}>
+                          <Text style={rStyles.riskCategory}>{r.category}</Text>
+                          <View style={[rStyles.riskBadge, { backgroundColor: color + '20', borderColor: color + '50' }]}>
+                            <Text style={[rStyles.riskBadgeTxt, { color }]}>{(r.severity ?? '').toUpperCase()}</Text>
+                          </View>
+                        </View>
+                        <Text style={rStyles.riskDesc}>{r.description}</Text>
+                      </View>
+                    );
+                  })}
+                </>
+              )}
+              {(report.weaknesses ?? []).length > 0 && (
+                <>
+                  <Text style={[rStyles.subHead, { marginTop: SPACING.md }]}>WHAT THEY'RE DOING WRONG</Text>
+                  {(report.weaknesses ?? []).map((w: any, i: number) => (
+                    <View key={i} style={rStyles.weakRow}>
+                      <Text style={rStyles.weakDot}>✗</Text>
+                      <Text style={rStyles.weakTxt}>{w}</Text>
+                    </View>
+                  ))}
+                </>
+              )}
+            </Section>
+          )}
+
+          {/* Competition */}
+          {(report.competitors ?? []).length > 0 && (
+            <Section title="Competitive Landscape">
+              {(report.competitors ?? []).map((c: any, i: number) => {
+                const color = THREAT_COLORS[c.threat as keyof typeof THREAT_COLORS] ?? COLORS.gold;
                 return (
-                  <View key={`r${i}`} style={rStyles.timelineItem}>
-                    {i > 0 && <View style={[rStyles.timelineLine, rStyles.timelineLineFuture, { position: 'absolute', left: -40, top: 6 }]} />}
-                    <View style={[rStyles.timelineDot, { backgroundColor: color }]} />
-                    <Text style={[rStyles.timelineYear, { color }]}>{r.timeframe}</Text>
-                    <Text style={rStyles.timelineEvent}>{r.initiative}</Text>
-                    <Text style={rStyles.timelineImpact}>{r.detail}</Text>
-                    <View style={[rStyles.confidencePill, { borderColor: color + '50', backgroundColor: color + '15' }]}>
-                      <Text style={[rStyles.confidenceTxt, { color }]}>{r.confidence.toUpperCase()}</Text>
+                  <View key={i} style={[rStyles.compRow, i > 0 && rStyles.compRowBorder]}>
+                    <View style={[rStyles.compTicker, { borderColor: color + '50', backgroundColor: color + '10' }]}>
+                      <Text style={[rStyles.compTickerTxt, { color }]}>{c.ticker}</Text>
+                    </View>
+                    <View style={rStyles.compInfo}>
+                      <View style={rStyles.compNameRow}>
+                        <Text style={rStyles.compName}>{c.name}</Text>
+                        <View style={[rStyles.threatBadge, { backgroundColor: color + '15', borderColor: color + '40' }]}>
+                          <Text style={[rStyles.threatTxt, { color }]}>{(c.threat ?? '').toUpperCase()} THREAT</Text>
+                        </View>
+                      </View>
+                      <Text style={rStyles.compDetail}>{c.detail}</Text>
                     </View>
                   </View>
                 );
               })}
-            </ScrollView>
-          </Section>
-
-          {/* Leadership */}
-          <Section title="Leadership">
-            {report.executives.map((e, i) => (
-              <View key={i} style={[rStyles.execCard, i > 0 && rStyles.execCardBorder]}>
-                <View style={rStyles.execAvatar}>
-                  <Text style={rStyles.execInitials}>{e.name.split(' ').map(n => n[0]).join('').slice(0, 2)}</Text>
-                </View>
-                <View style={rStyles.execInfo}>
-                  <Text style={rStyles.execName}>{e.name}</Text>
-                  <Text style={rStyles.execRole}>{e.role}</Text>
-                  <Text style={rStyles.execPrior}>Previously: {e.prior}</Text>
-                  <Text style={rStyles.execWins}>◆ {e.wins}</Text>
-                </View>
-              </View>
-            ))}
-          </Section>
-
-          {/* Risks & Weaknesses */}
-          <Section title="Risks & What They're Doing Wrong">
-            <Text style={rStyles.subHead}>STRUCTURAL RISKS</Text>
-            {report.risks.map((r, i) => {
-              const color = SEVERITY_COLORS[r.severity];
-              return (
-                <View key={i} style={[rStyles.riskCard, { borderLeftColor: color }]}>
-                  <View style={rStyles.riskTop}>
-                    <Text style={rStyles.riskCategory}>{r.category}</Text>
-                    <View style={[rStyles.riskBadge, { backgroundColor: color + '20', borderColor: color + '50' }]}>
-                      <Text style={[rStyles.riskBadgeTxt, { color }]}>{r.severity.toUpperCase()}</Text>
-                    </View>
-                  </View>
-                  <Text style={rStyles.riskDesc}>{r.description}</Text>
-                </View>
-              );
-            })}
-            <Text style={[rStyles.subHead, { marginTop: SPACING.md }]}>WHAT THEY'RE DOING WRONG</Text>
-            {report.weaknesses.map((w, i) => (
-              <View key={i} style={rStyles.weakRow}>
-                <Text style={rStyles.weakDot}>✗</Text>
-                <Text style={rStyles.weakTxt}>{w}</Text>
-              </View>
-            ))}
-          </Section>
-
-          {/* Competition */}
-          <Section title="Competitive Landscape">
-            {report.competitors.map((c, i) => {
-              const color = THREAT_COLORS[c.threat];
-              return (
-                <View key={i} style={[rStyles.compRow, i > 0 && rStyles.compRowBorder]}>
-                  <View style={[rStyles.compTicker, { borderColor: color + '50', backgroundColor: color + '10' }]}>
-                    <Text style={[rStyles.compTickerTxt, { color }]}>{c.ticker}</Text>
-                  </View>
-                  <View style={rStyles.compInfo}>
-                    <View style={rStyles.compNameRow}>
-                      <Text style={rStyles.compName}>{c.name}</Text>
-                      <View style={[rStyles.threatBadge, { backgroundColor: color + '15', borderColor: color + '40' }]}>
-                        <Text style={[rStyles.threatTxt, { color }]}>{c.threat.toUpperCase()} THREAT</Text>
-                      </View>
-                    </View>
-                    <Text style={rStyles.compDetail}>{c.detail}</Text>
-                  </View>
-                </View>
-              );
-            })}
-          </Section>
+            </Section>
+          )}
 
         </View>
       </ScrollView>
@@ -400,6 +425,7 @@ export default function CompanyResearch() {
   const [activeReport, setActiveReport] = useState<CompanyReport | null>(null);
   const [loading, setLoading]           = useState(false);
   const [error, setError]               = useState('');
+  const [notFound, setNotFound]         = useState(false);
   const inputRef = useRef<any>(null);
 
   const runSearch = async (ticker: string) => {
