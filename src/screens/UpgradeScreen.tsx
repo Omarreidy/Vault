@@ -75,7 +75,12 @@ export default function UpgradeScreen({ visible, onClose, onSuccess }: Props) {
       const data = await res.json();
       if (data.error) throw new Error(data.error);
       if (data.url) {
-        await Linking.openURL(data.url);
+        // On web use window.location to avoid browser popup blocking
+        if (typeof window !== 'undefined' && window.location) {
+          window.location.href = data.url;
+        } else {
+          await Linking.openURL(data.url);
+        }
         onSuccess?.();
         onClose();
       }

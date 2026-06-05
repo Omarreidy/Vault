@@ -90,7 +90,7 @@ Return ONLY a valid JSON object with these exact fields (no markdown, no explana
 
     const response = await client.messages.create({
       model: 'claude-sonnet-4-6',
-      max_tokens: 2048,
+      max_tokens: 4096,
       messages: [{ role: 'user', content: prompt }],
     });
 
