@@ -95,14 +95,18 @@ const snapStyles = StyleSheet.create({
   pillVal: { fontSize: FONTS.sizes.sm, fontWeight: FONTS.weights.bold },
 });
 
+// Static name lookup for common tickers
+const TICKER_NAMES: Record<string, string> = {
+  NVDA: 'Nvidia', AAPL: 'Apple', META: 'Meta', TSLA: 'Tesla',
+  AMZN: 'Amazon', MSFT: 'Microsoft', GOOGL: 'Alphabet', SPY: 'S&P 500 ETF',
+  QQQ: 'Nasdaq ETF', DIA: 'Dow ETF', PLTR: 'Palantir', RIVN: 'Rivian',
+};
+
 // ─── Hot mover row ────────────────────────────────────────────────────────────
 
 function MoverRow({ mover, index }: { mover: Mover; index: number }) {
-  const [expanded, setExpanded] = useState(false);
-  const opacity  = useRef(new Animated.Value(0)).current;
-  const slideX   = useRef(new Animated.Value(16)).current;
-  const expandH  = useRef(new Animated.Value(0)).current;
-  const expandOp = useRef(new Animated.Value(0)).current;
+  const opacity = useRef(new Animated.Value(0)).current;
+  const slideX  = useRef(new Animated.Value(16)).current;
 
   useEffect(() => {
     Animated.parallel([
@@ -111,54 +115,28 @@ function MoverRow({ mover, index }: { mover: Mover; index: number }) {
     ]).start();
   }, []);
 
-  const handlePress = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-    const next = !expanded;
-    setExpanded(next);
-    Animated.parallel([
-      Animated.timing(expandH,  { toValue: next ? 1 : 0, duration: 240, useNativeDriver: false }),
-      Animated.timing(expandOp, { toValue: next ? 1 : 0, duration: 240, useNativeDriver: false }),
-    ]).start();
-  };
-
-  const isUp    = mover.direction === 'up';
-  const color   = isUp ? '#7EB8A4' : '#C97A6E';
-  const arrow   = isUp ? '▲' : '▼';
-  const detailH = expandH.interpolate({ inputRange: [0, 1], outputRange: [0, 72] });
+  const isUp  = mover.direction === 'up';
+  const color = isUp ? '#7EB8A4' : '#C97A6E';
+  const arrow = isUp ? '▲' : '▼';
+  const name  = TICKER_NAMES[mover.ticker] ?? mover.ticker;
+  const change = typeof mover.change === 'number' ? mover.change : 0;
 
   return (
     <Animated.View style={{ opacity, transform: [{ translateX: slideX }] }}>
-      <TouchableOpacity
-        style={moverStyles.row}
-        onPress={handlePress}
-        activeOpacity={0.8}
-      >
+      <View style={moverStyles.row}>
         <View style={[moverStyles.tickerBox, { borderColor: color + '40', backgroundColor: color + '0D' }]}>
           <Text style={[moverStyles.ticker, { color }]}>{mover.ticker}</Text>
         </View>
         <View style={moverStyles.info}>
-          <Text style={moverStyles.name} numberOfLines={1}>{mover.name}</Text>
-          <View style={moverStyles.metaRow}>
-            <View style={[moverStyles.reasonTag, { backgroundColor: color + '15', borderColor: color + '30' }]}>
-              <Text style={[moverStyles.reasonTxt, { color }]}>{mover.reason}</Text>
-            </View>
-            <Text style={moverStyles.sector}>{mover.sector}</Text>
-          </View>
+          <Text style={moverStyles.name} numberOfLines={1}>{name}</Text>
+          <Text style={moverStyles.price}>{mover.price}</Text>
         </View>
         <View style={moverStyles.changeCol}>
-          <Text style={[moverStyles.change, { color }]}>{arrow} {Math.abs(mover.change).toFixed(1)}%</Text>
-          <Text style={moverStyles.price}>{mover.price}</Text>
-          <Text style={[moverStyles.weekly, { color: mover.weeklyChange >= 0 ? '#7EB8A4' : '#C97A6E' }]}>
-            {mover.weeklyChange >= 0 ? '+' : ''}{mover.weeklyChange.toFixed(1)}% 5d
+          <Text style={[moverStyles.change, { color }]}>
+            {arrow} {Math.abs(change).toFixed(2)}%
           </Text>
         </View>
-      </TouchableOpacity>
-
-      <Animated.View style={{ maxHeight: detailH, opacity: expandOp, overflow: 'hidden' }}>
-        <View style={[moverStyles.detail, { borderLeftColor: color }]}>
-          <Text style={moverStyles.detailTxt}>{mover.detail}</Text>
-        </View>
-      </Animated.View>
+      </View>
     </Animated.View>
   );
 }
@@ -182,17 +160,9 @@ const moverStyles = StyleSheet.create({
   ticker: { fontSize: FONTS.sizes.xs, fontWeight: FONTS.weights.heavy, letterSpacing: 0.5 },
   info: { flex: 1, gap: 3 },
   name: { fontSize: FONTS.sizes.sm, fontWeight: FONTS.weights.semibold, color: COLORS.text },
-  metaRow: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm },
-  reasonTag: {
-    paddingHorizontal: 6, paddingVertical: 2,
-    borderRadius: RADIUS.full, borderWidth: 1,
-  },
-  reasonTxt: { fontSize: 8, fontWeight: FONTS.weights.bold, letterSpacing: 0.5 },
-  sector: { fontSize: FONTS.sizes.xs, color: COLORS.textMuted },
   changeCol: { alignItems: 'flex-end', gap: 2 },
   change: { fontSize: FONTS.sizes.md, fontWeight: FONTS.weights.bold },
   price: { fontSize: FONTS.sizes.xs, color: COLORS.textDim },
-  weekly: { fontSize: 9, fontWeight: FONTS.weights.medium },
   detail: {
     marginHorizontal: SPACING.md,
     marginBottom: 8,
@@ -475,11 +445,11 @@ export default function MarketSignal() {
   useEffect(() => {
     Promise.all([fetchMarketData(), fetchMarketNews()])
       .then(([market, articles]) => {
-        setSnapshot(market.snapshot);
-        setMovers(market.movers);
-        setNews(articles);
+        if (market?.snapshot) setSnapshot(market.snapshot);
+        if (Array.isArray(market?.movers)) setMovers(market.movers);
+        if (Array.isArray(articles)) setNews(articles);
       })
-      .catch(() => {}) // keep fallback on error
+      .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
 
