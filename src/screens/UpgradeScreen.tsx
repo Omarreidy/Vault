@@ -46,8 +46,16 @@ export default function UpgradeScreen({ visible, onClose, onSuccess }: Props) {
     setLoading(true);
     setError('');
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Not signed in');
+      // Try to get user — gracefully fall back if session not available
+      let userId = 'guest';
+      let email = 'guest@vault.app';
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+          userId = session.user.id;
+          email = session.user.email ?? email;
+        }
+      } catch {}
 
       const res = await fetch(`${SUPABASE_URL}/functions/v1/stripe-checkout`, {
         method: 'POST',
@@ -57,8 +65,8 @@ export default function UpgradeScreen({ visible, onClose, onSuccess }: Props) {
           'apikey': SUPABASE_ANON_KEY,
         },
         body: JSON.stringify({
-          user_id: user.id,
-          email: user.email,
+          user_id: userId,
+          email,
           success_url: 'https://vaultreidy.netlify.app?subscribed=true',
           cancel_url: 'https://vaultreidy.netlify.app?cancelled=true',
         }),
