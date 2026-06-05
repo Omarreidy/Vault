@@ -510,15 +510,23 @@ export default function CompanyResearch() {
         </View>
       )}
 
-      {/* Featured */}
+      {/* Quick research prompts */}
       <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>Featured Reports</Text>
-        <Text style={styles.sectionSub}>Deep research on the most-watched companies</Text>
+        <Text style={styles.sectionTitle}>Popular Research</Text>
+        <Text style={styles.sectionSub}>Tap any company to run live AI research</Text>
       </View>
 
-      <View style={styles.grid}>
-        {COMPANY_REPORTS.map(r => (
-          <FeaturedCard key={r.ticker} report={r} onPress={() => setActiveReport(r)} />
+      <View style={styles.quickGrid}>
+        {POPULAR_TICKERS.map(t => (
+          <TouchableOpacity
+            key={t}
+            style={[styles.quickGridBtn, CARD_SHADOW, { shadowOpacity: 0.06 }]}
+            onPress={() => handleQuickSearch(t)}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.quickGridTicker}>{t}</Text>
+            <Text style={styles.quickGridLabel}>Analyze →</Text>
+          </TouchableOpacity>
         ))}
       </View>
 
@@ -780,4 +788,17 @@ const styles = StyleSheet.create({
   sectionSub: { fontSize: FONTS.sizes.xs, color: COLORS.textMuted },
 
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: SPACING.md },
+
+  quickGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: SPACING.sm },
+  quickGridBtn: {
+    width: '48%',
+    backgroundColor: COLORS.card,
+    borderRadius: RADIUS.lg,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: COLORS.border,
+    padding: SPACING.md,
+    gap: 4,
+  },
+  quickGridTicker: { fontSize: FONTS.sizes.lg, fontWeight: FONTS.weights.heavy, color: COLORS.text },
+  quickGridLabel: { fontSize: FONTS.sizes.xs, color: COLORS.gold, letterSpacing: FONTS.tracking.wide },
 });
