@@ -8,6 +8,7 @@ import AppNavigator from './src/navigation/AppNavigator';
 import OnboardingScreen from './src/screens/OnboardingScreen';
 import AuthScreen from './src/screens/AuthScreen';
 import { supabase } from './src/services/supabase';
+import { registerForPushNotifications } from './src/services/notifications';
 
 type AppState = 'loading' | 'auth' | 'onboarding' | 'main';
 
@@ -48,6 +49,7 @@ export default function App() {
 
     if (data?.onboarding_complete) {
       setAppState('main');
+      registerForPushNotifications().catch(() => {});
     } else {
       setAppState('onboarding');
     }
