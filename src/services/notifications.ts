@@ -1,39 +1,41 @@
-import * as Notifications from 'expo-notifications';
-import * as Device from 'expo-device';
 import { Platform } from 'react-native';
 import { supabase } from './supabase';
 
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-  }),
-});
-
 export async function registerForPushNotifications(): Promise<string | null> {
-  if (!Device.isDevice) return null;
-
-  const { status: existing } = await Notifications.getPermissionsAsync();
-  let finalStatus = existing;
-
-  if (existing !== 'granted') {
-    const { status } = await Notifications.requestPermissionsAsync();
-    finalStatus = status;
-  }
-
-  if (finalStatus !== 'granted') return null;
-
-  if (Platform.OS === 'android') {
-    await Notifications.setNotificationChannelAsync('default', {
-      name: 'VAULT',
-      importance: Notifications.AndroidImportance.MAX,
-      vibrationPattern: [0, 250, 250, 250],
-      lightColor: '#C9A96E',
-    });
-  }
+  // Push notifications only work on native devices, not web
+  if (Platform.OS === 'web') return null;
 
   try {
+    const Notifications = await import('expo-notifications');
+    const Device = await import('expo-device');
+
+    if (!Device.isDevice) return null;
+
+    Notifications.setNotificationHandler({
+      handleNotification: async () => ({
+        shouldShowAlert: true,
+        shouldPlaySound: true,
+        shouldSetBadge: true,
+      }),
+    });
+
+    const { status: existing } = await Notifications.getPermissionsAsync();
+    let finalStatus = existing;
+    if (existing !== 'granted') {
+      const { status } = await Notifications.requestPermissionsAsync();
+      finalStatus = status;
+    }
+    if (finalStatus !== 'granted') return null;
+
+    if (Platform.OS === 'android') {
+      await Notifications.setNotificationChannelAsync('default', {
+        name: 'VAULT',
+        importance: Notifications.AndroidImportance.MAX,
+        vibrationPattern: [0, 250, 250, 250],
+        lightColor: '#C9A96E',
+      });
+    }
+
     const token = (await Notifications.getExpoPushTokenAsync()).data;
     const { data: { user } } = await supabase.auth.getUser();
     if (user && token) {
