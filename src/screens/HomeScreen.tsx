@@ -207,7 +207,7 @@ export default function HomeScreen() {
 
   const scrollToNext = useCallback(() => {
     const next = currentIndexRef.current + 1;
-    if (next <= FEED.length) {
+    if (next <= feed.length) {
       currentIndexRef.current = next; // update immediately — don't wait for viewable callback
       flatListRef.current?.scrollToOffset({
         offset: itemHeightRef.current * next,
@@ -296,7 +296,7 @@ export default function HomeScreen() {
           onAct={() => handleAct((item.data as WealthMove).title)}
           onSkip={handleSkip}
           index={index}
-          total={FEED.length}
+          total={feed.length}
         />
       )}
       {item.type === 'pulse' && (
@@ -304,20 +304,20 @@ export default function HomeScreen() {
           insight={item.data as Insight}
           onSave={handleSave}
           index={index}
-          total={FEED.length}
+          total={feed.length}
         />
       )}
       {item.type === 'win' && (
         <FeedWinCard
           win={item.data as WealthWin}
           index={index}
-          total={FEED.length}
+          total={feed.length}
         />
       )}
       {item.type === 'beliefs' && (
         <BeliefsAuditCard
           index={index}
-          total={FEED.length}
+          total={feed.length}
           onComplete={scrollToNext}
         />
       )}
