@@ -6,21 +6,52 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
+    "scheme": "vault",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#08080C"
+    },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": false,
+      "bundleIdentifier": "com.getvault.app",
+      "buildNumber": "1",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSCameraUsageDescription": "VAULT uses your camera to scan financial documents and statements.",
+        "NSPhotoLibraryUsageDescription": "VAULT accesses your photo library to scan financial documents and statements.",
+        "NSFaceIDUsageDescription": "VAULT uses Face ID to keep your financial data secure."
+      }
     },
     "android": {
+      "package": "com.getvault.app",
+      "versionCode": 1,
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/android-icon-foreground.png",
-        "backgroundImage": "./assets/android-icon-background.png",
-        "monochromeImage": "./assets/android-icon-monochrome.png"
+        "backgroundColor": "#08080C",
+        "foregroundImage": "./assets/android-icon-foreground.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.READ_EXTERNAL_STORAGE"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
-    "plugins": []
+    "plugins": [
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "VAULT accesses your photo library to scan financial documents.",
+          "cameraPermission": "VAULT uses your camera to scan financial documents."
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "vault-app"
+      }
+    }
   }
 }
