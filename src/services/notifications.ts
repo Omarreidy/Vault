@@ -1,50 +1,8 @@
-import { Platform } from 'react-native';
-import { supabase } from './supabase';
+// Push notifications — stubbed out for web compatibility
+// Will be re-enabled when building native app with EAS
 
 export async function registerForPushNotifications(): Promise<string | null> {
-  // Push notifications only work on native devices, not web
-  if (Platform.OS === 'web') return null;
-
-  try {
-    const Notifications = await import('expo-notifications');
-    const Device = await import('expo-device');
-
-    if (!Device.isDevice) return null;
-
-    Notifications.setNotificationHandler({
-      handleNotification: async () => ({
-        shouldShowAlert: true,
-        shouldPlaySound: true,
-        shouldSetBadge: true,
-      }),
-    });
-
-    const { status: existing } = await Notifications.getPermissionsAsync();
-    let finalStatus = existing;
-    if (existing !== 'granted') {
-      const { status } = await Notifications.requestPermissionsAsync();
-      finalStatus = status;
-    }
-    if (finalStatus !== 'granted') return null;
-
-    if (Platform.OS === 'android') {
-      await Notifications.setNotificationChannelAsync('default', {
-        name: 'VAULT',
-        importance: Notifications.AndroidImportance.MAX,
-        vibrationPattern: [0, 250, 250, 250],
-        lightColor: '#C9A96E',
-      });
-    }
-
-    const token = (await Notifications.getExpoPushTokenAsync()).data;
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user && token) {
-      await supabase.from('profiles').update({ push_token: token }).eq('id', user.id);
-    }
-    return token;
-  } catch {
-    return null;
-  }
+  return null;
 }
 
 export type NotifType =
