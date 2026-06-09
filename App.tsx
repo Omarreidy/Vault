@@ -2,21 +2,46 @@ import 'react-native-gesture-handler';
 import React, { useState, useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, View, Text } from 'react-native';
 import { Session } from '@supabase/supabase-js';
 import AppNavigator from './src/navigation/AppNavigator';
 import OnboardingScreen from './src/screens/OnboardingScreen';
 import AuthScreen from './src/screens/AuthScreen';
 import { supabase } from './src/services/supabase';
 
+// Error boundary to catch white screens and show the actual error
+class ErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { error: string | null }
+> {
+  state = { error: null };
+  componentDidCatch(e: Error) {
+    this.setState({ error: e.message + '\n' + e.stack?.slice(0, 400) });
+  }
+  render() {
+    if (this.state.error) {
+      return (
+        <View style={{ flex: 1, backgroundColor: '#08080C', padding: 24, justifyContent: 'center' }}>
+          <Text style={{ color: '#C9A96E', fontSize: 14, fontWeight: 'bold', marginBottom: 12 }}>
+            VAULT — Error
+          </Text>
+          <Text style={{ color: '#fff', fontSize: 11, fontFamily: 'monospace' }}>
+            {this.state.error}
+          </Text>
+        </View>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 type AppState = 'loading' | 'auth' | 'onboarding' | 'main';
 
-export default function App() {
+function AppContent() {
   const [appState, setAppState] = useState<AppState>('loading');
   const [session, setSession] = useState<Session | null>(null);
 
   useEffect(() => {
-    // Check current session on launch
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       if (!session) {
@@ -26,7 +51,6 @@ export default function App() {
       }
     });
 
-    // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       if (!session) {
@@ -83,6 +107,14 @@ export default function App() {
         <AppNavigator onResetOnboarding={handleSignOut} />
       )}
     </GestureHandlerRootView>
+  );
+}
+
+export default function App() {
+  return (
+    <ErrorBoundary>
+      <AppContent />
+    </ErrorBoundary>
   );
 }
 
