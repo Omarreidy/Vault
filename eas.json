@@ -31,9 +31,7 @@
   "submit": {
     "production": {
       "ios": {
-        "appleId": "omarreidy2@gmail.com",
-        "ascAppId": "",
-        "appleTeamId": ""
+        "appleId": "omarreidy2@gmail.com"
       },
       "android": {
         "serviceAccountKeyPath": "./google-play-key.json",
