@@ -264,7 +264,7 @@ export default function ScoreScreen() {
           <>
             <View style={styles.tabIntro}>
               <Text style={styles.tabIntroTitle}>Your Cohort</Text>
-              <Text style={styles.tabIntroSub}>6 members at your exact financial stage.</Text>
+              <Text style={styles.tabIntroSub}>Gold tier · $70–120K income · ages 25–44</Text>
             </View>
             <CohortCard />
           </>
