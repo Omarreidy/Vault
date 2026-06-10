@@ -118,6 +118,13 @@ export default function CohortActivityFeed() {
       contentContainerStyle={styles.list}
       showsVerticalScrollIndicator={false}
     >
+      {/* Forming notice */}
+      <View style={styles.formingNotice}>
+        <Text style={styles.formingNoticeTxt}>
+          ◈  Your cohort is forming. This is what your activity feed will look like as members join and take moves.
+        </Text>
+      </View>
+
       {/* Cohort pulse strip */}
       <View style={styles.pulseStrip}>
         <View style={styles.liveDot} />
@@ -134,6 +141,20 @@ export default function CohortActivityFeed() {
 const styles = StyleSheet.create({
   root: { flex: 1 },
   list: { padding: SPACING.lg, gap: SPACING.md, paddingBottom: SPACING.xxl },
+
+  formingNotice: {
+    backgroundColor: COLORS.goldGlow,
+    borderRadius: RADIUS.md,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: COLORS.gold + '30',
+    padding: SPACING.md,
+    marginBottom: SPACING.sm,
+  },
+  formingNoticeTxt: {
+    fontSize: FONTS.sizes.xs,
+    color: COLORS.textDim,
+    lineHeight: 18,
+  },
 
   pulseStrip: {
     flexDirection: 'row',

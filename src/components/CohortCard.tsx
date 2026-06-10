@@ -7,10 +7,10 @@ import { supabase } from '../services/supabase';
 // Real benchmark data from Fed Survey of Consumer Finances (2023)
 // For Gold-tier users: ages 25–44, income $70–120K, "Build wealth" goal
 const BENCHMARKS = [
-  { label: 'Avg savings rate', benchmark: '12%', yours: '18%', better: true },
-  { label: 'Emergency fund', benchmark: '2.8 months', yours: '3.1 months', better: true },
-  { label: 'Investing monthly', benchmark: '$180', yours: '$340', better: true },
-  { label: 'Carry credit card debt', benchmark: '58%', yours: '0%', better: true },
+  { label: 'Avg savings rate',       benchmark: '12%'       },
+  { label: 'Emergency fund',         benchmark: '2.8 months' },
+  { label: 'Investing monthly',      benchmark: '$180'       },
+  { label: 'Carry credit card debt', benchmark: '58%'        },
 ];
 
 function RelativeBar({ delta }: { delta: number }) {
@@ -88,21 +88,24 @@ export default function CohortCard() {
 
         {/* Real benchmarks — Fed Survey of Consumer Finances data */}
         <View>
-          <Text style={styles.benchmarkEye}>HOW YOU COMPARE · YOUR INCOME BRACKET</Text>
+          <Text style={styles.benchmarkEye}>YOUR INCOME BRACKET · NATIONAL AVERAGES</Text>
           <View style={styles.benchmarkList}>
             {BENCHMARKS.map((b, i) => (
               <View key={i} style={styles.benchmarkRow}>
                 <Text style={styles.benchmarkLabel}>{b.label}</Text>
                 <View style={styles.benchmarkVals}>
                   <Text style={styles.benchmarkAvg}>Avg: {b.benchmark}</Text>
-                  <Text style={[styles.benchmarkYours, { color: b.better ? '#7EB8A4' : COLORS.red }]}>
-                    You: {b.yours} {b.better ? '↑' : '↓'}
-                  </Text>
+                  <Text style={styles.benchmarkYours}>You: —</Text>
                 </View>
               </View>
             ))}
           </View>
           <Text style={styles.benchmarkSource}>Source: Federal Reserve Survey of Consumer Finances 2023</Text>
+          <View style={styles.benchmarkConnectHint}>
+            <Text style={styles.benchmarkConnectTxt}>
+              🏦  Connect your bank to see how you compare to your income bracket
+            </Text>
+          </View>
         </View>
 
         {/* Invite CTA */}
@@ -326,6 +329,15 @@ const styles = StyleSheet.create({
   benchmarkAvg: { fontSize: FONTS.sizes.xs, color: COLORS.textMuted },
   benchmarkYours: { fontSize: FONTS.sizes.xs, fontWeight: FONTS.weights.bold },
   benchmarkSource: { fontSize: 9, color: COLORS.textMuted, marginTop: SPACING.sm, letterSpacing: 0.3 },
+  benchmarkConnectHint: {
+    marginTop: SPACING.sm,
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.md,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: COLORS.border,
+    padding: SPACING.sm,
+  },
+  benchmarkConnectTxt: { fontSize: FONTS.sizes.xs, color: COLORS.textDim, lineHeight: 18 },
 
   inviteBtn: {
     flexDirection: 'row',
