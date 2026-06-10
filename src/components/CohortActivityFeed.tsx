@@ -46,9 +46,10 @@ function ActivityCard({ activity, index }: { activity: CohortActivity; index: nu
   const isMe = activity.memberName === 'You';
 
   useEffect(() => {
+    const delay = Math.min(index * 40, 400);
     Animated.parallel([
-      Animated.timing(opacity, { toValue: 1, duration: 360, delay: index * 60, useNativeDriver: false }),
-      Animated.timing(slideY,  { toValue: 0, duration: 360, delay: index * 60, useNativeDriver: false }),
+      Animated.timing(opacity, { toValue: 1, duration: 320, delay, useNativeDriver: false }),
+      Animated.timing(slideY,  { toValue: 0, duration: 320, delay, useNativeDriver: false }),
     ]).start();
   }, []);
 
