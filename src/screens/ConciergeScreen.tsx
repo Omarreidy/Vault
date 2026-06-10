@@ -6,6 +6,7 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Message } from '../types';
 import { askConcierge, ConversationMessage } from '../services/concierge';
+import PlaidLinkScreen from './PlaidLinkScreen';
 import { COLORS, FONTS, SPACING, RADIUS, CARD_SHADOW } from '../constants/theme';
 
 const AI_CONSENT_KEY = '@vault_ai_consent_v1';
@@ -26,12 +27,17 @@ export default function ConciergeScreen({ onClose }: Props = {}) {
   const [consentGiven, setConsentGiven] = useState<boolean | null>(null);
   const [showConsent, setShowConsent] = useState(false);
   const [pendingMessage, setPendingMessage] = useState('');
+  const [plaidConnected, setPlaidConnected] = useState(false);
+  const [showPlaid, setShowPlaid] = useState(false);
   const listRef = useRef<FlatList>(null);
   const sendScale = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
     AsyncStorage.getItem(AI_CONSENT_KEY).then(val => {
       setConsentGiven(val === 'true');
+    });
+    AsyncStorage.getItem('@vault_plaid_connected').then(val => {
+      setPlaidConnected(val === 'true');
     });
   }, []);
 
@@ -111,7 +117,25 @@ export default function ConciergeScreen({ onClose }: Props = {}) {
           <View style={styles.empty}>
             <Text style={styles.emptyGlyph}>◈</Text>
             <Text style={styles.emptyTitle}>Private Advisory</Text>
-            <Text style={styles.emptySub}>I know your accounts, your score,{'\n'}and your momentum. Ask me anything.</Text>
+            <Text style={styles.emptySub}>Your personal wealth advisor.{'\n'}Ask me anything about your money.</Text>
+
+            {!plaidConnected && (
+              <TouchableOpacity
+                style={[styles.plaidBanner, CARD_SHADOW, { shadowOpacity: 0.08 }]}
+                onPress={() => setShowPlaid(true)}
+                activeOpacity={0.82}
+              >
+                <View style={styles.plaidBannerLeft}>
+                  <Text style={styles.plaidBannerIcon}>🏦</Text>
+                  <View style={styles.plaidBannerText}>
+                    <Text style={styles.plaidBannerTitle}>Connect your bank</Text>
+                    <Text style={styles.plaidBannerSub}>Get advice based on your actual accounts</Text>
+                  </View>
+                </View>
+                <Text style={styles.plaidBannerArrow}>→</Text>
+              </TouchableOpacity>
+            )}
+
             <View style={styles.starters}>
               {STARTERS.map(({ q, icon }) => (
                 <TouchableOpacity key={q} style={[styles.starter, CARD_SHADOW, { shadowOpacity: 0.07, shadowRadius: 12 }]} onPress={() => send(q)} activeOpacity={0.75}>
@@ -168,6 +192,16 @@ export default function ConciergeScreen({ onClose }: Props = {}) {
           </Animated.View>
         </View>
       </KeyboardAvoidingView>
+
+      <PlaidLinkScreen
+        visible={showPlaid}
+        onClose={() => setShowPlaid(false)}
+        onSuccess={() => {
+          AsyncStorage.setItem('@vault_plaid_connected', 'true');
+          setPlaidConnected(true);
+          setShowPlaid(false);
+        }}
+      />
 
       <Modal visible={showConsent} transparent animationType="fade">
         <View style={styles.consentOverlay}>
@@ -244,6 +278,22 @@ const styles = StyleSheet.create({
   emptyGlyph: { fontFamily: FONTS.display, fontSize: 44, color: COLORS.gold },
   emptyTitle: { fontFamily: FONTS.display, fontSize: FONTS.sizes.xxl, fontWeight: FONTS.weights.light, color: COLORS.text, letterSpacing: FONTS.tracking.wide },
   emptySub: { fontSize: FONTS.sizes.sm, color: COLORS.textDim, textAlign: 'center', lineHeight: 22 },
+  plaidBanner: {
+    width: '100%',
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    backgroundColor: COLORS.card,
+    borderRadius: RADIUS.md,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: COLORS.gold + '50',
+    padding: SPACING.md,
+  },
+  plaidBannerLeft: { flexDirection: 'row', alignItems: 'center', gap: SPACING.md, flex: 1 },
+  plaidBannerIcon: { fontSize: 22 },
+  plaidBannerText: { flex: 1 },
+  plaidBannerTitle: { fontSize: FONTS.sizes.sm, fontWeight: FONTS.weights.semibold, color: COLORS.text },
+  plaidBannerSub: { fontSize: FONTS.sizes.xs, color: COLORS.textDim, marginTop: 2 },
+  plaidBannerArrow: { fontSize: FONTS.sizes.md, color: COLORS.gold, fontWeight: FONTS.weights.bold },
+
   starters: { width: '100%', gap: SPACING.sm },
   starter: {
     flexDirection: 'row', alignItems: 'center', gap: SPACING.md,

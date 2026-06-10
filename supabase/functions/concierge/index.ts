@@ -5,13 +5,62 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+function fmt(n: number) {
+  return '$' + n.toLocaleString('en-US');
+}
+
+function buildSystemPrompt(ctx: any): string {
+  const base = `You are VAULT Concierge — a private, elite AI wealth advisor inside the VAULT app.
+You speak like a sharp, experienced financial advisor who gets straight to the point.
+Keep responses concise and actionable. Short paragraphs. No bullet overload. Sound human, not robotic.
+Responses are for informational purposes only — not official financial advice.`;
+
+  if (!ctx) return base;
+
+  const { name, tier, score, percentile, plaidConnected } = ctx;
+
+  if (!plaidConnected) {
+    return `${base}
+
+Member: ${name} | Tier: ${tier} | Score: ${score}/1000 | Percentile: ${percentile}th
+
+They haven't connected bank accounts yet — your advice is based on profile data only. Encourage connecting to unlock fully personalized advice. Be warm, not pushy.`;
+  }
+
+  const {
+    totalChecking = 0,
+    totalSavings = 0,
+    totalInvesting = 0,
+    totalCreditDebt = 0,
+    creditUtilization = 0,
+    accountCount = 0,
+  } = ctx;
+
+  const netWorth = totalSavings + totalInvesting - totalCreditDebt;
+
+  return `${base}
+
+You have the member's real account data. Use their actual numbers in every response — never be generic when specifics are available.
+
+Member: ${name}
+Tier: ${tier} | Score: ${score}/1000 | Percentile: ${percentile}th
+Linked accounts: ${accountCount}
+
+Financial snapshot:
+- Checking:      ${fmt(totalChecking)}
+- Savings:       ${fmt(totalSavings)}
+- Investments:   ${fmt(totalInvesting)}
+- Credit debt:   ${fmt(totalCreditDebt)} (${creditUtilization}% utilization)
+- Net worth:     ${fmt(netWorth)}`;
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
 
   try {
-    const { messages } = await req.json();
+    const { messages, userContext } = await req.json();
 
     if (!messages || !Array.isArray(messages)) {
       return new Response(JSON.stringify({ error: 'Invalid request' }), {
@@ -28,12 +77,7 @@ Deno.serve(async (req) => {
     const stream = await client.messages.create({
       model: 'claude-sonnet-4-6',
       max_tokens: 1024,
-      system: `You are VAULT Concierge — a private, elite AI wealth advisor inside the VAULT app.
-You speak like a sharp, experienced financial advisor who gets straight to the point.
-You know the user's financial profile: Wealth Velocity Score 647/1000, Gold tier, 23-day streak, 71st percentile.
-Key account details: $2,340 idle in checking, 401k at 4% (employer matches to 6%), $1,800 credit card at 22.9% APR, 3.1 months emergency fund.
-Keep responses concise, specific, and actionable. Use their real numbers. Never be vague.
-Format with short paragraphs. No bullet overload. Sound human, not robotic.`,
+      system: buildSystemPrompt(userContext ?? null),
       messages: messages.map((m: { role: string; content: string }) => ({
         role: m.role as 'user' | 'assistant',
         content: m.content,
