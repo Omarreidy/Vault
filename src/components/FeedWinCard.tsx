@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, Dimensions, Animated, Share }
 import * as Haptics from 'expo-haptics';
 import { WealthWin } from '../types';
 import { COLORS, FONTS, SPACING, RADIUS, TIERS } from '../constants/theme';
-import { MOCK_USER } from '../services/mockData';
+import { useRealProfile } from '../services/userProfile';
 
 const { width } = Dimensions.get('window');
 
@@ -22,6 +22,7 @@ interface Props {
 }
 
 export default function FeedWinCard({ win, index, total }: Props) {
+  const { name, tier } = useRealProfile();
   const accent    = WIN_ACCENT[win.category] ?? WIN_ACCENT.default;
   const glowAnim  = useRef(new Animated.Value(0.4)).current;
   const scaleAnim = useRef(new Animated.Value(0.92)).current;
@@ -65,7 +66,7 @@ export default function FeedWinCard({ win, index, total }: Props) {
           <View style={[styles.valueLine, { backgroundColor: accent }]} />
           <Text style={[styles.winValue, { color: accent, fontFamily: FONTS.display }]}>{win.value}</Text>
           <Text style={styles.memberLine}>
-            {MOCK_USER.name.toUpperCase()} · {TIERS[MOCK_USER.tier].name.toUpperCase()} MEMBER
+            {name.toUpperCase()} · {TIERS[tier].name.toUpperCase()} MEMBER
           </Text>
         </Animated.View>
 

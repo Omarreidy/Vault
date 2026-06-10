@@ -37,8 +37,8 @@ export const MOCK_SCAN_RESULTS: ScanResult[] = [
     monthlyCost: '$65–120 per visit',
     annualImpact: '−$2,400/yr avg for your spending tier',
     wealthScoreImpact: '−3 pts if over budget',
-    insight: 'Dining is the #1 discretionary spend that separates average savers from wealth builders. At your current pace you\'re at 140% of your peer group average.',
-    tip: 'Set a $380/mo dining target. Redirect the gap to your HYSA — that\'s $6,120/yr working for you instead.',
+    insight: 'Dining is the #1 discretionary spend that separates average savers from wealth builders. The national average is $350/month — most people in this category spend 30–40% more without realizing it.',
+    tip: 'Set a monthly dining target and track it. Redirecting even $100/mo to savings is $1,200/yr working for you instead of a restaurant.',
     xp: 15,
   },
   {

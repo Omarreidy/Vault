@@ -7,10 +7,9 @@ import { SafeAreaView } from 'react-native';
 import * as Haptics from 'expo-haptics';
 
 import { buildFeed, fetchPersonalizedMoves, FeedItem } from '../services/feed';
-import { ALL_MOVES, MOCK_WINS, MOCK_USER } from '../services/mockData';
-import { useUserName } from '../services/onboarding';
+import { ALL_MOVES } from '../services/mockData';
 import { INSIGHTS, Insight } from '../services/insights';
-import { MOCK_NOTIFICATIONS } from '../services/notifications';
+import { useRealProfile } from '../services/userProfile';
 import { WealthMove, WealthWin } from '../types';
 
 import FeedMoveCard from '../components/FeedMoveCard';
@@ -30,7 +29,7 @@ import { supabase } from '../services/supabase';
 
 import { COLORS, FONTS, SPACING, RADIUS, CARD_SHADOW } from '../constants/theme';
 
-const DEFAULT_FEED = buildFeed(ALL_MOVES, INSIGHTS, MOCK_WINS);
+const DEFAULT_FEED = buildFeed(ALL_MOVES, INSIGHTS, []);
 
 const REWARD_MESSAGES = [
   'Smart move.',
@@ -143,7 +142,8 @@ const eofStyles = StyleSheet.create({
 });
 
 export default function HomeScreen() {
-  const userName = useUserName(MOCK_USER.name);
+  const realProfile = useRealProfile();
+  const userName = realProfile.name;
   const [feedTab, setFeedTab] = useState<'foryou' | 'cohort'>('foryou');
   const [totalXP, setTotalXP]       = useState(0);
   const [actedCount, setActedCount] = useState(0);
@@ -179,15 +179,13 @@ export default function HomeScreen() {
         const personalizedFeed = buildFeed(
           [...personalizedMoves, ...ALL_MOVES],
           INSIGHTS,
-          MOCK_WINS
+          []
         );
         setFeed(personalizedFeed);
       }
     });
   }, []);
-  const [notifCount, setNotifCount] = useState(
-    MOCK_NOTIFICATIONS.filter(n => !n.read).length,
-  );
+  const [notifCount, setNotifCount] = useState(0);
   const [itemHeight, setItemHeight] = useState(Dimensions.get('window').height);
 
   // Reward toast state
@@ -343,10 +341,7 @@ export default function HomeScreen() {
                 <Text style={styles.xpTxt}>+{totalXP} XP</Text>
               </View>
             )}
-            <View style={styles.streakChip}>
-              <Text style={styles.streakTxt}>🔥 {MOCK_USER.streakDays}d</Text>
-            </View>
-            <TierBadge tier={MOCK_USER.tier} size="sm" showLabel={false} />
+            <TierBadge tier={realProfile.tier} size="sm" showLabel={false} />
             <TouchableOpacity
               style={styles.scanBtn}
               onPress={() => {
@@ -425,7 +420,7 @@ export default function HomeScreen() {
             ListFooterComponent={
               <View style={{ height: itemHeight, width: '100%' }}>
                 <EndOfFeedCard
-                  streakDays={MOCK_USER.streakDays}
+                  streakDays={0}
                   onBackToTop={() => flatListRef.current?.scrollToOffset({ offset: 0, animated: true })}
                 />
               </View>

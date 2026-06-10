@@ -6,7 +6,6 @@ import {
   COHORT_ACTIVITY, CohortActivity, Reaction,
   timeAgoShort, ACTIVITY_ICONS,
 } from '../services/progressFeed';
-import { COHORT_STATS } from '../services/cohort';
 
 function ReactionBtn({ reaction, onPress }: { reaction: Reaction; onPress: () => void }) {
   const scale = useRef(new Animated.Value(1)).current;
@@ -122,9 +121,7 @@ export default function CohortActivityFeed() {
       {/* Cohort pulse strip */}
       <View style={styles.pulseStrip}>
         <View style={styles.liveDot} />
-        <Text style={styles.pulseText}>
-          {COHORT_STATS.totalMovesThisWeek} moves this week · {COHORT_STATS.avgStreak}d avg streak · {COHORT_STATS.topMover} leading
-        </Text>
+        <Text style={styles.pulseText}>Cohort activity · forming as members join</Text>
       </View>
 
       {COHORT_ACTIVITY.map((item, i) => (

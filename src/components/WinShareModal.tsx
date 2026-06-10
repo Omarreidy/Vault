@@ -7,8 +7,8 @@ import * as Haptics from 'expo-haptics';
 import WealthWinCard from './WealthWinCard';
 import { WealthWin } from '../types';
 import { COLORS, FONTS, SPACING, RADIUS, CARD_SHADOW_STRONG } from '../constants/theme';
-import { MOCK_USER } from '../services/mockData';
 import { TIERS } from '../constants/theme';
+import { useRealProfile } from '../services/userProfile';
 
 const { height } = Dimensions.get('window');
 
@@ -20,6 +20,7 @@ interface Props {
 
 export default function WinShareModal({ win, visible, onClose }: Props) {
   const btnScale = useRef(new Animated.Value(1)).current;
+  const { name, tier } = useRealProfile();
 
   if (!win) return null;
 
@@ -30,13 +31,12 @@ export default function WinShareModal({ win, visible, onClose }: Props) {
       Animated.timing(btnScale, { toValue: 1,    duration: 120, useNativeDriver: false }),
     ]).start();
 
-    const tierInfo = TIERS[MOCK_USER.tier];
     await Share.share({
       message:
         `${win.title}\n` +
         `${win.value}\n\n` +
         `${win.subtitle}\n\n` +
-        `Tracked with VAULT · ${tierInfo.name} Member`,
+        `Tracked with VAULT · ${TIERS[tier].name} Member`,
       title: `VAULT Win — ${win.title}`,
     });
   };
@@ -59,8 +59,8 @@ export default function WinShareModal({ win, visible, onClose }: Props) {
         <View style={styles.previewArea}>
           <WealthWinCard
             win={win}
-            userName={MOCK_USER.name}
-            tier={TIERS[MOCK_USER.tier].name}
+            userName={name}
+            tier={TIERS[tier].name}
           />
           <Text style={styles.previewHint}>
             Screenshot this and share it anywhere

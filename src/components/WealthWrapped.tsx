@@ -9,18 +9,6 @@ import { COLORS, FONTS, SPACING, RADIUS } from '../constants/theme';
 
 const { width, height } = Dimensions.get('window');
 
-const RECAP = {
-  month:         'MAY 2026',
-  scoreFrom:     600,
-  scoreTo:       647,
-  scoreDelta:    +47,
-  networthDelta: 6200,
-  moves:         8,
-  percentile:    29,
-  streak:        23,
-  rankJump:      18,
-  headline:      'Your best month yet.',
-};
 
 function formatK(n: number) {
   return n >= 1000 ? `$${(n / 1000).toFixed(1)}K` : `$${n}`;
@@ -62,77 +50,30 @@ interface Props {
 }
 
 export default function WealthWrapped({ visible, onClose }: Props) {
-  const bgOpacity     = useRef(new Animated.Value(0)).current;
-  const cardScale     = useRef(new Animated.Value(0.93)).current;
-  const cardOpacity   = useRef(new Animated.Value(0)).current;
-  const headerOpacity = useRef(new Animated.Value(0)).current;
-  const headerSlide   = useRef(new Animated.Value(-20)).current;
-  const shareOpacity  = useRef(new Animated.Value(0)).current;
-  const shimmerX      = useRef(new Animated.Value(-width)).current;
-
-  const [scoreDisplay, setScoreDisplay] = useState(RECAP.scoreFrom);
-  const scoreAnim = useRef(new Animated.Value(RECAP.scoreFrom)).current;
+  const bgOpacity   = useRef(new Animated.Value(0)).current;
+  const cardScale   = useRef(new Animated.Value(0.93)).current;
+  const cardOpacity = useRef(new Animated.Value(0)).current;
+  const shimmerX    = useRef(new Animated.Value(-width)).current;
 
   useEffect(() => {
     if (!visible) return;
-
-    // Reset
     bgOpacity.setValue(0);
     cardScale.setValue(0.93);
     cardOpacity.setValue(0);
-    headerOpacity.setValue(0);
-    headerSlide.setValue(-20);
-    shareOpacity.setValue(0);
     shimmerX.setValue(-width);
-    scoreAnim.setValue(RECAP.scoreFrom);
-    setScoreDisplay(RECAP.scoreFrom);
 
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
 
-    // Sequence
     Animated.parallel([
       Animated.timing(bgOpacity,   { toValue: 1, duration: 350, useNativeDriver: false }),
       Animated.spring(cardScale,   { toValue: 1, tension: 60, friction: 9, delay: 80, useNativeDriver: false }),
       Animated.timing(cardOpacity, { toValue: 1, duration: 320, delay: 80, useNativeDriver: false }),
     ]).start(() => {
-      // Header slides in
-      Animated.parallel([
-        Animated.timing(headerOpacity, { toValue: 1, duration: 380, useNativeDriver: false }),
-        Animated.timing(headerSlide,   { toValue: 0, duration: 380, useNativeDriver: false }),
-      ]).start();
-
-      // Score count-up
-      const id = scoreAnim.addListener(({ value }) => setScoreDisplay(Math.round(value)));
-      Animated.timing(scoreAnim, { toValue: RECAP.scoreTo, duration: 1400, delay: 300, useNativeDriver: false })
-        .start(() => {
-          scoreAnim.removeListener(id);
-          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-        });
-
-      // Shimmer sweep
       Animated.loop(
-        Animated.timing(shimmerX, { toValue: width * 2, duration: 2200, delay: 600, useNativeDriver: false }),
+        Animated.timing(shimmerX, { toValue: width * 2, duration: 2200, delay: 400, useNativeDriver: false }),
       ).start();
-
-      // Share button
-      Animated.timing(shareOpacity, { toValue: 1, duration: 500, delay: 2400, useNativeDriver: false }).start();
     });
   }, [visible]);
-
-  const handleShare = async () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-    try {
-      await Share.share({
-        message:
-          `My VAULT ${RECAP.month} Recap\n\n` +
-          `Wealth Velocity Score: ${RECAP.scoreTo} (+${RECAP.scoreDelta})\n` +
-          `Net Worth Growth: +${formatK(RECAP.networthDelta)}\n` +
-          `Moves Completed: ${RECAP.moves}\n` +
-          `Top ${RECAP.percentile}% of wealth builders my age\n\n` +
-          `Building with VAULT 🏛`,
-      });
-    } catch {}
-  };
 
   return (
     <Modal visible={visible} transparent animationType="none" onRequestClose={onClose}>
@@ -167,73 +108,36 @@ export default function WealthWrapped({ visible, onClose }: Props) {
           <View style={styles.inner}>
 
             {/* Header */}
-            <Animated.View style={[styles.header, { opacity: headerOpacity, transform: [{ translateY: headerSlide }] }]}>
+            <View style={styles.header}>
               <Text style={styles.eyebrow}>VAULT · WEALTH RECAP</Text>
-              <Text style={styles.month}>{RECAP.month}</Text>
-              <Text style={styles.headline}>{RECAP.headline}</Text>
-            </Animated.View>
-
-            {/* Score count-up */}
-            <View style={styles.scoreBlock}>
-              <Text style={styles.scoreNum}>{scoreDisplay}</Text>
-              <View style={styles.scoreDeltaBadge}>
-                <Text style={styles.scoreDeltaTxt}>+{RECAP.scoreDelta} pts</Text>
-              </View>
-              <Text style={styles.scoreLabel}>WEALTH VELOCITY SCORE</Text>
+              <Text style={styles.month}>COMING SOON</Text>
+              <Text style={styles.headline}>Your story is just beginning.</Text>
             </View>
 
             {/* Divider */}
             <View style={styles.divider} />
 
-            {/* Stats */}
-            <View style={styles.stats}>
-              <StatRow
-                label="Net Worth Growth"
-                value={`+${formatK(RECAP.networthDelta)}`}
-                sub="this month"
-                delay={600}
-                gold
-              />
-              <StatRow
-                label="Moves Completed"
-                value={`${RECAP.moves} moves`}
-                delay={800}
-              />
-              <StatRow
-                label="Wealth Ranking"
-                value={`Top ${RECAP.percentile}%`}
-                sub="of your age group"
-                delay={1000}
-                gold
-              />
-              <StatRow
-                label="Active Streak"
-                value={`${RECAP.streak} days`}
-                delay={1200}
-              />
-              <StatRow
-                label="Rank Climbed"
-                value={`↑ ${RECAP.rankJump} spots`}
-                sub="on leaderboard"
-                delay={1400}
-              />
+            {/* Not-ready state */}
+            <View style={styles.notReadyBlock}>
+              <Text style={styles.notReadyGlyph}>◈</Text>
+              <Text style={styles.notReadyTitle}>Your first recap isn't ready yet</Text>
+              <Text style={styles.notReadySub}>
+                Connect your bank accounts and build for a full month. VAULT will generate your personalized Wealth Recap — score changes, net worth growth, moves completed, and your percentile ranking.
+              </Text>
             </View>
 
-            {/* Share + close */}
-            <Animated.View style={[styles.actions, { opacity: shareOpacity }]}>
-              <TouchableOpacity style={styles.shareBtn} onPress={handleShare} activeOpacity={0.85}>
+            {/* Close */}
+            <View style={styles.actions}>
+              <TouchableOpacity onPress={onClose} activeOpacity={0.85} style={styles.shareBtn}>
                 <LinearGradient
                   colors={[COLORS.goldLight, COLORS.gold, COLORS.goldDark]}
                   start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
                   style={styles.shareBtnGrad}
                 >
-                  <Text style={styles.shareBtnTxt}>Share My Recap</Text>
+                  <Text style={styles.shareBtnTxt}>Got It</Text>
                 </LinearGradient>
               </TouchableOpacity>
-              <TouchableOpacity onPress={onClose} activeOpacity={0.7} style={styles.closeBtn}>
-                <Text style={styles.closeTxt}>Close</Text>
-              </TouchableOpacity>
-            </Animated.View>
+            </View>
 
           </View>
 
@@ -334,6 +238,10 @@ const styles = StyleSheet.create({
   },
 
   stats: { gap: SPACING.md },
+  notReadyBlock: { alignItems: 'center', gap: SPACING.md, paddingVertical: SPACING.xl },
+  notReadyGlyph: { fontSize: 48, color: COLORS.gold },
+  notReadyTitle: { fontSize: FONTS.sizes.lg, fontWeight: FONTS.weights.semibold, color: COLORS.text, textAlign: 'center', letterSpacing: FONTS.tracking.tight },
+  notReadySub: { fontSize: FONTS.sizes.sm, color: COLORS.textDim, textAlign: 'center', lineHeight: 22 },
   statRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',

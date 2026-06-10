@@ -4,9 +4,13 @@ import {
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { COLORS, FONTS, SPACING, RADIUS } from '../constants/theme';
-import { COHORT } from '../services/cohort';
-
-const MEMBERS = COHORT.filter(m => !m.isMe);
+const MEMBERS = [
+  { id: 'a1', initials: '◆', label: 'Member' },
+  { id: 'a2', initials: '◆', label: 'Member' },
+  { id: 'a3', initials: '◆', label: 'Member' },
+  { id: 'a4', initials: '◆', label: 'Member' },
+  { id: 'a5', initials: '◆', label: 'Member' },
+];
 
 interface Reaction {
   label: string;
@@ -172,7 +176,7 @@ export default function CohortReactionOverlay({ visible, moveTitle, onDismiss }:
                 <View style={styles.memberCircle}>
                   <Text style={styles.memberInitials}>{member.initials}</Text>
                 </View>
-                <Text style={styles.memberName} numberOfLines={1}>{member.name.split(' ')[0]}</Text>
+                <Text style={styles.memberName} numberOfLines={1}>{member.label}</Text>
               </Animated.View>
             ))}
           </View>

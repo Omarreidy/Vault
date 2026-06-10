@@ -1,11 +1,14 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity,
-  SafeAreaView, KeyboardAvoidingView, Platform, Animated,
+  SafeAreaView, KeyboardAvoidingView, Platform, Animated, Modal,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Message } from '../types';
 import { askConcierge, ConversationMessage } from '../services/concierge';
 import { COLORS, FONTS, SPACING, RADIUS, CARD_SHADOW } from '../constants/theme';
+
+const AI_CONSENT_KEY = '@vault_ai_consent_v1';
 
 const STARTERS = [
   { q: 'Am I saving enough?', icon: '◈' },
@@ -20,11 +23,44 @@ export default function ConciergeScreen({ onClose }: Props = {}) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [consentGiven, setConsentGiven] = useState<boolean | null>(null);
+  const [showConsent, setShowConsent] = useState(false);
+  const [pendingMessage, setPendingMessage] = useState('');
   const listRef = useRef<FlatList>(null);
   const sendScale = useRef(new Animated.Value(1)).current;
 
+  useEffect(() => {
+    AsyncStorage.getItem(AI_CONSENT_KEY).then(val => {
+      setConsentGiven(val === 'true');
+    });
+  }, []);
+
+  const handleConsent = async (accepted: boolean) => {
+    setShowConsent(false);
+    if (accepted) {
+      await AsyncStorage.setItem(AI_CONSENT_KEY, 'true');
+      setConsentGiven(true);
+      if (pendingMessage) {
+        sendMessage(pendingMessage);
+        setPendingMessage('');
+      }
+    } else {
+      setPendingMessage('');
+    }
+  };
+
   const send = useCallback(async (text: string) => {
     if (!text.trim() || loading) return;
+    if (!consentGiven) {
+      setPendingMessage(text.trim());
+      setShowConsent(true);
+      return;
+    }
+    sendMessage(text);
+  }, [messages, loading, consentGiven]);
+
+  const sendMessage = async (text: string) => {
+    if (!text.trim()) return;
     const userMsg: Message = { id: Date.now().toString(), role: 'user', content: text.trim(), timestamp: new Date() };
     setMessages(prev => [...prev, userMsg]);
     setInput('');
@@ -45,7 +81,7 @@ export default function ConciergeScreen({ onClose }: Props = {}) {
     } finally {
       setLoading(false);
     }
-  }, [messages, loading]);
+  };
 
   const onSend = () => {
     Animated.sequence([
@@ -132,6 +168,30 @@ export default function ConciergeScreen({ onClose }: Props = {}) {
           </Animated.View>
         </View>
       </KeyboardAvoidingView>
+
+      <Modal visible={showConsent} transparent animationType="fade">
+        <View style={styles.consentOverlay}>
+          <View style={styles.consentCard}>
+            <Text style={styles.consentGlyph}>◈</Text>
+            <Text style={styles.consentTitle}>AI Advisory</Text>
+            <Text style={styles.consentBody}>
+              Your messages and financial context will be processed by{' '}
+              <Text style={styles.consentBrand}>Anthropic's Claude AI</Text>
+              {' '}to generate personalized responses.{'\n\n'}
+              Anthropic does not retain your financial data beyond the API call. VAULT never shares your banking credentials.
+            </Text>
+            <Text style={styles.consentNote}>
+              Responses are for informational purposes only — not financial advice.
+            </Text>
+            <TouchableOpacity style={styles.consentAgree} onPress={() => handleConsent(true)} activeOpacity={0.85}>
+              <Text style={styles.consentAgreeTxt}>Agree & Continue</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.consentDecline} onPress={() => handleConsent(false)} activeOpacity={0.7}>
+              <Text style={styles.consentDeclineTxt}>Decline</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -231,4 +291,27 @@ const styles = StyleSheet.create({
   },
   sendBtn: { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center' },
   sendIcon: { fontSize: 18, fontWeight: FONTS.weights.bold },
+
+  consentOverlay: {
+    flex: 1, backgroundColor: 'rgba(0,0,0,0.75)',
+    justifyContent: 'center', alignItems: 'center', padding: SPACING.xl,
+  },
+  consentCard: {
+    backgroundColor: COLORS.card, borderRadius: RADIUS.xl,
+    borderWidth: StyleSheet.hairlineWidth, borderColor: COLORS.border,
+    padding: SPACING.xl, alignItems: 'center', gap: SPACING.md, width: '100%',
+  },
+  consentGlyph: { fontFamily: FONTS.display, fontSize: 36, color: COLORS.gold },
+  consentTitle: { fontSize: FONTS.sizes.xl, fontWeight: FONTS.weights.semibold, color: COLORS.text, letterSpacing: FONTS.tracking.tight },
+  consentBody: { fontSize: FONTS.sizes.sm, color: COLORS.textDim, textAlign: 'center', lineHeight: 22 },
+  consentBrand: { color: COLORS.text, fontWeight: FONTS.weights.semibold },
+  consentNote: { fontSize: FONTS.sizes.xs, color: COLORS.textMuted, textAlign: 'center', lineHeight: 18 },
+  consentAgree: {
+    backgroundColor: COLORS.gold, borderRadius: RADIUS.md,
+    paddingVertical: SPACING.md, paddingHorizontal: SPACING.xl,
+    width: '100%', alignItems: 'center', marginTop: SPACING.sm,
+  },
+  consentAgreeTxt: { color: '#fff', fontWeight: FONTS.weights.semibold, fontSize: FONTS.sizes.md, letterSpacing: FONTS.tracking.wide },
+  consentDecline: { paddingVertical: SPACING.sm },
+  consentDeclineTxt: { color: COLORS.textMuted, fontSize: FONTS.sizes.sm },
 });

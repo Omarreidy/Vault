@@ -4,8 +4,7 @@ import SettingsScreen from './SettingsScreen';
 import ConciergeScreen from './ConciergeScreen';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
-import { MOCK_USER } from '../services/mockData';
-import { useUserName } from '../services/onboarding';
+import { useRealProfile } from '../services/userProfile';
 import TierBadge from '../components/TierBadge';
 import AchievementBadge from '../components/AchievementBadge';
 import WealthIdentityCard from '../components/WealthIdentityCard';
@@ -15,7 +14,7 @@ import WinShareModal from '../components/WinShareModal';
 import UpgradeScreen from './UpgradeScreen';
 import { COLORS, FONTS, SPACING, TIERS, RADIUS, CARD_SHADOW, CARD_SHADOW_STRONG } from '../constants/theme';
 import { WealthWin } from '../types';
-import { LEADERBOARD, LEADERBOARD_STATS, FRIENDS_LEADERBOARD, FRIENDS_STATS, FriendEntry } from '../services/leaderboard';
+import { fetchLeaderboardStats, LeaderboardStats } from '../services/leaderboard';
 import { ACHIEVEMENTS } from '../services/achievements';
 
 const TABS = ['Profile', 'Leaderboard', 'Wins', 'Invite', 'Card'] as const;
@@ -59,16 +58,22 @@ const wStyles = StyleSheet.create({
 interface ProfileProps { onResetOnboarding?: () => void; }
 
 export default function ProfileScreen({ onResetOnboarding }: ProfileProps = {}) {
-  const { tier, score, streakDays, wins, joinedAt } = MOCK_USER;
-  const name = useUserName(MOCK_USER.name);
+  const realProfile = useRealProfile();
+  const { name, tier, score: realScore, joinedAt } = realProfile;
+  const score = realScore ?? { total: 0, savings: 0, investment: 0, debt: 0, spending: 0, weeklyChange: 0, percentile: 0, tier: 'BRONZE' as const, tierProgress: 0 };
+  const wins: WealthWin[] = [];
   const info = TIERS[tier];
-  const months = Math.max(1, Math.floor((Date.now() - joinedAt.getTime()) / (1000 * 60 * 60 * 24 * 30)));
+  const months = joinedAt ? Math.max(1, Math.floor((Date.now() - joinedAt.getTime()) / (1000 * 60 * 60 * 24 * 30))) : 1;
   const [activeTab, setActiveTab] = useState<Tab>('Profile');
   const [shareWin, setShareWin] = useState<WealthWin | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [showConcierge, setShowConcierge] = useState(false);
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [lbView, setLbView] = useState<'global' | 'friends'>('global');
+  const [lbStats, setLbStats] = useState<LeaderboardStats>({ totalMembers: 0, userRank: null, topPercent: null });
+  useEffect(() => {
+    fetchLeaderboardStats(tier).then(setLbStats).catch(() => {});
+  }, [tier]);
   const friendsFlash = useRef(new Animated.Value(1)).current;
   useEffect(() => {
     if (lbView === 'friends') return;
@@ -165,7 +170,7 @@ export default function ProfileScreen({ onResetOnboarding }: ProfileProps = {}) 
             <TierBadge tier={tier} size="lg" showLabel={false} />
           </View>
           <View style={styles.cardStatsRow}>
-            {[{ v: score.total.toString(), l: 'SCORE' }, { v: `${score.percentile}%`, l: 'PCTILE' }, { v: `${streakDays}d`, l: 'STREAK' }, { v: `${months}mo`, l: 'MEMBER' }].map(({ v, l }, i) => (
+            {[{ v: score.total.toString(), l: 'SCORE' }, { v: `${score.percentile}%`, l: 'PCTILE' }, { v: `${months}mo`, l: 'MEMBER' }].map(({ v, l }, i) => (
               <React.Fragment key={l}>
                 {i > 0 && <View style={styles.statDiv} />}
                 <View style={styles.stat}>
@@ -302,35 +307,50 @@ export default function ProfileScreen({ onResetOnboarding }: ProfileProps = {}) 
             {lbView === 'global' && (
               <>
                 <View style={[styles.lbHeader, CARD_SHADOW, { shadowOpacity: 0.08 }]}>
-                  <View style={styles.lbStat}><Text style={styles.lbStatVal} numberOfLines={1} adjustsFontSizeToFit>#{LEADERBOARD_STATS.userRank}</Text><Text style={styles.lbStatLbl} numberOfLines={1}>YOUR RANK</Text></View>
+                  <View style={styles.lbStat}>
+                    <Text style={styles.lbStatVal} numberOfLines={1} adjustsFontSizeToFit>
+                      {lbStats.totalMembers > 0 ? lbStats.totalMembers.toLocaleString() : '—'}
+                    </Text>
+                    <Text style={styles.lbStatLbl} numberOfLines={1}>MEMBERS</Text>
+                  </View>
                   <View style={styles.lbStatDiv} />
-                  <View style={styles.lbStat}><Text style={styles.lbStatVal} numberOfLines={1} adjustsFontSizeToFit>{LEADERBOARD_STATS.totalMembers.toLocaleString()}</Text><Text style={styles.lbStatLbl} numberOfLines={1}>MEMBERS</Text></View>
+                  <View style={styles.lbStat}>
+                    <Text style={styles.lbStatVal} numberOfLines={1} adjustsFontSizeToFit>{tier}</Text>
+                    <Text style={styles.lbStatLbl} numberOfLines={1}>YOUR TIER</Text>
+                  </View>
                   <View style={styles.lbStatDiv} />
-                  <View style={styles.lbStat}><Text style={styles.lbStatVal} numberOfLines={1} adjustsFontSizeToFit>Top {LEADERBOARD_STATS.topPercent}%</Text><Text style={styles.lbStatLbl} numberOfLines={1}>THIS WEEK</Text></View>
+                  <View style={styles.lbStat}>
+                    <Text style={styles.lbStatVal} numberOfLines={1} adjustsFontSizeToFit>—</Text>
+                    <Text style={styles.lbStatLbl} numberOfLines={1}>YOUR RANK</Text>
+                  </View>
                 </View>
-                <Text style={styles.sectionLabel}>THIS WEEK · {tier.toUpperCase()} TIER</Text>
+
+                <View style={styles.lbFormingBanner}>
+                  <Text style={styles.lbFormingIcon}>◈</Text>
+                  <View style={styles.lbFormingText}>
+                    <Text style={styles.lbFormingTitle}>Leaderboard is forming</Text>
+                    <Text style={styles.lbFormingSub}>
+                      As more members join, you'll see ranked scores across the community. Invite friends to accelerate it.
+                    </Text>
+                  </View>
+                </View>
+
                 <View style={styles.lbList}>
-                  {LEADERBOARD.map((entry, i) => (
-                    <React.Fragment key={entry.rank}>
-                      {i === 4 && LEADERBOARD[5]?.isMe && <Text style={styles.lbEllipsis}>· · ·</Text>}
-                      <View style={[styles.lbRow, entry.isMe && styles.lbRowMe, CARD_SHADOW, { shadowOpacity: 0.06 }]}>
-                        <Text style={[styles.lbRank, entry.rank <= 3 && { color: COLORS.gold }]}>
-                          {entry.rank <= 3 ? ['◆','◆','◆'][entry.rank - 1] : `#${entry.rank}`}
-                        </Text>
-                        <View style={[styles.lbAvatar, entry.isMe && { borderColor: COLORS.gold + '60' }]}>
-                          <Text style={[styles.lbInitials, entry.isMe && { color: COLORS.gold }]}>{entry.initials}</Text>
-                        </View>
-                        <View style={styles.lbInfo}>
-                          <Text style={[styles.lbName, entry.isMe && { color: COLORS.gold }]}>{entry.isMe ? 'You' : entry.initials}</Text>
-                          <Text style={styles.lbTier}>{entry.tier} tier</Text>
-                        </View>
-                        <View style={styles.lbRight}>
-                          <Text style={styles.lbScore}>{entry.score}</Text>
-                          <Text style={[styles.lbChange, { color: entry.weeklyChange > 0 ? COLORS.goldDark : COLORS.red }]}>+{entry.weeklyChange}</Text>
-                        </View>
-                      </View>
-                    </React.Fragment>
-                  ))}
+                  <View style={[styles.lbRow, styles.lbRowMe, CARD_SHADOW, { shadowOpacity: 0.06 }]}>
+                    <Text style={[styles.lbRank, { color: COLORS.gold }]}>—</Text>
+                    <View style={[styles.lbAvatar, { borderColor: COLORS.gold + '60' }]}>
+                      <Text style={[styles.lbInitials, { color: COLORS.gold }]}>
+                        {name ? name.substring(0, 2).toUpperCase() : 'ME'}
+                      </Text>
+                    </View>
+                    <View style={styles.lbInfo}>
+                      <Text style={[styles.lbName, { color: COLORS.gold }]}>You</Text>
+                      <Text style={styles.lbTier}>{tier} tier</Text>
+                    </View>
+                    <View style={styles.lbRight}>
+                      <Text style={styles.lbScore}>{score.total}</Text>
+                    </View>
+                  </View>
                 </View>
                 <Text style={styles.lbFooter}>Rankings update weekly · Monday midnight</Text>
               </>
@@ -339,44 +359,14 @@ export default function ProfileScreen({ onResetOnboarding }: ProfileProps = {}) 
             {/* ── FRIENDS VIEW ── */}
             {lbView === 'friends' && (
               <>
-                {/* FOMO header — you're 24pts from moving up */}
-                <View style={[styles.fomoCard, CARD_SHADOW, { shadowOpacity: 0.07 }]}>
-                  <Text style={styles.fomoEye}>THIS WEEK</Text>
-                  <Text style={styles.fomoTitle}>
-                    You're <Text style={styles.fomoHighlight}>{FRIENDS_STATS.pointsBehind} pts</Text> behind {FRIENDS_STATS.closestAbove}
-                  </Text>
-                  <Text style={styles.fomoSub}>Complete 2 moves today to take #{FRIENDS_STATS.yourRank - 1}</Text>
-                </View>
-
-                <Text style={styles.sectionLabel}>YOUR CIRCLE · {FRIENDS_LEADERBOARD.length} FRIENDS</Text>
-                <View style={styles.lbList}>
-                  {FRIENDS_LEADERBOARD.map((entry: FriendEntry) => (
-                    <View key={entry.rank} style={[
-                      styles.lbRow,
-                      entry.isMe && styles.lbRowMe,
-                      CARD_SHADOW, { shadowOpacity: 0.06 },
-                    ]}>
-                      <Text style={[styles.lbRank, entry.rank <= 3 && { color: COLORS.gold }]}>
-                        {entry.rank <= 3 ? ['◆','◆','◆'][entry.rank - 1] : `#${entry.rank}`}
-                      </Text>
-                      <View style={[styles.lbAvatar, entry.isMe && { borderColor: COLORS.gold + '60' }]}>
-                        <Text style={[styles.lbInitials, entry.isMe && { color: COLORS.gold }]}>{entry.initials}</Text>
-                      </View>
-                      <View style={styles.lbInfo}>
-                        <Text style={[styles.lbName, entry.isMe && { color: COLORS.gold }]}>{entry.name}</Text>
-                        <View style={styles.friendMeta}>
-                          <Text style={styles.lbTier}>{entry.tier}</Text>
-                          {entry.streak > 0 && (
-                            <Text style={styles.friendStreak}>🔥 {entry.streak}d</Text>
-                          )}
-                        </View>
-                      </View>
-                      <View style={styles.lbRight}>
-                        <Text style={styles.lbScore}>{entry.score}</Text>
-                        <Text style={[styles.lbChange, { color: COLORS.goldDark }]}>+{entry.weeklyChange}</Text>
-                      </View>
-                    </View>
-                  ))}
+                <View style={styles.lbFormingBanner}>
+                  <Text style={styles.lbFormingIcon}>◉</Text>
+                  <View style={styles.lbFormingText}>
+                    <Text style={styles.lbFormingTitle}>No friends yet</Text>
+                    <Text style={styles.lbFormingSub}>
+                      Invite a friend and see how your Wealth Velocity Scores compare week over week.
+                    </Text>
+                  </View>
                 </View>
 
                 {/* Invite CTA */}
@@ -425,9 +415,9 @@ export default function ProfileScreen({ onResetOnboarding }: ProfileProps = {}) 
                   tier={tier}
                   score={score.total}
                   percentile={score.percentile}
-                  streakDays={streakDays}
+                  streakDays={0}
                   actionsCompleted={7}
-                  memberSince={joinedAt.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }).toUpperCase()}
+                  memberSince={joinedAt ? joinedAt.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }).toUpperCase() : 'VAULT MEMBER'}
                 />
                 <TouchableOpacity
                   style={styles.recapBtn}
@@ -572,6 +562,16 @@ const styles = StyleSheet.create({
   inviteIcon: { fontSize: 22, color: COLORS.gold, fontWeight: FONTS.weights.light, width: 36, textAlign: 'center' },
   inviteTxt: { fontSize: FONTS.sizes.md, fontWeight: FONTS.weights.semibold, color: COLORS.text },
   inviteSub: { fontSize: FONTS.sizes.xs, color: COLORS.textMuted, marginTop: 2 },
+
+  lbFormingBanner: {
+    flexDirection: 'row', alignItems: 'flex-start', gap: SPACING.md,
+    backgroundColor: COLORS.goldGlow, borderRadius: RADIUS.md,
+    borderWidth: 1, borderColor: COLORS.gold + '30', padding: SPACING.md,
+  },
+  lbFormingIcon: { fontSize: 18, color: COLORS.gold, marginTop: 2 },
+  lbFormingText: { flex: 1, gap: 4 },
+  lbFormingTitle: { fontSize: FONTS.sizes.md, fontWeight: FONTS.weights.semibold, color: COLORS.text },
+  lbFormingSub: { fontSize: FONTS.sizes.xs, color: COLORS.textDim, lineHeight: 18 },
 
   lbList: { gap: SPACING.sm },
   lbEllipsis: { textAlign: 'center', color: COLORS.textMuted, fontSize: FONTS.sizes.lg, letterSpacing: 6, paddingVertical: SPACING.xs },

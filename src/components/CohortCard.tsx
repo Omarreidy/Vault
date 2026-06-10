@@ -43,67 +43,6 @@ const barStyles = StyleSheet.create({
   fillBehind: { backgroundColor: COLORS.border },
 });
 
-interface MemberRowProps {
-  member: CohortMember;
-  rank: number;
-  index: number;
-}
-
-function MemberRow({ member, rank, index }: MemberRowProps) {
-  const opacity  = useRef(new Animated.Value(0)).current;
-  const slideX   = useRef(new Animated.Value(20)).current;
-
-  useEffect(() => {
-    Animated.parallel([
-      Animated.timing(opacity, { toValue: 1, duration: 340, delay: index * 70, useNativeDriver: false }),
-      Animated.timing(slideX,  { toValue: 0, duration: 340, delay: index * 70, useNativeDriver: false }),
-    ]).start();
-  }, []);
-
-  const deltaLabel = member.isMe
-    ? 'You'
-    : member.relativeScore > 0
-      ? `+${member.relativeScore} ahead`
-      : `${Math.abs(member.relativeScore)} behind`;
-
-  return (
-    <Animated.View style={[
-      styles.memberRow,
-      member.isMe && styles.memberRowMe,
-      { opacity, transform: [{ translateX: slideX }] },
-    ]}>
-      {/* Rank */}
-      <Text style={[styles.rank, member.isMe && { color: COLORS.gold }]}>
-        {rank <= 3 ? ['◆', '◆', '◆'][rank - 1] : `#${rank}`}
-      </Text>
-
-      {/* Avatar */}
-      <View style={[styles.avatar, member.isMe && styles.avatarMe]}>
-        <Text style={[styles.initials, member.isMe && styles.initialsMe]}>
-          {member.initials}
-        </Text>
-      </View>
-
-      {/* Info */}
-      <View style={styles.memberInfo}>
-        <Text style={[styles.memberName, member.isMe && { color: COLORS.gold }]}>
-          {member.name}
-        </Text>
-        <RelativeBar delta={member.relativeScore} />
-      </View>
-
-      {/* Right */}
-      <View style={styles.memberRight}>
-        <Text style={[styles.deltaLabel, member.isMe && { color: COLORS.gold }]}>
-          {deltaLabel}
-        </Text>
-        {member.streak > 0 && (
-          <Text style={styles.streak}>🔥 {member.streak}d</Text>
-        )}
-      </View>
-    </Animated.View>
-  );
-}
 
 export default function CohortCard() {
   const headerScale = useRef(new Animated.Value(0.97)).current;

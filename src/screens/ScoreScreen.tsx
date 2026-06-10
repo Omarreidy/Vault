@@ -1,7 +1,6 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, SafeAreaView, Animated, TouchableOpacity, Modal, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
 import * as Haptics from 'expo-haptics';
-import { MOCK_USER } from '../services/mockData';
 import { GOALS, Goal, getGoalProgress, getMonthsToGoal } from '../services/goals';
 import { ACHIEVEMENTS } from '../services/achievements';
 import { WEEKLY_CHALLENGES, Challenge } from '../services/challenges';
@@ -37,9 +36,10 @@ export default function ScoreScreen() {
     });
   }, []);
 
-  const score      = liveScore ?? MOCK_USER.score;
-  const tier       = (liveScore?.tier ?? MOCK_USER.tier) as TierName;
-  const streakDays = MOCK_USER.streakDays;
+  const EMPTY_SCORE = { total: 0, savings: 0, investment: 0, debt: 0, spending: 0, weeklyChange: 0, percentile: 0, tier: 'BRONZE' as TierName, tierProgress: 0 };
+  const score      = liveScore ?? EMPTY_SCORE;
+  const tier       = (liveScore?.tier ?? 'BRONZE') as TierName;
+  const streakDays = 0;
   const nextTier = getNextTier(tier);
   const pointsToNext = getPointsToNextTier(score.total);
   const [activeTab, setActiveTab] = useState<Tab>('Score');

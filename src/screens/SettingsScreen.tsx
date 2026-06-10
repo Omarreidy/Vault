@@ -4,10 +4,10 @@ import {
   TouchableOpacity, Switch, Alert,
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
-import { MOCK_USER } from '../services/mockData';
 import TierBadge from '../components/TierBadge';
 import { COLORS, FONTS, SPACING, RADIUS, TIERS, CARD_SHADOW } from '../constants/theme';
-import { resetOnboarding, useUserName } from '../services/onboarding';
+import { resetOnboarding } from '../services/onboarding';
+import { useRealProfile } from '../services/userProfile';
 import PlaidLinkScreen from './PlaidLinkScreen';
 import UpgradeScreen from './UpgradeScreen';
 
@@ -77,8 +77,7 @@ interface Props {
 }
 
 export default function SettingsScreen({ onClose, onResetOnboarding }: Props) {
-  const { tier } = MOCK_USER;
-  const name = useUserName(MOCK_USER.name);
+  const { tier, name } = useRealProfile();
   const info = TIERS[tier];
 
   // Notification toggles

@@ -4,7 +4,7 @@ import {
   Animated, SafeAreaView,
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
-import { MOCK_NOTIFICATIONS, VaultNotification, timeAgo, NotifType } from '../services/notifications';
+import { VaultNotification, timeAgo, NotifType } from '../services/notifications';
 import { COLORS, FONTS, SPACING, RADIUS, CARD_SHADOW } from '../constants/theme';
 
 const TYPE_COLORS: Record<NotifType, string> = {
@@ -107,7 +107,7 @@ interface Props {
 }
 
 export default function NotificationsScreen({ onClose }: Props) {
-  const [notifs, setNotifs] = useState<VaultNotification[]>(MOCK_NOTIFICATIONS);
+  const [notifs, setNotifs] = useState<VaultNotification[]>([]);
   const unreadCount = notifs.filter(n => !n.read).length;
 
   const markRead = (id: string) => {
