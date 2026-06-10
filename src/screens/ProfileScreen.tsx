@@ -437,7 +437,15 @@ export default function ProfileScreen({ onResetOnboarding }: ProfileProps = {}) 
         {activeTab === 'Wins' && (
           wins.length === 0 ? (
             <View style={[styles.noWins, CARD_SHADOW, { shadowOpacity: 0.06 }]}>
-              <Text style={styles.noWinsTxt}>Your first win is one move away.</Text>
+              <Text style={styles.noWinsGlyph}>◈</Text>
+              <Text style={styles.noWinsTitle}>No wins yet</Text>
+              <Text style={styles.noWinsTxt}>
+                Wins are earned when you act on wealth moves — paying down debt, investing, or opening a high-yield account.
+              </Text>
+              <View style={styles.noWinsHint}>
+                <Text style={styles.noWinsHintIcon}>🏦</Text>
+                <Text style={styles.noWinsHintTxt}>Connect your bank to unlock personalized moves based on your real accounts.</Text>
+              </View>
             </View>
           ) : (
             <View style={styles.wins}>
@@ -589,8 +597,22 @@ const styles = StyleSheet.create({
   lbFooter: { fontSize: FONTS.sizes.xs, color: COLORS.textMuted, textAlign: 'center', letterSpacing: FONTS.tracking.wide },
 
   wins: { gap: SPACING.md },
-  noWins: { backgroundColor: COLORS.card, borderRadius: RADIUS.lg, borderWidth: StyleSheet.hairlineWidth, borderColor: COLORS.border, padding: SPACING.xl, alignItems: 'center' },
-  noWinsTxt: { fontSize: FONTS.sizes.sm, color: COLORS.textDim },
+  noWins: { backgroundColor: COLORS.card, borderRadius: RADIUS.lg, borderWidth: StyleSheet.hairlineWidth, borderColor: COLORS.border, padding: SPACING.xl, alignItems: 'center', gap: SPACING.sm },
+  noWinsGlyph: { fontSize: 32, color: COLORS.gold, marginBottom: SPACING.xs },
+  noWinsTitle: { fontSize: FONTS.sizes.lg, fontWeight: FONTS.weights.semibold, color: COLORS.text, letterSpacing: FONTS.tracking.tight },
+  noWinsTxt: { fontSize: FONTS.sizes.sm, color: COLORS.textDim, textAlign: 'center', lineHeight: 21 },
+  noWinsHint: {
+    flexDirection: 'row', alignItems: 'flex-start', gap: SPACING.sm,
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.md,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: COLORS.border,
+    padding: SPACING.md,
+    marginTop: SPACING.xs,
+    alignSelf: 'stretch',
+  },
+  noWinsHintIcon: { fontSize: 16, marginTop: 1 },
+  noWinsHintTxt: { flex: 1, fontSize: FONTS.sizes.xs, color: COLORS.textDim, lineHeight: 18 },
 
   tabCard: { borderColor: COLORS.gold + '70', backgroundColor: COLORS.goldGlow },
   tabCardTxt: { color: COLORS.goldDark, fontWeight: FONTS.weights.bold },

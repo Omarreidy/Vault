@@ -4,11 +4,13 @@ import {
   Animated, TouchableOpacity,
 } from 'react-native';
 import { SafeAreaView } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import Svg, { Path, Defs, LinearGradient as SvgGradient, Stop, Line, Text as SvgText, Circle } from 'react-native-svg';
 import * as Haptics from 'expo-haptics';
 import { COLORS, FONTS, SPACING, RADIUS, CARD_SHADOW } from '../constants/theme';
 import { computeTrajectory, DEFAULT_TRAJECTORY_INPUTS, TrajectoryPoint } from '../services/trajectory';
 import FinancialTimeline from '../components/FinancialTimeline';
+import PlaidLinkScreen from './PlaidLinkScreen';
 
 const { width } = Dimensions.get('window');
 const CHART_H = 220;
@@ -207,8 +209,16 @@ const SCENARIOS = [
 
 export default function TrajectoryScreen() {
   const [activeTab, setActiveTab] = useState<'trajectory' | 'timeline'>('trajectory');
-  const [actionsCompleted] = useState(7);
+  const [actionsCompleted] = useState(0);
   const [activeScenario, setActiveScenario] = useState(0);
+  const [plaidConnected, setPlaidConnected] = useState(false);
+  const [showPlaid, setShowPlaid] = useState(false);
+
+  useEffect(() => {
+    AsyncStorage.getItem('@vault_plaid_connected').then(val => {
+      setPlaidConnected(val === 'true');
+    });
+  }, []);
 
   const handleTab = (tab: 'trajectory' | 'timeline') => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
@@ -284,6 +294,24 @@ export default function TrajectoryScreen() {
       >
         {/* spacer — header now outside scroll */}
         <View style={{ height: 0 }} />
+
+        {/* Sample projection banner — shown until bank connected */}
+        {!plaidConnected && (
+          <TouchableOpacity
+            style={[styles.sampleBanner, CARD_SHADOW, { shadowOpacity: 0.07 }]}
+            onPress={() => setShowPlaid(true)}
+            activeOpacity={0.82}
+          >
+            <View style={styles.sampleBannerLeft}>
+              <Text style={styles.sampleBannerIcon}>◇</Text>
+              <View>
+                <Text style={styles.sampleBannerTitle}>Sample projection</Text>
+                <Text style={styles.sampleBannerSub}>Based on a typical profile. Connect your bank to see your actual numbers.</Text>
+              </View>
+            </View>
+            <Text style={styles.sampleBannerCta}>Connect →</Text>
+          </TouchableOpacity>
+        )}
 
         {/* FI Hero card */}
         <Animated.View style={[styles.heroCard, CARD_SHADOW, { transform: [{ scale: headerScale }] }]}>
@@ -476,6 +504,16 @@ export default function TrajectoryScreen() {
         <View style={{ height: SPACING.xl }} />
       </ScrollView>
       )}
+
+      <PlaidLinkScreen
+        visible={showPlaid}
+        onClose={() => setShowPlaid(false)}
+        onSuccess={() => {
+          AsyncStorage.setItem('@vault_plaid_connected', 'true');
+          setPlaidConnected(true);
+          setShowPlaid(false);
+        }}
+      />
     </SafeAreaView>
   );
 }
@@ -484,6 +522,21 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: COLORS.background },
   scroll: { flex: 1 },
   content: { paddingHorizontal: SPACING.lg, paddingTop: SPACING.md, paddingBottom: SPACING.xl },
+
+  sampleBanner: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    backgroundColor: COLORS.card,
+    borderRadius: RADIUS.md,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: COLORS.gold + '40',
+    padding: SPACING.md,
+    marginBottom: SPACING.md,
+  },
+  sampleBannerLeft: { flexDirection: 'row', alignItems: 'flex-start', gap: SPACING.sm, flex: 1 },
+  sampleBannerIcon: { fontSize: 16, color: COLORS.gold, marginTop: 1 },
+  sampleBannerTitle: { fontSize: FONTS.sizes.sm, fontWeight: FONTS.weights.semibold, color: COLORS.text },
+  sampleBannerSub: { fontSize: FONTS.sizes.xs, color: COLORS.textDim, marginTop: 2, lineHeight: 17, flexShrink: 1 },
+  sampleBannerCta: { fontSize: FONTS.sizes.sm, color: COLORS.gold, fontWeight: FONTS.weights.semibold, marginLeft: SPACING.sm },
 
   topBar: { paddingHorizontal: SPACING.lg, paddingTop: SPACING.md, paddingBottom: SPACING.sm, gap: SPACING.md },
   header: { marginBottom: 0 },

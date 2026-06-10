@@ -183,8 +183,11 @@ export default function ScoreScreen() {
               activeOpacity={0.85}
             >
               <View style={styles.recapBannerLeft}>
-                <Text style={styles.recapBannerEye}>✦  MAY 2026</Text>
-                <Text style={styles.recapBannerTitle}>Your monthly recap is ready</Text>
+                <Text style={styles.recapBannerEye}>✦  WEALTH RECAP</Text>
+                {scoreSource === 'plaid'
+                  ? <Text style={styles.recapBannerTitle}>Your monthly recap is ready</Text>
+                  : <Text style={styles.recapBannerTitle}>Building your first recap…</Text>
+                }
               </View>
               <Text style={styles.recapBannerArrow}>→</Text>
             </TouchableOpacity>

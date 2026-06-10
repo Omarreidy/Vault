@@ -154,8 +154,16 @@ export default function NotificationsScreen({ onClose }: Props) {
         {notifs.length === 0 && (
           <View style={styles.empty}>
             <Text style={styles.emptyGlyph}>◇</Text>
-            <Text style={styles.emptyTitle}>All caught up</Text>
-            <Text style={styles.emptySub}>New notifications will appear here.</Text>
+            <Text style={styles.emptyTitle}>All quiet</Text>
+            <Text style={styles.emptySub}>
+              Notifications arrive when your score changes, a new wealth move is ready, or you hit a tier milestone.
+            </Text>
+            <View style={styles.emptyHint}>
+              <Text style={styles.emptyHintIcon}>🏦</Text>
+              <Text style={styles.emptyHintTxt}>
+                Connect your bank from the Home screen to unlock real-time alerts based on your actual accounts.
+              </Text>
+            </View>
           </View>
         )}
 
@@ -297,8 +305,19 @@ const styles = StyleSheet.create({
   dismissBtn: { padding: 4 },
   dismissIcon: { fontSize: 18, color: COLORS.textMuted, lineHeight: 20 },
 
-  empty: { flex: 1, alignItems: 'center', paddingTop: SPACING.xxl, gap: SPACING.md },
+  empty: { flex: 1, alignItems: 'center', paddingTop: SPACING.xxl, gap: SPACING.md, paddingHorizontal: SPACING.lg },
   emptyGlyph: { fontFamily: FONTS.display, fontSize: 36, color: COLORS.gold },
   emptyTitle: { fontSize: FONTS.sizes.xl, fontWeight: FONTS.weights.light, color: COLORS.text, fontFamily: FONTS.display },
-  emptySub: { fontSize: FONTS.sizes.sm, color: COLORS.textDim },
+  emptySub: { fontSize: FONTS.sizes.sm, color: COLORS.textDim, textAlign: 'center', lineHeight: 22 },
+  emptyHint: {
+    flexDirection: 'row', alignItems: 'flex-start', gap: SPACING.sm,
+    backgroundColor: COLORS.card,
+    borderRadius: RADIUS.md,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: COLORS.border,
+    padding: SPACING.md,
+    marginTop: SPACING.sm,
+  },
+  emptyHintIcon: { fontSize: 16, marginTop: 1 },
+  emptyHintTxt: { flex: 1, fontSize: FONTS.sizes.xs, color: COLORS.textDim, lineHeight: 18 },
 });
