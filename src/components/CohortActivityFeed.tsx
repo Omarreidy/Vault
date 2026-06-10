@@ -141,7 +141,7 @@ export default function CohortActivityFeed() {
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
-  list: { padding: SPACING.lg, gap: SPACING.md, paddingBottom: SPACING.xxl },
+  list: { padding: SPACING.lg, paddingBottom: 0 },
 
   formingNotice: {
     backgroundColor: COLORS.goldGlow,
@@ -160,18 +160,18 @@ const styles = StyleSheet.create({
   pulseStrip: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: SPACING.sm,
     backgroundColor: COLORS.goldGlow,
     borderRadius: RADIUS.full,
     paddingHorizontal: SPACING.md,
     paddingVertical: SPACING.sm,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: COLORS.gold + '30',
-    marginBottom: SPACING.sm,
+    marginBottom: SPACING.md,
   },
   liveDot: {
     width: 6, height: 6, borderRadius: 3,
     backgroundColor: COLORS.gold,
+    marginRight: SPACING.sm,
   },
   pulseText: {
     flex: 1,
@@ -187,39 +187,51 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: COLORS.border,
     padding: SPACING.md,
-    gap: SPACING.md,
+    marginBottom: SPACING.md,
+    overflow: 'hidden',
   },
   cardMe: {
     borderColor: COLORS.gold + '40',
     backgroundColor: COLORS.goldGlow,
   },
 
-  cardTop: { flexDirection: 'row', alignItems: 'flex-start', gap: SPACING.md },
+  cardTop: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: SPACING.md,
+  },
   avatar: {
     width: 38, height: 38, borderRadius: 19,
     backgroundColor: COLORS.sheetBg,
     alignItems: 'center', justifyContent: 'center',
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: COLORS.border,
+    marginRight: SPACING.sm,
+    flexShrink: 0,
   },
   avatarMe: {
     borderColor: COLORS.gold + '60',
     backgroundColor: COLORS.goldGlow,
   },
   initials: {
-    fontSize: FONTS.sizes.xs,
+    fontSize: 12,
     fontWeight: FONTS.weights.bold,
     color: COLORS.textDim,
-    letterSpacing: 0.5,
   },
   initialsMe: { color: COLORS.gold },
 
-  cardMeta: { flex: 1, gap: 3 },
-  cardMetaTop: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm },
+  cardMeta: { flex: 1 },
+  cardMetaTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 3,
+  },
   memberName: {
+    flex: 1,
     fontSize: FONTS.sizes.md,
     fontWeight: FONTS.weights.bold,
     color: COLORS.text,
+    marginRight: SPACING.sm,
   },
   xpBadge: {
     paddingHorizontal: 8, paddingVertical: 2,
@@ -227,6 +239,7 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.full,
     borderWidth: 1,
     borderColor: COLORS.gold + '40',
+    flexShrink: 0,
   },
   xpTxt: {
     fontSize: 9,
@@ -240,13 +253,14 @@ const styles = StyleSheet.create({
     letterSpacing: FONTS.tracking.wide,
   },
 
-  cardBody: { gap: 4 },
+  cardBody: { marginBottom: SPACING.md },
   headline: {
     fontSize: FONTS.sizes.md,
     fontWeight: FONTS.weights.semibold,
     color: COLORS.text,
     letterSpacing: FONTS.tracking.tight,
     lineHeight: 22,
+    marginBottom: 4,
   },
   sub: {
     fontSize: FONTS.sizes.sm,
@@ -256,28 +270,28 @@ const styles = StyleSheet.create({
 
   reactionsRow: {
     flexDirection: 'row',
-    gap: SPACING.sm,
     flexWrap: 'wrap',
-    paddingTop: SPACING.xs,
+    paddingTop: SPACING.sm,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: COLORS.border,
   },
   reactionBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: RADIUS.full,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: COLORS.border,
     backgroundColor: COLORS.background,
+    marginRight: SPACING.sm,
+    marginTop: SPACING.xs,
   },
   reactionBtnActive: {
     borderColor: COLORS.gold + '60',
     backgroundColor: COLORS.goldGlow,
   },
-  reactionEmoji: { fontSize: 11 },
+  reactionEmoji: { fontSize: 11, marginRight: 4 },
   reactionLabel: {
     fontSize: FONTS.sizes.xs,
     color: COLORS.textDim,
@@ -288,6 +302,7 @@ const styles = StyleSheet.create({
     fontSize: FONTS.sizes.xs,
     color: COLORS.textMuted,
     fontWeight: FONTS.weights.medium,
+    marginLeft: 4,
   },
   reactionCountActive: { color: COLORS.goldDark },
 });
