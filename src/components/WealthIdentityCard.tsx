@@ -6,7 +6,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { COLORS, FONTS, SPACING, RADIUS, TIERS } from '../constants/theme';
 import { TierName } from '../types';
-import { computeTrajectory, DEFAULT_TRAJECTORY_INPUTS } from '../services/trajectory';
+import { computeTrajectory, DEFAULT_TRAJECTORY_INPUTS, TrajectoryInputs } from '../services/trajectory';
+import { getTrajectoryInputs } from '../services/onboarding';
 
 const { width } = Dimensions.get('window');
 const CARD_W = Math.min(width - SPACING.lg * 2, 400);
@@ -85,10 +86,12 @@ export default function WealthIdentityCard({
   const theme = CARD_THEME[tier];
   const tierInfo = TIERS[tier];
 
-  const trajectory = computeTrajectory({
-    ...DEFAULT_TRAJECTORY_INPUTS,
-    actionsCompleted,
-  });
+  const [trajectoryInputs, setTrajectoryInputs] = React.useState<TrajectoryInputs>(DEFAULT_TRAJECTORY_INPUTS);
+  React.useEffect(() => {
+    getTrajectoryInputs().then(inputs => { if (inputs) setTrajectoryInputs(inputs); });
+  }, []);
+
+  const trajectory = computeTrajectory({ ...trajectoryInputs, actionsCompleted });
 
   const shimmerX = useRef(new Animated.Value(-CARD_W)).current;
   const cardScale = useRef(new Animated.Value(0.94)).current;

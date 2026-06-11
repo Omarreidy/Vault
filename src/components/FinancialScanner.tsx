@@ -7,7 +7,7 @@ import * as ImagePicker from 'expo-image-picker';
 import * as Haptics from 'expo-haptics';
 import { COLORS, FONTS, SPACING, RADIUS, CARD_SHADOW } from '../constants/theme';
 import {
-  getMockScanResult, scanDocument, ScanResult, ScanVerdict,
+  scanDocument, ScanResult, ScanVerdict,
   VERDICT_COLORS, VERDICT_ICONS,
 } from '../services/financialScanner';
 
@@ -77,7 +77,7 @@ const scanStyles = StyleSheet.create({
   imageWrap: { width: 260, height: 260, borderRadius: RADIUS.xl, overflow: 'hidden', position: 'relative' },
   image: { width: '100%', height: '100%' },
   border: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     borderWidth: 2,
     borderColor: COLORS.gold + '80',
     borderRadius: RADIUS.xl,
@@ -257,7 +257,7 @@ const resStyles = StyleSheet.create({
 
   thumbWrap: { alignSelf: 'center', borderRadius: RADIUS.lg, overflow: 'hidden', position: 'relative' },
   thumb: { width: 180, height: 140, borderRadius: RADIUS.lg },
-  thumbBorder: { ...StyleSheet.absoluteFillObject, borderWidth: 1.5, borderRadius: RADIUS.lg },
+  thumbBorder: { ...StyleSheet.absoluteFill, borderWidth: 1.5, borderRadius: RADIUS.lg },
 
   statsCard: {
     backgroundColor: COLORS.card,
@@ -421,14 +421,16 @@ interface Props {
 }
 
 export default function FinancialScanner({ visible, onClose }: Props) {
-  const [stage, setStage]       = useState<Stage>('idle');
-  const [imageUri, setImageUri] = useState<string | null>(null);
-  const [result, setResult]     = useState<ScanResult | null>(null);
+  const [stage, setStage]         = useState<Stage>('idle');
+  const [imageUri, setImageUri]   = useState<string | null>(null);
+  const [result, setResult]       = useState<ScanResult | null>(null);
+  const [scanError, setScanError] = useState(false);
 
   const reset = () => {
     setStage('idle');
     setImageUri(null);
     setResult(null);
+    setScanError(false);
   };
 
   const handlePickImage = async () => {
@@ -461,7 +463,7 @@ export default function FinancialScanner({ visible, onClose }: Props) {
             xp: Math.round((liveResult.score ?? 50) / 5),
           } as ScanResult);
         } catch {
-          setResult(getMockScanResult());
+          setScanError(true);
         }
         setStage('result');
       }
@@ -504,13 +506,29 @@ export default function FinancialScanner({ visible, onClose }: Props) {
               <ScanningOverlay imageUri={imageUri} />
             </View>
           )}
-          {stage === 'result' && result && imageUri && (
+          {stage === 'result' && result && imageUri && !scanError && (
             <ResultCard
               result={result}
               imageUri={imageUri}
-              onScanAgain={() => { setStage('idle'); setImageUri(null); setResult(null); }}
+              onScanAgain={() => { setStage('idle'); setImageUri(null); setResult(null); setScanError(false); }}
               onClose={handleClose}
             />
+          )}
+          {stage === 'result' && scanError && (
+            <View style={scanErrorStyles.wrap}>
+              <Text style={scanErrorStyles.glyph}>◉</Text>
+              <Text style={scanErrorStyles.title}>The scanner couldn't read this document.</Text>
+              <Text style={scanErrorStyles.body}>
+                Concierge only analyzes what it can see clearly. Try a higher-contrast image, or upload a bank statement, pay stub, or investment summary.
+              </Text>
+              <TouchableOpacity
+                style={scanErrorStyles.btn}
+                onPress={() => { setStage('idle'); setImageUri(null); setScanError(false); }}
+                activeOpacity={0.8}
+              >
+                <Text style={scanErrorStyles.btnTxt}>Try another document</Text>
+              </TouchableOpacity>
+            </View>
           )}
         </View>
       </View>
@@ -547,4 +565,47 @@ const rootStyles = StyleSheet.create({
   closeTxt: { fontSize: 12, color: COLORS.textDim, fontWeight: FONTS.weights.bold },
   content: { flex: 1 },
   scanningWrap: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+});
+
+const scanErrorStyles = StyleSheet.create({
+  wrap: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: SPACING.xl,
+    gap: SPACING.md,
+  },
+  glyph: {
+    fontSize: 36,
+    color: COLORS.textMuted,
+    marginBottom: SPACING.sm,
+  },
+  title: {
+    fontSize: FONTS.sizes.xl,
+    fontWeight: FONTS.weights.bold,
+    color: COLORS.text,
+    textAlign: 'center',
+    letterSpacing: -0.4,
+  },
+  body: {
+    fontSize: FONTS.sizes.md,
+    color: COLORS.textDim,
+    textAlign: 'center',
+    lineHeight: 22,
+  },
+  btn: {
+    marginTop: SPACING.lg,
+    paddingHorizontal: SPACING.xl,
+    paddingVertical: SPACING.md,
+    backgroundColor: COLORS.card,
+    borderRadius: RADIUS.full,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: COLORS.border,
+  },
+  btnTxt: {
+    fontSize: FONTS.sizes.sm,
+    fontWeight: FONTS.weights.bold,
+    color: COLORS.text,
+    letterSpacing: 0.3,
+  },
 });

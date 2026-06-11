@@ -5,8 +5,8 @@ import {
 import * as Haptics from 'expo-haptics';
 import { COLORS, FONTS, SPACING, RADIUS, CARD_SHADOW } from '../constants/theme';
 import {
-  TIMELINE, TIMELINE_TOTALS, TimelineEntry, TimelineMonth,
-  CATEGORY_COLORS, daysAgoLabel,
+  TimelineEntry, TimelineMonth,
+  CATEGORY_COLORS, daysAgoLabel, useTimeline, TIMELINE_TOTALS,
 } from '../services/financialTimeline';
 
 // ─── Stat pill at the top ───────────────────────────────────────────────────
@@ -255,26 +255,79 @@ function SummaryRibbon() {
   );
 }
 
+// ─── Greene empty state ───────────────────────────────────────────────────────
+
+function EmptyBiography() {
+  const opacity = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.timing(opacity, { toValue: 1, duration: 600, useNativeDriver: false }).start();
+  }, []);
+
+  return (
+    <Animated.View style={[styles.emptyWrap, { opacity }]}>
+      <Text style={styles.emptyGlyph}>◆</Text>
+      <Text style={styles.emptyTitle}>Your biography is blank.</Text>
+      <Text style={styles.emptySub}>
+        You cannot win a war on a false map.{'\n'}
+        Take your first wealth move to begin building a real record.
+      </Text>
+      <View style={styles.emptyHint}>
+        <Text style={styles.emptyHintText}>
+          Every master starts here. Every entry is real.
+        </Text>
+      </View>
+    </Animated.View>
+  );
+}
+
 // ─── Root export ─────────────────────────────────────────────────────────────
 
 export default function FinancialTimeline() {
+  const { months, totals, loading } = useTimeline();
+  const hasOnlyJoined = months.length === 1 && months[0].entries.length === 1 && months[0].entries[0].type === 'joined';
+  const showEmpty = !loading && (months.length === 0 || hasOnlyJoined);
+
   return (
     <ScrollView
       style={styles.root}
       contentContainerStyle={styles.content}
       showsVerticalScrollIndicator={false}
     >
-      <SummaryRibbon />
+      {!showEmpty && (
+        <>
+          <View style={[styles.ribbon, CARD_SHADOW]}>
+            <View style={styles.ribbonAccent} />
+            <View style={styles.ribbonBody}>
+              <View style={styles.ribbonLeft}>
+                <Text style={styles.ribbonEye}>YOUR FINANCIAL BIOGRAPHY</Text>
+                <Text style={styles.ribbonTitle}>
+                  {totals.totalMoves} moves · {totals.monthsActive} months
+                </Text>
+                <Text style={styles.ribbonSub}>
+                  +${totals.totalNetWorthGain.toLocaleString()} net worth since joining
+                </Text>
+              </View>
+              <View style={styles.ribbonXP}>
+                <Text style={styles.ribbonXPVal}>{totals.totalXp}</Text>
+                <Text style={styles.ribbonXPLbl}>XP TOTAL</Text>
+              </View>
+            </View>
+            <View style={styles.pillRow}>
+              <StatPill label="MOVES"   value={String(totals.totalMoves)}   delay={100} />
+              <StatPill label="MONTHS"  value={String(totals.monthsActive)} delay={180} />
+              <StatPill label="NET GAIN" value={`+$${(totals.totalNetWorthGain / 1000).toFixed(1)}K`} delay={260} />
+              <StatPill label="XP"      value={String(totals.totalXp)}      delay={340} />
+            </View>
+          </View>
 
-      <View style={styles.nudgeBanner}>
-        <Text style={styles.nudgeText}>
-          ◆  You're 2 moves away from your best month ever
-        </Text>
-      </View>
+          {months.map((month, i) => (
+            <MonthBlock key={month.id} month={month} monthIndex={i} />
+          ))}
+        </>
+      )}
 
-      {TIMELINE.map((month, i) => (
-        <MonthBlock key={month.id} month={month} monthIndex={i} />
-      ))}
+      {showEmpty && <EmptyBiography />}
 
       <View style={{ height: SPACING.xxl }} />
     </ScrollView>
@@ -450,5 +503,49 @@ const styles = StyleSheet.create({
     fontSize: FONTS.sizes.sm,
     color: COLORS.goldDark,
     lineHeight: 18,
+  },
+
+  // Empty biography state
+  emptyWrap: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingTop: 80,
+    paddingHorizontal: SPACING.xl,
+    gap: SPACING.md,
+  },
+  emptyGlyph: {
+    fontSize: 32,
+    color: COLORS.gold,
+    marginBottom: SPACING.sm,
+  },
+  emptyTitle: {
+    fontSize: FONTS.sizes.xl,
+    fontWeight: FONTS.weights.bold,
+    color: COLORS.text,
+    textAlign: 'center',
+    letterSpacing: -0.5,
+  },
+  emptySub: {
+    fontSize: FONTS.sizes.md,
+    color: COLORS.textDim,
+    textAlign: 'center',
+    lineHeight: 22,
+  },
+  emptyHint: {
+    marginTop: SPACING.lg,
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.sm,
+    backgroundColor: COLORS.goldGlow,
+    borderRadius: RADIUS.full,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: COLORS.gold + '40',
+  },
+  emptyHintText: {
+    fontSize: FONTS.sizes.xs,
+    color: COLORS.goldDark,
+    fontWeight: FONTS.weights.semibold,
+    letterSpacing: 0.3,
+    textAlign: 'center',
   },
 });

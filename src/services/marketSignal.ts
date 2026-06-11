@@ -89,6 +89,22 @@ export const NEWS_CATEGORY_COLORS: Record<NewsCategory, string> = {
   CRYPTO: '#9A7EB8', EARNINGS: '#7EB8A4', MACRO: '#C9A96E', LEGAL: '#C97A6E',
 };
 
+export interface VolumeSpikeStock {
+  ticker: string;
+  price: string;
+  dayChange: number;
+  multiplier: number;
+  reason: string;
+}
+
+export interface VaultAngle {
+  tag: string;
+  actionable: boolean;
+  headline: string;
+  body: string;
+  moveSuggestion?: string;
+}
+
 export function timeAgoNews(minutes: number): string {
   if (minutes < 60)   return `${minutes}m ago`;
   if (minutes < 1440) return `${Math.floor(minutes / 60)}h ago`;

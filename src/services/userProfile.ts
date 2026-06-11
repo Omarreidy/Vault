@@ -9,6 +9,7 @@ export interface RealProfile {
   tier: TierName;
   score: VelocityScore | null;
   joinedAt: Date | null;
+  isPremium: boolean;
   isLoading: boolean;
 }
 
@@ -24,6 +25,7 @@ export function useRealProfile(): RealProfile {
     tier: 'BRONZE',
     score: null,
     joinedAt: null,
+    isPremium: false,
     isLoading: true,
   });
 
@@ -39,15 +41,16 @@ export function useRealProfile(): RealProfile {
 
       const { data: profileData } = await supabase
         .from('profiles')
-        .select('name, tier, score')
+        .select('name, tier, score, is_premium')
         .eq('id', user.id)
         .single();
 
-      const name = profileData?.name ?? email.split('@')[0] ?? '';
+      const name       = profileData?.name ?? email.split('@')[0] ?? '';
       const profileTier = (profileData?.tier as TierName) ?? 'BRONZE';
+      const isPremium  = profileData?.is_premium === true;
 
       if (cancelled) return;
-      setProfile(prev => ({ ...prev, name, email, tier: profileTier, joinedAt, isLoading: false }));
+      setProfile(prev => ({ ...prev, name, email, tier: profileTier, isPremium, joinedAt, isLoading: false }));
 
       const liveScore = await fetchLiveScore();
       if (cancelled) return;

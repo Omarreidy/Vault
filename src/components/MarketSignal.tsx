@@ -8,7 +8,7 @@ import {
   FALLBACK_SNAPSHOT, fetchMarketData, fetchMarketNews,
   Mover, NewsItem,
   SENTIMENT_COLORS, NEWS_CATEGORY_COLORS, timeAgoNews,
-  MarketSnapshot, LiveMarketData,
+  MarketSnapshot, LiveMarketData, VolumeSpikeStock, VaultAngle,
 } from '../services/marketSignal';
 
 // ─── Market snapshot header ───────────────────────────────────────────────────

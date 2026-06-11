@@ -7,7 +7,7 @@ import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
   OnboardingAnswers, calculateOnboardingScore,
-  markOnboardingComplete, OnboardingResult,
+  markOnboardingComplete, storeOnboardingAnswers, OnboardingResult,
 } from '../services/onboarding';
 import TierBadge from '../components/TierBadge';
 import { COLORS, FONTS, SPACING, RADIUS, CARD_SHADOW, CARD_SHADOW_STRONG } from '../constants/theme';
@@ -163,6 +163,8 @@ export default function OnboardingScreen({ onComplete }: Props) {
 
   const handleComplete = async () => {
     if (!result) return;
+    const answers: OnboardingAnswers = { name: name.trim(), age, income, goal };
+    await storeOnboardingAnswers(answers);
     await markOnboardingComplete({ ...result, name: name.trim() });
     onComplete();
   };
@@ -300,9 +302,9 @@ export default function OnboardingScreen({ onComplete }: Props) {
                 {scoreReady && (
                   <Animated.View style={styles.revealBelow}>
                     <Text style={styles.revealPercentile}>
-                      You're building wealth faster than{' '}
-                      <Text style={styles.revealPct}>{result.percentile}%</Text>
-                      {' '}of people your age
+                      This is your starting point.{' '}
+                      <Text style={styles.revealPct}>Connect your accounts</Text>
+                      {' '}to unlock your real score.
                     </Text>
 
                     <View style={styles.revealTierWrap}>

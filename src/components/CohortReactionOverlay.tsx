@@ -254,10 +254,10 @@ function ReactionButton({ reaction, onPress, disabled }: {
 const styles = StyleSheet.create({
   root: { flex: 1, justifyContent: 'flex-end' },
   backdrop: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(0,0,0,0.65)',
   },
-  backdropTap: { ...StyleSheet.absoluteFillObject },
+  backdropTap: { ...StyleSheet.absoluteFill },
 
   sheet: {
     backgroundColor: COLORS.surface,

@@ -1,5 +1,6 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, SafeAreaView, Animated, TouchableOpacity, Modal, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
+import { getStreak } from '../services/streak';
 import * as Haptics from 'expo-haptics';
 import { GOALS, Goal, getGoalProgress, getMonthsToGoal } from '../services/goals';
 import { ACHIEVEMENTS } from '../services/achievements';
@@ -39,7 +40,8 @@ export default function ScoreScreen() {
   const EMPTY_SCORE = { total: 0, savings: 0, investment: 0, debt: 0, spending: 0, weeklyChange: 0, percentile: 0, tier: 'BRONZE' as TierName, tierProgress: 0 };
   const score      = liveScore ?? EMPTY_SCORE;
   const tier       = (liveScore?.tier ?? 'BRONZE') as TierName;
-  const streakDays = 0;
+  const [streakDays, setStreakDays] = useState(0);
+  useEffect(() => { getStreak().then(setStreakDays); }, []);
   const nextTier = getNextTier(tier);
   const pointsToNext = getPointsToNextTier(score.total);
   const [activeTab, setActiveTab] = useState<Tab>('Score');

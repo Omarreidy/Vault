@@ -8,7 +8,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import Svg, { Path, Defs, LinearGradient as SvgGradient, Stop, Line, Text as SvgText, Circle } from 'react-native-svg';
 import * as Haptics from 'expo-haptics';
 import { COLORS, FONTS, SPACING, RADIUS, CARD_SHADOW } from '../constants/theme';
-import { computeTrajectory, DEFAULT_TRAJECTORY_INPUTS, TrajectoryPoint } from '../services/trajectory';
+import { computeTrajectory, DEFAULT_TRAJECTORY_INPUTS, TrajectoryInputs, TrajectoryPoint } from '../services/trajectory';
+import { getTrajectoryInputs } from '../services/onboarding';
 import FinancialTimeline from '../components/FinancialTimeline';
 import PlaidLinkScreen from './PlaidLinkScreen';
 
@@ -213,10 +214,14 @@ export default function TrajectoryScreen() {
   const [activeScenario, setActiveScenario] = useState(0);
   const [plaidConnected, setPlaidConnected] = useState(false);
   const [showPlaid, setShowPlaid] = useState(false);
+  const [trajectoryInputs, setTrajectoryInputs] = useState<TrajectoryInputs>(DEFAULT_TRAJECTORY_INPUTS);
 
   useEffect(() => {
     AsyncStorage.getItem('@vault_plaid_connected').then(val => {
       setPlaidConnected(val === 'true');
+    });
+    getTrajectoryInputs().then(inputs => {
+      if (inputs) setTrajectoryInputs(inputs);
     });
   }, []);
 
@@ -225,7 +230,7 @@ export default function TrajectoryScreen() {
     setActiveTab(tab);
   };
 
-  const baseInputs = { ...DEFAULT_TRAJECTORY_INPUTS, actionsCompleted };
+  const baseInputs = { ...trajectoryInputs, actionsCompleted };
 
   const scenarioInputs = {
     ...baseInputs,
@@ -407,7 +412,7 @@ export default function TrajectoryScreen() {
             </View>
           </View>
           <Text style={styles.chartNote}>
-            Assumes {(DEFAULT_TRAJECTORY_INPUTS.annualReturn * 100).toFixed(0)}% avg annual return · 4% withdrawal rule
+            Assumes {(trajectoryInputs.annualReturn * 100).toFixed(0)}% avg annual return · 4% withdrawal rule
           </Text>
         </View>
 

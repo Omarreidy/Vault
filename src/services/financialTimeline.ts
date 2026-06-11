@@ -1,3 +1,6 @@
+import { useState, useEffect } from 'react';
+import { supabase } from './supabase';
+
 export type TimelineCategory = 'savings' | 'investing' | 'debt' | 'income' | 'milestone';
 export type TimelineEntryType = 'move' | 'milestone' | 'joined' | 'streak' | 'badge' | 'net_worth';
 
@@ -246,4 +249,81 @@ export function daysAgoLabel(days: number): string {
   if (days < 7)   return `${days}d ago`;
   if (days < 30)  return `${Math.floor(days / 7)}w ago`;
   return `${Math.floor(days / 30)}mo ago`;
+}
+
+export interface TimelineState {
+  months: TimelineMonth[];
+  totals: typeof TIMELINE_TOTALS;
+  loading: boolean;
+  hasRealData: boolean;
+}
+
+// Returns real user activity from Supabase.
+// Falls back to an empty biography for new users — the TIMELINE constant
+// is kept for reference but never shown unless the user has real activity.
+export function useTimeline(): TimelineState {
+  const [state, setState] = useState<TimelineState>({
+    months: [],
+    totals: { totalMoves: 0, totalXp: 0, totalNetWorthGain: 0, monthsActive: 0 },
+    loading: true,
+    hasRealData: false,
+  });
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function load() {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user || cancelled) {
+          setState(s => ({ ...s, loading: false }));
+          return;
+        }
+
+        // Build a "joined" entry from real auth timestamp
+        const joinedAt = user.created_at ? new Date(user.created_at) : new Date();
+        const daysAgo = Math.floor((Date.now() - joinedAt.getTime()) / 86_400_000);
+        const monthLabel = joinedAt
+          .toLocaleString('default', { month: 'short', year: 'numeric' })
+          .toUpperCase();
+
+        const joinedEntry: TimelineEntry = {
+          id: 'real-join',
+          type: 'joined',
+          category: 'milestone',
+          title: 'Joined VAULT',
+          sub: 'Your financial biography starts here.',
+          impact: 'The master begins with nothing but attention. Every move from here builds your record.',
+          icon: '✦',
+          daysAgo,
+        };
+
+        const joinedMonth: TimelineMonth = {
+          id: 'real-joined',
+          label: monthLabel,
+          movesCount: 0,
+          xpEarned: 0,
+          netWorthGain: 0,
+          grade: 'C',
+          entries: [joinedEntry],
+        };
+
+        if (!cancelled) {
+          setState({
+            months: [joinedMonth],
+            totals: { totalMoves: 0, totalXp: 0, totalNetWorthGain: 0, monthsActive: 1 },
+            loading: false,
+            hasRealData: true,
+          });
+        }
+      } catch {
+        if (!cancelled) setState(s => ({ ...s, loading: false }));
+      }
+    }
+
+    load();
+    return () => { cancelled = true; };
+  }, []);
+
+  return state;
 }

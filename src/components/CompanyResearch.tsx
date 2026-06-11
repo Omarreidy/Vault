@@ -90,7 +90,7 @@ function ReportView({ report, onBack }: { report: CompanyReport; onBack: () => v
               {[
                 { label: 'MARKET CAP', val: report.marketCap ?? 'N/A' },
                 { label: 'REVENUE', val: (report.revenue ?? 'N/A').split(' ')[0] },
-                { label: 'NET MARGIN', val: report.netMargin != null ? `${report.netMargin}%` : report.profitMargin ?? 'N/A' },
+                { label: 'NET MARGIN', val: report.netMargin != null ? `${report.netMargin}%` : 'N/A' },
                 { label: 'P/E', val: report.peRatio ?? 'N/A' },
               ].map(s => (
                 <View key={s.label} style={rStyles.stat}>
@@ -181,7 +181,7 @@ function ReportView({ report, onBack }: { report: CompanyReport; onBack: () => v
                 { label: 'ANNUAL REVENUE', val: report.revenue ?? 'N/A' },
                 { label: 'REVENUE GROWTH', val: report.revenueGrowth != null ? `${report.revenueGrowth > 0 ? '+' : ''}${report.revenueGrowth}% YoY` : 'N/A', color: (report.revenueGrowth ?? 0) >= 0 ? '#7EB8A4' : '#C97A6E' },
                 { label: 'NET INCOME', val: report.netIncome ?? 'N/A' },
-                { label: 'NET MARGIN', val: report.netMargin != null ? `${report.netMargin}%` : report.profitMargin ?? 'N/A' },
+                { label: 'NET MARGIN', val: report.netMargin != null ? `${report.netMargin}%` : 'N/A' },
                 { label: 'OPERATING EXP.', val: report.operatingExpenses ?? 'N/A' },
                 { label: 'CASH ON HAND', val: report.cashOnHand ?? 'N/A' },
                 { label: 'P/E RATIO', val: report.peRatio ?? 'N/A' },
@@ -742,8 +742,7 @@ const styles = StyleSheet.create({
     color: COLORS.text,
     paddingVertical: 13,
     letterSpacing: 0.3,
-    // @ts-ignore
-    outlineStyle: 'none',
+    outlineStyle: 'none' as any,
   },
   searchBtn: {
     paddingHorizontal: SPACING.lg,

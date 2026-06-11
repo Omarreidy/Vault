@@ -132,8 +132,8 @@ function LessonSheet({
 
 const sheetStyles = StyleSheet.create({
   root: { flex: 1, justifyContent: 'flex-end' },
-  backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.55)' },
-  backdropTap: { ...StyleSheet.absoluteFillObject },
+  backdrop: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(0,0,0,0.55)' },
+  backdropTap: { ...StyleSheet.absoluteFill },
   sheet: {
     backgroundColor: COLORS.surface,
     borderTopLeftRadius: 24, borderTopRightRadius: 24,

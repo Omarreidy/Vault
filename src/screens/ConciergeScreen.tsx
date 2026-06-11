@@ -6,10 +6,28 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Message } from '../types';
 import { askConcierge, ConversationMessage } from '../services/concierge';
+import { useRealProfile } from '../services/userProfile';
 import PlaidLinkScreen from './PlaidLinkScreen';
+import UpgradeScreen from './UpgradeScreen';
 import { COLORS, FONTS, SPACING, RADIUS, CARD_SHADOW } from '../constants/theme';
 
-const AI_CONSENT_KEY = '@vault_ai_consent_v1';
+const AI_CONSENT_KEY    = '@vault_ai_consent_v1';
+const FREE_MSG_LIMIT    = 3;
+
+function todayKey(): string {
+  return `@vault_concierge_count_${new Date().toISOString().slice(0, 10)}`;
+}
+
+async function getDailyCount(): Promise<number> {
+  const val = await AsyncStorage.getItem(todayKey());
+  return parseInt(val ?? '0', 10);
+}
+
+async function incrementDailyCount(): Promise<number> {
+  const next = (await getDailyCount()) + 1;
+  await AsyncStorage.setItem(todayKey(), String(next));
+  return next;
+}
 
 const STARTERS = [
   { q: 'Am I saving enough?', icon: '◈' },
@@ -21,56 +39,56 @@ const STARTERS = [
 interface Props { onClose?: () => void; }
 
 export default function ConciergeScreen({ onClose }: Props = {}) {
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [input, setInput] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [consentGiven, setConsentGiven] = useState<boolean | null>(null);
-  const [showConsent, setShowConsent] = useState(false);
+  const { isPremium } = useRealProfile();
+
+  const [messages, setMessages]             = useState<Message[]>([]);
+  const [input, setInput]                   = useState('');
+  const [loading, setLoading]               = useState(false);
+  const [consentGiven, setConsentGiven]     = useState<boolean | null>(null);
+  const [showConsent, setShowConsent]       = useState(false);
   const [pendingMessage, setPendingMessage] = useState('');
   const [plaidConnected, setPlaidConnected] = useState(false);
-  const [showPlaid, setShowPlaid] = useState(false);
-  const listRef = useRef<FlatList>(null);
+  const [showPlaid, setShowPlaid]           = useState(false);
+  const [showUpgrade, setShowUpgrade]       = useState(false);
+  const [dailyCount, setDailyCount]         = useState(0);
+  const listRef   = useRef<FlatList>(null);
   const sendScale = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
-    AsyncStorage.getItem(AI_CONSENT_KEY).then(val => {
-      setConsentGiven(val === 'true');
-    });
-    AsyncStorage.getItem('@vault_plaid_connected').then(val => {
-      setPlaidConnected(val === 'true');
-    });
+    AsyncStorage.getItem(AI_CONSENT_KEY).then(val => setConsentGiven(val === 'true'));
+    AsyncStorage.getItem('@vault_plaid_connected').then(val => setPlaidConnected(val === 'true'));
+    getDailyCount().then(setDailyCount);
   }, []);
+
+  const isAtLimit = !isPremium && dailyCount >= FREE_MSG_LIMIT;
 
   const handleConsent = async (accepted: boolean) => {
     setShowConsent(false);
     if (accepted) {
       await AsyncStorage.setItem(AI_CONSENT_KEY, 'true');
       setConsentGiven(true);
-      if (pendingMessage) {
-        sendMessage(pendingMessage);
-        setPendingMessage('');
-      }
+      if (pendingMessage) { sendMessage(pendingMessage); setPendingMessage(''); }
     } else {
       setPendingMessage('');
     }
   };
 
-  const send = useCallback(async (text: string) => {
-    if (!text.trim() || loading) return;
-    if (!consentGiven) {
-      setPendingMessage(text.trim());
-      setShowConsent(true);
-      return;
-    }
-    sendMessage(text);
-  }, [messages, loading, consentGiven]);
-
   const sendMessage = async (text: string) => {
     if (!text.trim()) return;
+
+    // Paywall check
+    if (!isPremium && dailyCount >= FREE_MSG_LIMIT) {
+      setShowUpgrade(true);
+      return;
+    }
+
     const userMsg: Message = { id: Date.now().toString(), role: 'user', content: text.trim(), timestamp: new Date() };
     setMessages(prev => [...prev, userMsg]);
     setInput('');
     setLoading(true);
+
+    const count = await incrementDailyCount();
+    setDailyCount(count);
 
     const aId = (Date.now() + 1).toString();
     setMessages(prev => [...prev, { id: aId, role: 'assistant', content: '', timestamp: new Date() }]);
@@ -89,12 +107,20 @@ export default function ConciergeScreen({ onClose }: Props = {}) {
     }
   };
 
+  const send = useCallback(async (text: string) => {
+    if (!text.trim() || loading) return;
+    if (!consentGiven) { setPendingMessage(text.trim()); setShowConsent(true); return; }
+    sendMessage(text);
+  }, [messages, loading, consentGiven, isPremium, dailyCount]);
+
   const onSend = () => {
     Animated.sequence([
       Animated.timing(sendScale, { toValue: 0.88, duration: 80, useNativeDriver: true }),
       Animated.timing(sendScale, { toValue: 1, duration: 80, useNativeDriver: true }),
     ]).start(() => send(input));
   };
+
+  const msgsLeft = Math.max(0, FREE_MSG_LIMIT - dailyCount);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -104,6 +130,11 @@ export default function ConciergeScreen({ onClose }: Props = {}) {
           <Text style={styles.headerTitle}>Concierge</Text>
           <Text style={styles.headerSub}>VAULT PRIVATE ADVISORY</Text>
         </View>
+        {!isPremium && (
+          <TouchableOpacity style={styles.upgradeChip} onPress={() => setShowUpgrade(true)} activeOpacity={0.8}>
+            <Text style={styles.upgradeChipTxt}>✦ UNLOCK</Text>
+          </TouchableOpacity>
+        )}
         {onClose && (
           <TouchableOpacity onPress={onClose} style={styles.closeBtn} activeOpacity={0.7}>
             <Text style={styles.closeTxt}>✕</Text>
@@ -111,6 +142,22 @@ export default function ConciergeScreen({ onClose }: Props = {}) {
         )}
       </View>
       <View style={styles.divider} />
+
+      {/* Free tier message counter */}
+      {!isPremium && (
+        <View style={styles.limitBar}>
+          <Text style={styles.limitTxt}>
+            {isAtLimit
+              ? 'Daily limit reached — upgrade for unlimited'
+              : `${msgsLeft} free message${msgsLeft === 1 ? '' : 's'} remaining today`}
+          </Text>
+          {isAtLimit && (
+            <TouchableOpacity onPress={() => setShowUpgrade(true)} activeOpacity={0.8}>
+              <Text style={styles.limitCta}>Upgrade →</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      )}
 
       <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={90}>
         {messages.length === 0 ? (
@@ -138,10 +185,16 @@ export default function ConciergeScreen({ onClose }: Props = {}) {
 
             <View style={styles.starters}>
               {STARTERS.map(({ q, icon }) => (
-                <TouchableOpacity key={q} style={[styles.starter, CARD_SHADOW, { shadowOpacity: 0.07, shadowRadius: 12 }]} onPress={() => send(q)} activeOpacity={0.75}>
+                <TouchableOpacity
+                  key={q}
+                  style={[styles.starter, CARD_SHADOW, { shadowOpacity: 0.07, shadowRadius: 12 },
+                    isAtLimit && styles.starterDisabled]}
+                  onPress={() => isAtLimit ? setShowUpgrade(true) : send(q)}
+                  activeOpacity={0.75}
+                >
                   <Text style={styles.starterIcon}>{icon}</Text>
-                  <Text style={styles.starterTxt}>{q}</Text>
-                  <Text style={styles.starterArrow}>→</Text>
+                  <Text style={[styles.starterTxt, isAtLimit && styles.starterTxtDim]}>{q}</Text>
+                  <Text style={styles.starterArrow}>{isAtLimit ? '🔒' : '→'}</Text>
                 </TouchableOpacity>
               ))}
             </View>
@@ -172,22 +225,26 @@ export default function ConciergeScreen({ onClose }: Props = {}) {
 
         <View style={styles.inputRow}>
           <TextInput
-            style={styles.input}
+            style={[styles.input, isAtLimit && styles.inputDisabled]}
             value={input}
             onChangeText={setInput}
-            placeholder="Ask your concierge..."
+            placeholder={isAtLimit ? 'Upgrade for unlimited messages…' : 'Ask your concierge...'}
             placeholderTextColor={COLORS.textMuted}
             multiline
             maxLength={500}
+            editable={!isAtLimit}
+            onFocus={() => { if (isAtLimit) setShowUpgrade(true); }}
           />
           <Animated.View style={{ transform: [{ scale: sendScale }] }}>
             <TouchableOpacity
-              style={[styles.sendBtn, { backgroundColor: input.trim() && !loading ? COLORS.gold : COLORS.border }]}
-              onPress={onSend}
-              disabled={!input.trim() || loading}
+              style={[styles.sendBtn, { backgroundColor: input.trim() && !loading && !isAtLimit ? COLORS.gold : COLORS.border }]}
+              onPress={isAtLimit ? () => setShowUpgrade(true) : onSend}
+              disabled={(!input.trim() || loading) && !isAtLimit}
               activeOpacity={0.8}
             >
-              <Text style={[styles.sendIcon, { color: input.trim() && !loading ? '#fff' : COLORS.textMuted }]}>↑</Text>
+              <Text style={[styles.sendIcon, { color: input.trim() && !loading && !isAtLimit ? '#fff' : COLORS.textMuted }]}>
+                {isAtLimit ? '🔒' : '↑'}
+              </Text>
             </TouchableOpacity>
           </Animated.View>
         </View>
@@ -201,6 +258,12 @@ export default function ConciergeScreen({ onClose }: Props = {}) {
           setPlaidConnected(true);
           setShowPlaid(false);
         }}
+      />
+
+      <UpgradeScreen
+        visible={showUpgrade}
+        onClose={() => setShowUpgrade(false)}
+        onSuccess={() => setShowUpgrade(false)}
       />
 
       <Modal visible={showConsent} transparent animationType="fade">
@@ -266,6 +329,14 @@ const styles = StyleSheet.create({
   },
   headerTitle: { fontSize: FONTS.sizes.lg, fontWeight: FONTS.weights.semibold, color: COLORS.text, letterSpacing: FONTS.tracking.tight },
   headerSub: { fontSize: FONTS.sizes.xs, color: COLORS.textMuted, letterSpacing: FONTS.tracking.widest },
+  upgradeChip: {
+    paddingHorizontal: 10, paddingVertical: 5,
+    backgroundColor: COLORS.goldGlow,
+    borderRadius: RADIUS.full,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: COLORS.gold + '60',
+  },
+  upgradeChipTxt: { fontSize: 9, fontWeight: FONTS.weights.bold, color: COLORS.gold, letterSpacing: 1.2 },
   closeBtn: {
     width: 32, height: 32, borderRadius: 16,
     backgroundColor: COLORS.surface,
@@ -273,6 +344,16 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth, borderColor: COLORS.border,
   },
   closeTxt: { fontSize: 12, color: COLORS.textDim },
+
+  limitBar: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: SPACING.lg, paddingVertical: 8,
+    backgroundColor: COLORS.surface,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: COLORS.border,
+  },
+  limitTxt: { fontSize: FONTS.sizes.xs, color: COLORS.textMuted, letterSpacing: FONTS.tracking.wide },
+  limitCta: { fontSize: FONTS.sizes.xs, color: COLORS.gold, fontWeight: FONTS.weights.semibold, letterSpacing: FONTS.tracking.wide },
 
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: SPACING.xl, gap: SPACING.lg },
   emptyGlyph: { fontFamily: FONTS.display, fontSize: 44, color: COLORS.gold },
@@ -303,17 +384,15 @@ const styles = StyleSheet.create({
     borderColor: COLORS.border,
     padding: SPACING.md,
   },
+  starterDisabled: { opacity: 0.5 },
   starterIcon: { fontFamily: FONTS.display, fontSize: 16, color: COLORS.gold, width: 20 },
   starterTxt: { flex: 1, fontSize: FONTS.sizes.sm, color: COLORS.text },
+  starterTxtDim: { color: COLORS.textMuted },
   starterArrow: { fontSize: FONTS.sizes.sm, color: COLORS.textMuted },
 
   list: { padding: SPACING.md, gap: SPACING.sm, paddingBottom: SPACING.lg },
   bubble: { maxWidth: '84%', paddingHorizontal: SPACING.md, paddingVertical: 12, borderRadius: RADIUS.lg },
-  userBubble: {
-    alignSelf: 'flex-end',
-    backgroundColor: COLORS.text,
-    borderBottomRightRadius: 4,
-  },
+  userBubble: { alignSelf: 'flex-end', backgroundColor: COLORS.text, borderBottomRightRadius: 4 },
   asstBubble: {
     alignSelf: 'flex-start',
     backgroundColor: COLORS.card,
@@ -339,6 +418,7 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth, borderColor: COLORS.borderMid,
     padding: SPACING.md, color: COLORS.text, fontSize: FONTS.sizes.md, maxHeight: 120, lineHeight: 22,
   },
+  inputDisabled: { opacity: 0.5 },
   sendBtn: { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center' },
   sendIcon: { fontSize: 18, fontWeight: FONTS.weights.bold },
 

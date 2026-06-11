@@ -26,6 +26,7 @@ import PlaidNudge from '../components/PlaidNudge';
 import PlaidLinkScreen from './PlaidLinkScreen';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../services/supabase';
+import { updateStreak } from '../services/streak';
 
 import { COLORS, FONTS, SPACING, RADIUS, CARD_SHADOW } from '../constants/theme';
 
@@ -158,9 +159,11 @@ export default function HomeScreen() {
 
   const [memberCount, setMemberCount] = useState<number | null>(null);
   const [feed, setFeed] = useState<FeedItem[]>(DEFAULT_FEED);
+  const [streakDays, setStreakDays] = useState(0);
 
   // Check if Plaid already connected + whether to show nudge + get member count
   useEffect(() => {
+    updateStreak().then(setStreakDays);
     AsyncStorage.getItem('@vault_plaid_connected').then(val => {
       if (val === 'true') setPlaidConnected(true);
     });
@@ -425,7 +428,7 @@ export default function HomeScreen() {
             ListFooterComponent={
               <View style={{ height: itemHeight, width: '100%' }}>
                 <EndOfFeedCard
-                  streakDays={0}
+                  streakDays={streakDays}
                   onBackToTop={() => flatListRef.current?.scrollToOffset({ offset: 0, animated: true })}
                 />
               </View>
