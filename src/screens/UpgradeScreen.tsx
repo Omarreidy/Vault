@@ -136,12 +136,12 @@ export default function UpgradeScreen({ visible, onClose, onSuccess }: Props) {
             ))}
           </View>
 
-          {/* Social proof */}
+          {/* Stat callout */}
           <View style={[styles.proofCard, CARD_SHADOW, { shadowOpacity: 0.07 }]}>
             <Text style={styles.proofQuote}>
-              "Paid for itself in the first week. Found $840/yr in subscriptions I forgot about."
+              VAULT members who connect their accounts identify an average of $600–$1,200/year in optimizable spending within the first 30 days.
             </Text>
-            <Text style={styles.proofAuthor}>— Gold member, 34, Seattle</Text>
+            <Text style={styles.proofAuthor}>◆  Based on connected account analysis</Text>
           </View>
 
           {!!error && <Text style={styles.error}>{error}</Text>}

@@ -414,6 +414,11 @@ export default function HomeScreen() {
             decelerationRate="fast"
             onViewableItemsChanged={onViewableItemsChanged}
             viewabilityConfig={viewabilityConfig}
+            getItemLayout={(_, index) => ({
+              length: itemHeightRef.current,
+              offset: itemHeightRef.current * index,
+              index,
+            })}
             windowSize={3}
             maxToRenderPerBatch={2}
             initialNumToRender={1}

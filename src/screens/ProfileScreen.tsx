@@ -416,7 +416,7 @@ export default function ProfileScreen({ onResetOnboarding }: ProfileProps = {}) 
                   score={score.total}
                   percentile={score.percentile}
                   streakDays={0}
-                  actionsCompleted={7}
+                  actionsCompleted={0}
                   memberSince={joinedAt ? joinedAt.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }).toUpperCase() : 'VAULT MEMBER'}
                 />
                 <TouchableOpacity
