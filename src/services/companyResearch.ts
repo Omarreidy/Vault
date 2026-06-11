@@ -1,7 +1,15 @@
 const SUPABASE_URL = 'https://gvdfypehwmemootjizmd.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_tHoiSHF-49L1_p0OLRPeKw_5mfSi0fs';
 
+const RESEARCH_TTL = 30 * 60 * 1000; // 30 minutes per ticker
+const researchCache = new Map<string, { data: any; ts: number }>();
+
 export async function fetchCompanyResearch(ticker: string): Promise<any> {
+  const key = ticker.toUpperCase();
+  const cached = researchCache.get(key);
+  if (cached && Date.now() - cached.ts < RESEARCH_TTL) {
+    return cached.data;
+  }
   const res = await fetch(`${SUPABASE_URL}/functions/v1/company-research`, {
     method: 'POST',
     headers: {
@@ -9,11 +17,12 @@ export async function fetchCompanyResearch(ticker: string): Promise<any> {
       'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
       'apikey': SUPABASE_ANON_KEY,
     },
-    body: JSON.stringify({ ticker: ticker.toUpperCase() }),
+    body: JSON.stringify({ ticker: key }),
   });
   if (!res.ok) throw new Error('Research unavailable');
   const data = await res.json();
   if (data.error) throw new Error(data.error);
+  researchCache.set(key, { data, ts: Date.now() });
   return data;
 }
 

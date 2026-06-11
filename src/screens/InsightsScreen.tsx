@@ -8,6 +8,7 @@ import { INSIGHTS, Insight } from '../services/insights';
 import { COLORS, FONTS, SPACING, RADIUS, CARD_SHADOW, CARD_SHADOW_STRONG } from '../constants/theme';
 import MarketSignal from '../components/MarketSignal';
 import CompanyResearch from '../components/CompanyResearch';
+import { fetchMarketData, fetchMarketNews } from '../services/marketSignal';
 
 const { width } = Dimensions.get('window');
 const SWIPE_THRESHOLD = 80;
@@ -78,6 +79,12 @@ export default function InsightsScreen() {
   const [toastMsg, setToastMsg]     = useState('');
   const position      = useRef(new Animated.ValueXY()).current;
   const isAnimating   = useRef(false);
+
+  // Preload Signal data in background so it's cached when user taps the tab
+  useEffect(() => {
+    fetchMarketData().catch(() => {});
+    fetchMarketNews().catch(() => {});
+  }, []);
 
   // Stamp animation
   const stampScale    = useRef(new Animated.Value(0)).current;

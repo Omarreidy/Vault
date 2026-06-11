@@ -51,17 +51,31 @@ export const FALLBACK_SNAPSHOT: MarketSnapshot = {
   marketStatus: 'CLOSED', lastUpdated: 'Updating...',
 };
 
+const TTL = 10 * 60 * 1000; // 10 minutes
+let marketDataCache: { data: LiveMarketData; ts: number } | null = null;
+let marketNewsCache: { data: NewsItem[]; ts: number } | null = null;
+
 export async function fetchMarketData(): Promise<LiveMarketData> {
+  if (marketDataCache && Date.now() - marketDataCache.ts < TTL) {
+    return marketDataCache.data;
+  }
   const res = await fetch(`${SUPABASE_URL}/functions/v1/market-data`, { method: 'GET', headers });
   if (!res.ok) throw new Error('Market data unavailable');
-  return res.json();
+  const data = await res.json();
+  marketDataCache = { data, ts: Date.now() };
+  return data;
 }
 
 export async function fetchMarketNews(): Promise<NewsItem[]> {
+  if (marketNewsCache && Date.now() - marketNewsCache.ts < TTL) {
+    return marketNewsCache.data;
+  }
   const res = await fetch(`${SUPABASE_URL}/functions/v1/market-news`, { method: 'GET', headers });
   if (!res.ok) throw new Error('News unavailable');
-  const data = await res.json();
-  return data.articles ?? [];
+  const result = await res.json();
+  const articles = result.articles ?? [];
+  marketNewsCache = { data: articles, ts: Date.now() };
+  return articles;
 }
 
 export const SENTIMENT_COLORS: Record<Sentiment, string> = {
