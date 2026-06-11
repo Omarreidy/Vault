@@ -268,7 +268,7 @@ export default function BeliefsAuditCard({ onComplete, index, total }: Props) {
           <Animated.View
             style={[styles.phaseWrap, { opacity: resultOpacity, transform: [{ scale: resultScale }] }]}
           >
-            <ScrollView showsVerticalScrollIndicator={false} bounces={false}>
+            <ScrollView showsVerticalScrollIndicator={false} bounces={false} nestedScrollEnabled={true}>
               {/* Score + archetype */}
               <View style={styles.resultTop}>
                 <ScoreRing score={result.mindsetScore} color={COLORS.gold} />

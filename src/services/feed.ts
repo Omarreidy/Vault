@@ -11,12 +11,38 @@ export interface FeedItem {
   data: WealthMove | Insight | WealthWin | null;
 }
 
+// Deterministic Fisher-Yates using a linear congruential seed.
+// Returns a new array — does not mutate.
+function seededShuffle<T>(arr: T[], seed: number): T[] {
+  const a = [...arr];
+  let s = seed >>> 0;
+  for (let i = a.length - 1; i > 0; i--) {
+    s = Math.imul(s, 1664525) + 1013904223;
+    const j = ((s >>> 0) / 0x100000000 * (i + 1)) | 0;
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+// Changes every calendar day — same feed all day, fresh tomorrow.
+function todaySeed(): number {
+  const d = new Date();
+  return d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
+}
+
 // Mix moves, pulse cards, and wins into a variable-reward sequence.
+// Moves and insights are shuffled daily so the feed never feels the same.
 export function buildFeed(
   moves: WealthMove[],
   insights: Insight[],
   wins: WealthWin[],
+  seed?: number,
 ): FeedItem[] {
+  const s = seed ?? todaySeed();
+  const shuffledMoves    = seededShuffle(moves, s);
+  const shuffledInsights = seededShuffle(insights, s ^ 0xdeadbeef);
+  const shuffledWins     = seededShuffle(wins, s ^ 0xc0ffee);
+
   const feed: FeedItem[] = [];
   let mIdx = 0, pIdx = 0, wIdx = 0;
   const pattern = [3, 0, 0, 1, 0, 0, 0, 2, 0, 0, 1, 0, 0, 0, 1, 0, 2, 0, 0, 1];
@@ -24,14 +50,14 @@ export function buildFeed(
   for (const slot of pattern) {
     if (slot === 3) {
       feed.push({ id: 'beliefs-audit', type: 'beliefs', data: null });
-    } else if (slot === 0 && mIdx < moves.length) {
-      feed.push({ id: `move-${moves[mIdx].id}`, type: 'move', data: moves[mIdx++] });
-    } else if (slot === 1 && pIdx < insights.length) {
-      feed.push({ id: `pulse-${insights[pIdx].id}`, type: 'pulse', data: insights[pIdx++] });
-    } else if (slot === 2 && wIdx < wins.length) {
-      feed.push({ id: `win-${wins[wIdx].id}`, type: 'win', data: wins[wIdx++] });
-    } else if (mIdx < moves.length) {
-      feed.push({ id: `move-${moves[mIdx].id}`, type: 'move', data: moves[mIdx++] });
+    } else if (slot === 0 && mIdx < shuffledMoves.length) {
+      feed.push({ id: `move-${shuffledMoves[mIdx].id}`, type: 'move', data: shuffledMoves[mIdx++] });
+    } else if (slot === 1 && pIdx < shuffledInsights.length) {
+      feed.push({ id: `pulse-${shuffledInsights[pIdx].id}`, type: 'pulse', data: shuffledInsights[pIdx++] });
+    } else if (slot === 2 && wIdx < shuffledWins.length) {
+      feed.push({ id: `win-${shuffledWins[wIdx].id}`, type: 'win', data: shuffledWins[wIdx++] });
+    } else if (mIdx < shuffledMoves.length) {
+      feed.push({ id: `move-${shuffledMoves[mIdx].id}`, type: 'move', data: shuffledMoves[mIdx++] });
     }
   }
   return feed;

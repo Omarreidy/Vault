@@ -182,7 +182,7 @@ export default function HomeScreen() {
         const personalizedFeed = buildFeed(
           [...personalizedMoves, ...ALL_MOVES],
           INSIGHTS,
-          []
+          [],
         );
         setFeed(personalizedFeed);
       }
@@ -425,9 +425,9 @@ export default function HomeScreen() {
               offset: itemHeightRef.current * index,
               index,
             })}
-            windowSize={3}
-            maxToRenderPerBatch={2}
-            initialNumToRender={1}
+            windowSize={7}
+            maxToRenderPerBatch={5}
+            initialNumToRender={4}
             ListFooterComponent={
               <View style={{ height: itemHeight, width: '100%' }}>
                 <EndOfFeedCard
