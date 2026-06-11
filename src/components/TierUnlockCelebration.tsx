@@ -81,10 +81,13 @@ export default function TierUnlockCelebration({ tier, visible, onClose }: Props)
   const badgeGlow      = useRef(new Animated.Value(0)).current;
   const titleY         = useRef(new Animated.Value(30)).current;
   const titleOpacity   = useRef(new Animated.Value(0)).current;
-  const perkAnims      = TIER_PERKS[tier].map(() => ({
-    opacity: useRef(new Animated.Value(0)).current,
-    y:       useRef(new Animated.Value(16)).current,
-  }));
+  // Fixed 5 slots — hooks cannot be called inside .map()
+  const pa0 = { opacity: useRef(new Animated.Value(0)).current, y: useRef(new Animated.Value(16)).current };
+  const pa1 = { opacity: useRef(new Animated.Value(0)).current, y: useRef(new Animated.Value(16)).current };
+  const pa2 = { opacity: useRef(new Animated.Value(0)).current, y: useRef(new Animated.Value(16)).current };
+  const pa3 = { opacity: useRef(new Animated.Value(0)).current, y: useRef(new Animated.Value(16)).current };
+  const pa4 = { opacity: useRef(new Animated.Value(0)).current, y: useRef(new Animated.Value(16)).current };
+  const perkAnims = [pa0, pa1, pa2, pa3, pa4].slice(0, TIER_PERKS[tier].length);
   const btnOpacity     = useRef(new Animated.Value(0)).current;
   const [showParticles, setShowParticles] = useState(false);
 
