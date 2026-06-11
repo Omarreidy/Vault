@@ -554,13 +554,13 @@ export const ALL_MOVES: WealthMove[] = [
   {
     id: 'i6',
     title: 'Max your 401k — not just the match',
-    description: 'Capturing employer match is step 1. Maxing your full 401k contribution ($23,000 in 2026) is step 2. The tax deferral alone saves $5,000–8,000/yr for someone in the 22–24% bracket.',
+    description: 'Capturing employer match is step 1. Maxing your full 401k contribution ($23,500 in 2026) is step 2. The tax deferral alone saves $5,000–8,000/yr for someone in the 22–24% bracket.',
     impact: 'Save $5K–8K in taxes/yr',
     impactValue: 6000,
     category: 'investment',
     effort: 'quick',
     actionLabel: 'Increase contributions',
-    lesson: { headline: 'The tax benefit is the return — before investing', body: 'Every dollar in a traditional 401k reduces your taxable income. At 22%, $23,000 contributed saves $5,060 in federal taxes alone — before a single market return.', xp: 10 },
+    lesson: { headline: 'The tax benefit is the return — before investing', body: 'Every dollar in a traditional 401k reduces your taxable income. At 22%, $23,500 contributed saves $5,170 in federal taxes alone — before a single market return.', xp: 10 },
   },
   {
     id: 'i7',
@@ -598,13 +598,13 @@ export const ALL_MOVES: WealthMove[] = [
   {
     id: 'i10',
     title: 'Increase your 401k by just 1%',
-    description: 'One percentage point more in a 401k at 30 contributes to a $41,000 larger balance at 65 on an average salary. Most people don\'t feel a 1% decrease in their paycheck — and they never reverse it.',
-    impact: '+$41K at retirement per 1%',
+    description: 'One percentage point more in a 401k at 30 contributes to a $97,000 larger balance at 65 on a $70K salary. Most people don\'t feel a 1% decrease in their paycheck — and they never reverse it.',
+    impact: '+$97K at retirement per 1%',
     impactValue: 1200,
     category: 'investment',
     effort: 'instant',
     actionLabel: 'Do it now',
-    lesson: { headline: 'You won\'t feel 1% — you\'ll feel the result', body: 'At $70K salary, 1% is $700/yr — about $27/paycheck. You won\'t notice it. Your future self gets $41,000 more. That is the cleanest trade in personal finance.', xp: 10 },
+    lesson: { headline: 'You won\'t feel 1% — you\'ll feel the result', body: 'At $70K salary, 1% is $700/yr — about $27/paycheck. You won\'t notice it. Invested at 7% over 35 years, your future self gets $97,000 more. That is the cleanest trade in personal finance.', xp: 10 },
   },
   {
     id: 'i11',
@@ -653,7 +653,7 @@ export const ALL_MOVES: WealthMove[] = [
   {
     id: 'i15',
     title: 'Ask HR about mega backdoor Roth',
-    description: 'Some 401k plans allow after-tax contributions up to $69,000/yr that can be converted to Roth. This is the mega backdoor Roth — one of the most powerful wealth tools available to high earners who know about it.',
+    description: 'Some 401k plans allow after-tax contributions up to $70,000/yr that can be converted to Roth. This is the mega backdoor Roth — one of the most powerful wealth tools available to high earners who know about it.',
     impact: 'Up to $46K more Roth space/yr',
     impactValue: 10000,
     category: 'investment',
@@ -1149,7 +1149,7 @@ export const ALL_MOVES: WealthMove[] = [
     category: 'opportunity',
     effort: 'medium',
     actionLabel: 'Run the numbers',
-    lesson: { headline: 'Mortgage rate difference of 1% = $100/month per $200K', body: 'On a $350K loan, dropping from 7% to 6% saves $175/month — $63,000 over the life of the loan. If you bought at peak rates, refinancing is worth calculating immediately.', xp: 10 },
+    lesson: { headline: 'Mortgage rate difference of 1% = $131/month per $200K', body: 'On a $350K loan, dropping from 7% to 6% saves $230/month — $83,000 over the life of the loan. If you bought at peak rates, refinancing is worth calculating immediately.', xp: 10 },
   },
   {
     id: 'o15',
@@ -1165,7 +1165,7 @@ export const ALL_MOVES: WealthMove[] = [
   {
     id: 'o16',
     title: 'Deduct student loan interest',
-    description: 'You can deduct up to $2,500 in student loan interest per year if your income is below $90K (single) or $185K (married). Most eligible borrowers forget to claim this, leaving $500–600 in tax savings on the table.',
+    description: 'You can deduct up to $2,500 in student loan interest per year if your income is below $95K (single) or $195K (married) — phase-out begins at $80K / $165K. Most eligible borrowers forget to claim this, leaving $500–600 in tax savings on the table.',
     impact: 'Save $500–600 in taxes',
     impactValue: 550,
     category: 'opportunity',
