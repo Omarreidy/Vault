@@ -8,7 +8,44 @@ import { INSIGHTS, Insight } from '../services/insights';
 import { COLORS, FONTS, SPACING, RADIUS, CARD_SHADOW, CARD_SHADOW_STRONG } from '../constants/theme';
 import MarketSignal from '../components/MarketSignal';
 import CompanyResearch from '../components/CompanyResearch';
-import { fetchMarketData, fetchMarketNews } from '../services/marketSignal';
+import { fetchMarketData, fetchMarketNews, NewsItem, timeAgoNews } from '../services/marketSignal';
+
+// Map news categories to Pulse tags
+const NEWS_TO_TAG: Record<string, string> = {
+  FED: 'MACRO', TECH: 'MARKETS', ENERGY: 'MARKETS',
+  CRYPTO: 'MARKETS', EARNINGS: 'MARKETS', MACRO: 'MACRO', LEGAL: 'ECONOMY',
+};
+
+// Short "what this means for you" pill driven by sentiment + category
+function buildImpactPill(sentiment: string, category: string): string {
+  if (sentiment === 'bullish') {
+    if (category === 'FED')      return 'Lock in HYSA rates — the window may be short';
+    if (category === 'EARNINGS') return 'Strong earnings season — your portfolio may benefit';
+    return 'Positive market signal for wealth builders';
+  }
+  if (sentiment === 'bearish') {
+    if (category === 'FED')  return 'HYSA yields may decline — consider longer-term vehicles';
+    if (category === 'TECH') return 'Tech exposure may face short-term pressure';
+    return 'Defensive positioning may protect your wealth';
+  }
+  return 'Monitor this for impact on your financial plan';
+}
+
+function newsToInsight(news: NewsItem, idx: number): Insight {
+  const tag        = NEWS_TO_TAG[news.category] ?? 'MACRO';
+  const impactType = news.sentiment === 'bullish' ? 'positive'
+                   : news.sentiment === 'bearish' ? 'negative' : 'neutral';
+  return {
+    id:         `live-${news.id ?? idx}`,
+    headline:   news.headline,
+    body:       news.impact,
+    impact:     buildImpactPill(news.sentiment, news.category),
+    impactType: impactType as Insight['impactType'],
+    tag,
+    timeAgo:    timeAgoNews(news.minutesAgo),
+    saved:      false,
+  };
+}
 
 const { width } = Dimensions.get('window');
 const SWIPE_THRESHOLD = 80;
@@ -74,16 +111,21 @@ function NewsCard({ insight }: { insight: Insight }) {
 export default function InsightsScreen() {
   const [activeTab, setActiveTab] = useState<'pulse' | 'signal' | 'research'>('pulse');
   const [filter, setFilter]         = useState('All');
-  const [savedIds, setSavedIds]     = useState<Set<string>>(new Set(INSIGHTS.filter(i => i.saved).map(i => i.id)));
+  const [insights, setInsights]     = useState<Insight[]>(INSIGHTS);
+  const [savedIds, setSavedIds]     = useState<Set<string>>(new Set<string>());
   const [currentIndex, setCurrentIndex] = useState(0);
   const [toastMsg, setToastMsg]     = useState('');
   const position      = useRef(new Animated.ValueXY()).current;
   const isAnimating   = useRef(false);
 
-  // Preload Signal data in background so it's cached when user taps the tab
+  // Fetch real market news for Pulse cards + preload Signal cache
   useEffect(() => {
     fetchMarketData().catch(() => {});
-    fetchMarketNews().catch(() => {});
+    fetchMarketNews().then(items => {
+      if (items && items.length >= 3) {
+        setInsights(items.map(newsToInsight));
+      }
+    }).catch(() => {});
   }, []);
 
   // Stamp animation
@@ -107,7 +149,7 @@ export default function InsightsScreen() {
   }, [savedIds.size]);
 
   const getFiltered = () =>
-    filter === 'All' ? INSIGHTS : INSIGHTS.filter(i => i.tag === filter);
+    filter === 'All' ? insights : insights.filter(i => i.tag === filter);
 
   const filtered    = getFiltered();
   const remaining   = filtered.length - currentIndex;
