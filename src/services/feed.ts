@@ -19,7 +19,7 @@ export function buildFeed(
 ): FeedItem[] {
   const feed: FeedItem[] = [];
   let mIdx = 0, pIdx = 0, wIdx = 0;
-  const pattern = [0, 0, 1, 0, 0, 3, 0, 2, 0, 0, 1, 0, 0, 0, 1, 0, 2, 0, 0, 1];
+  const pattern = [3, 0, 0, 1, 0, 0, 0, 2, 0, 0, 1, 0, 0, 0, 1, 0, 2, 0, 0, 1];
 
   for (const slot of pattern) {
     if (slot === 3) {

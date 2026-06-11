@@ -23,6 +23,7 @@ interface Props {
   move: WealthMove;
   onAct: () => void;
   onSkip: () => void;
+  onAskConcierge?: () => void;
   index: number;
   total: number;
 }
@@ -164,7 +165,7 @@ const sheetStyles = StyleSheet.create({
 
 // ─── Main card ────────────────────────────────────────────────────────────────
 
-export default function FeedMoveCard({ move, onAct, onSkip, index, total }: Props) {
+export default function FeedMoveCard({ move, onAct, onSkip, onAskConcierge, index, total }: Props) {
   const meta = META[move.category] ?? META.opportunity;
   const [lessonOpen, setLessonOpen] = useState(false);
   const [learned, setLearned]       = useState(false);
@@ -229,6 +230,12 @@ export default function FeedMoveCard({ move, onAct, onSkip, index, total }: Prop
                   <Text style={[styles.lessonChevron, { color: meta.accent }]}>▸</Text>
                 </>
               )}
+            </TouchableOpacity>
+          )}
+
+          {onAskConcierge && (
+            <TouchableOpacity style={styles.conciergeBtn} onPress={onAskConcierge} activeOpacity={0.8}>
+              <Text style={styles.conciergeTxt}>✦ Ask Concierge about this</Text>
             </TouchableOpacity>
           )}
 
@@ -339,6 +346,16 @@ const styles = StyleSheet.create({
 
   divider: { height: StyleSheet.hairlineWidth, backgroundColor: COLORS.border },
   swipeHint: { textAlign: 'center', fontSize: FONTS.sizes.xs, color: COLORS.textMuted, letterSpacing: FONTS.tracking.wider },
+  conciergeBtn: {
+    alignSelf: 'center',
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: 8,
+    borderRadius: RADIUS.full,
+    borderWidth: 1,
+    borderColor: COLORS.gold + '50',
+    backgroundColor: COLORS.goldGlow,
+  },
+  conciergeTxt: { fontSize: FONTS.sizes.xs, color: COLORS.gold, fontWeight: FONTS.weights.semibold, letterSpacing: FONTS.tracking.wide },
 
   actions: { flexDirection: 'row', gap: SPACING.sm },
   skipBtn: { flex: 1, paddingVertical: 16, alignItems: 'center', justifyContent: 'center' },

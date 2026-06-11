@@ -23,11 +23,12 @@ const IMPACT_COLORS: Record<string, string> = {
 interface Props {
   insight: Insight;
   onSave: () => void;
+  onAskConcierge?: () => void;
   index: number;
   total: number;
 }
 
-export default function FeedPulseCard({ insight, onSave, index, total }: Props) {
+export default function FeedPulseCard({ insight, onSave, onAskConcierge, index, total }: Props) {
   const [saved, setSaved] = useState(insight.saved);
   const saveScale = useRef(new Animated.Value(1)).current;
   const tagColor    = TAG_COLORS[insight.tag]    ?? COLORS.gold;
@@ -78,6 +79,11 @@ export default function FeedPulseCard({ insight, onSave, index, total }: Props) 
             <View style={[styles.impactDot, { backgroundColor: impactColor }]} />
             <Text style={[styles.impactTxt, { color: impactColor }]}>{insight.impact}</Text>
           </View>
+          {onAskConcierge && (
+            <TouchableOpacity style={styles.conciergeBtn} onPress={onAskConcierge} activeOpacity={0.8}>
+              <Text style={styles.conciergeTxt}>✦ Ask Concierge about this</Text>
+            </TouchableOpacity>
+          )}
           <Text style={styles.swipeHint}>↑ swipe for next</Text>
         </View>
 
@@ -131,4 +137,14 @@ const styles = StyleSheet.create({
   impactDot: { width: 6, height: 6, borderRadius: 3 },
   impactTxt: { flex: 1, fontSize: FONTS.sizes.md, fontWeight: FONTS.weights.semibold, lineHeight: 22 },
   swipeHint: { textAlign: 'center', fontSize: FONTS.sizes.xs, color: COLORS.textMuted, letterSpacing: FONTS.tracking.wider },
+  conciergeBtn: {
+    alignSelf: 'center',
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: 8,
+    borderRadius: RADIUS.full,
+    borderWidth: 1,
+    borderColor: COLORS.gold + '50',
+    backgroundColor: COLORS.goldGlow,
+  },
+  conciergeTxt: { fontSize: FONTS.sizes.xs, color: COLORS.gold, fontWeight: FONTS.weights.semibold, letterSpacing: FONTS.tracking.wide },
 });

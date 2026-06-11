@@ -2,7 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Dimensions, Animated, Share } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { WealthWin } from '../types';
-import { COLORS, FONTS, SPACING, RADIUS, TIERS } from '../constants/theme';
+import { COLORS, FONTS, SPACING, RADIUS, TIERS, CARD_SHADOW } from '../constants/theme';
 import { useRealProfile } from '../services/userProfile';
 
 const { width } = Dimensions.get('window');
@@ -17,11 +17,12 @@ const WIN_ACCENT: Record<string, string> = {
 
 interface Props {
   win: WealthWin;
+  onAskConcierge?: () => void;
   index: number;
   total: number;
 }
 
-export default function FeedWinCard({ win, index, total }: Props) {
+export default function FeedWinCard({ win, onAskConcierge, index, total }: Props) {
   const { name, tier } = useRealProfile();
   const accent    = WIN_ACCENT[win.category] ?? WIN_ACCENT.default;
   const glowAnim  = useRef(new Animated.Value(0.4)).current;
@@ -78,6 +79,11 @@ export default function FeedWinCard({ win, index, total }: Props) {
           >
             <Text style={[styles.shareTxt, { color: accent }]}>Share this win ↑</Text>
           </TouchableOpacity>
+          {onAskConcierge && (
+            <TouchableOpacity style={styles.conciergeBtn} onPress={onAskConcierge} activeOpacity={0.8}>
+              <Text style={styles.conciergeTxt}>✦ Ask Concierge about this</Text>
+            </TouchableOpacity>
+          )}
           <Text style={styles.swipeHint}>↑ swipe for next</Text>
         </View>
 
@@ -136,4 +142,14 @@ const styles = StyleSheet.create({
   shareBtn: { paddingVertical: 16, borderRadius: RADIUS.md, alignItems: 'center', borderWidth: 1 },
   shareTxt: { fontSize: FONTS.sizes.sm, fontWeight: FONTS.weights.semibold, letterSpacing: FONTS.tracking.wide },
   swipeHint: { textAlign: 'center', fontSize: FONTS.sizes.xs, color: COLORS.textMuted, letterSpacing: FONTS.tracking.wider },
+  conciergeBtn: {
+    alignSelf: 'center',
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: 8,
+    borderRadius: RADIUS.full,
+    borderWidth: 1,
+    borderColor: COLORS.gold + '50',
+    backgroundColor: COLORS.goldGlow,
+  },
+  conciergeTxt: { fontSize: FONTS.sizes.xs, color: COLORS.gold, fontWeight: FONTS.weights.semibold, letterSpacing: FONTS.tracking.wide },
 });

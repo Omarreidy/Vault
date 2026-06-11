@@ -296,6 +296,7 @@ export default function HomeScreen() {
           move={item.data as WealthMove}
           onAct={() => handleAct((item.data as WealthMove).title)}
           onSkip={handleSkip}
+          onAskConcierge={() => setShowConcierge(true)}
           index={index}
           total={feed.length}
         />
@@ -304,6 +305,7 @@ export default function HomeScreen() {
         <FeedPulseCard
           insight={item.data as Insight}
           onSave={handleSave}
+          onAskConcierge={() => setShowConcierge(true)}
           index={index}
           total={feed.length}
         />
@@ -311,6 +313,7 @@ export default function HomeScreen() {
       {item.type === 'win' && (
         <FeedWinCard
           win={item.data as WealthWin}
+          onAskConcierge={() => setShowConcierge(true)}
           index={index}
           total={feed.length}
         />
