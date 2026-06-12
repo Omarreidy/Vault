@@ -77,11 +77,11 @@ export default function FeedPulseCard({ insight, onSave, onAskConcierge, index, 
           <Text style={styles.impactHeader}>WHAT THIS MEANS FOR YOU</Text>
           <View style={[styles.impactPill, { borderColor: impactColor + '40', backgroundColor: impactColor + '10' }]}>
             <View style={[styles.impactDot, { backgroundColor: impactColor }]} />
-            <Text style={[styles.impactTxt, { color: impactColor }]}>{insight.impact}</Text>
+            <Text style={[styles.impactTxt, { color: impactColor }]} numberOfLines={2}>{insight.impact}</Text>
           </View>
           {onAskConcierge && (
             <TouchableOpacity style={styles.conciergeBtn} onPress={onAskConcierge} activeOpacity={0.8}>
-              <Text style={styles.conciergeTxt}>✦ Ask Concierge about this</Text>
+              <Text style={styles.conciergeTxt} numberOfLines={1}>✦ Ask Concierge about this</Text>
             </TouchableOpacity>
           )}
           <Text style={styles.swipeHint}>↑ swipe for next</Text>
@@ -127,7 +127,7 @@ const styles = StyleSheet.create({
   divider: { height: StyleSheet.hairlineWidth, backgroundColor: COLORS.border },
   bodyTxt: { fontSize: FONTS.sizes.md, color: COLORS.textDim, lineHeight: FONTS.sizes.md * 1.75 },
 
-  bottom: { gap: 12 },
+  bottom: { gap: 12, overflow: 'hidden' },
   impactHeader: { fontSize: FONTS.sizes.xs, color: COLORS.textMuted, letterSpacing: FONTS.tracking.widest },
   impactPill: {
     flexDirection: 'row', alignItems: 'center', gap: 10,

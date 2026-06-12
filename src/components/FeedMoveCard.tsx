@@ -228,10 +228,10 @@ export default function FeedMoveCard({ move, onAct, onSkip, onAskConcierge, inde
               activeOpacity={0.8}
             >
               {learned ? (
-                <Text style={styles.learnedTxt}>✓ Learned  ·  +{move.lesson.xp} XP</Text>
+                <Text style={styles.learnedTxt} numberOfLines={1}>✓ Learned  ·  +{move.lesson.xp} XP</Text>
               ) : (
                 <>
-                  <Text style={styles.lessonBtnTxt}>Why this works</Text>
+                  <Text style={styles.lessonBtnTxt} numberOfLines={1}>Why this works</Text>
                   <Text style={[styles.lessonChevron, { color: meta.accent }]}>▸</Text>
                 </>
               )}
@@ -240,7 +240,7 @@ export default function FeedMoveCard({ move, onAct, onSkip, onAskConcierge, inde
 
           {onAskConcierge && (
             <TouchableOpacity style={styles.conciergeBtn} onPress={onAskConcierge} activeOpacity={0.8}>
-              <Text style={styles.conciergeTxt}>✦ Ask Concierge about this</Text>
+              <Text style={styles.conciergeTxt} numberOfLines={1}>✦ Ask Concierge about this</Text>
             </TouchableOpacity>
           )}
 
@@ -259,7 +259,7 @@ export default function FeedMoveCard({ move, onAct, onSkip, onAskConcierge, inde
                 onPress={() => press(actScale, onAct)}
                 activeOpacity={0.85}
               >
-                <Text style={styles.actTxt}>{move.actionLabel}</Text>
+                <Text style={styles.actTxt} numberOfLines={1}>{move.actionLabel}</Text>
               </TouchableOpacity>
             </Animated.View>
           </View>
@@ -314,7 +314,7 @@ const styles = StyleSheet.create({
   },
   desc: { fontSize: FONTS.sizes.md, color: COLORS.textDim, lineHeight: FONTS.sizes.md * 1.75 },
 
-  bottomSection: { gap: SPACING.md },
+  bottomSection: { gap: SPACING.md, overflow: 'hidden' },
 
   impactBlock: { gap: 4 },
   impactLabel: { fontSize: FONTS.sizes.xs, color: COLORS.textMuted, letterSpacing: FONTS.tracking.widest },
@@ -340,6 +340,7 @@ const styles = StyleSheet.create({
     color: COLORS.textDim,
     fontWeight: FONTS.weights.semibold,
     letterSpacing: 0.3,
+    flex: 1,
   },
   lessonChevron: { fontSize: FONTS.sizes.sm },
   learnedTxt: {
@@ -347,6 +348,7 @@ const styles = StyleSheet.create({
     fontWeight: FONTS.weights.bold,
     color: COLORS.goldDark,
     letterSpacing: 0.5,
+    flex: 1,
   },
 
   divider: { height: StyleSheet.hairlineWidth, backgroundColor: COLORS.border },
