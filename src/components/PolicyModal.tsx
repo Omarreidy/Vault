@@ -1,92 +1,59 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Modal, SafeAreaView } from 'react-native';
-import { WebView } from 'react-native-webview';
-import { COLORS, FONTS, SPACING } from '../constants/theme';
+import {
+  View, Text, StyleSheet, TouchableOpacity,
+  Modal, SafeAreaView, ScrollView,
+} from 'react-native';
+import { COLORS, FONTS, SPACING, RADIUS } from '../constants/theme';
 
-function mdToHtml(md: string): string {
-  const lines = md.split('\n');
-  let html = '';
-  let inList = false;
-  let inPara = false;
+// ─── Inline bold renderer ─────────────────────────────────────────────────────
 
-  const inline = (s: string) =>
-    s
-      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-      .replace(/\[(.+?)\]\((.+?)\)/g, '<a href="$2">$1</a>');
-
-  for (const raw of lines) {
-    const line = raw.trim();
-    if (line.startsWith('### ')) {
-      if (inList) { html += '</ul>'; inList = false; }
-      if (inPara)  { html += '</p>'; inPara = false; }
-      html += `<h3>${inline(line.slice(4))}</h3>`;
-    } else if (line.startsWith('## ')) {
-      if (inList) { html += '</ul>'; inList = false; }
-      if (inPara)  { html += '</p>'; inPara = false; }
-      html += `<h2>${inline(line.slice(3))}</h2>`;
-    } else if (line.startsWith('# ')) {
-      if (inList) { html += '</ul>'; inList = false; }
-      if (inPara)  { html += '</p>'; inPara = false; }
-      html += `<h1>${inline(line.slice(2))}</h1>`;
-    } else if (line.startsWith('- ')) {
-      if (inPara) { html += '</p>'; inPara = false; }
-      if (!inList) { html += '<ul>'; inList = true; }
-      html += `<li>${inline(line.slice(2))}</li>`;
-    } else if (line === '') {
-      if (inList) { html += '</ul>'; inList = false; }
-      if (inPara)  { html += '</p>'; inPara = false; }
-    } else {
-      if (inList) { html += '</ul>'; inList = false; }
-      if (!inPara) { html += '<p>'; inPara = true; } else { html += ' '; }
-      html += inline(line);
-    }
-  }
-  if (inList) html += '</ul>';
-  if (inPara)  html += '</p>';
-  return html;
+function InlineText({ text, style }: { text: string; style?: object }) {
+  const parts = text.split(/(\*\*[^*]+\*\*)/g);
+  return (
+    <Text style={style}>
+      {parts.map((part, i) =>
+        part.startsWith('**') && part.endsWith('**')
+          ? <Text key={i} style={styles.bold}>{part.slice(2, -2)}</Text>
+          : <Text key={i}>{part}</Text>
+      )}
+    </Text>
+  );
 }
 
-const CSS = `
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body {
-    background: #0A0A0B;
-    color: #B0A090;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    font-size: 15px;
-    line-height: 1.75;
-    padding: 24px 20px 80px;
+// ─── Markdown → React Native nodes ───────────────────────────────────────────
+
+function renderMarkdown(md: string) {
+  const lines = md.split('\n');
+  const nodes: React.ReactNode[] = [];
+  let i = 0;
+
+  while (i < lines.length) {
+    const line = lines[i].trim();
+
+    if (line.startsWith('### ')) {
+      nodes.push(<Text key={i} style={styles.h3}>{line.slice(4)}</Text>);
+    } else if (line.startsWith('## ')) {
+      nodes.push(<Text key={i} style={styles.h2}>{line.slice(3)}</Text>);
+    } else if (line.startsWith('# ')) {
+      nodes.push(<Text key={i} style={styles.h1}>{line.slice(2)}</Text>);
+    } else if (line.startsWith('- ')) {
+      nodes.push(
+        <View key={i} style={styles.listRow}>
+          <Text style={styles.bullet}>·</Text>
+          <InlineText text={line.slice(2)} style={styles.listTxt} />
+        </View>
+      );
+    } else if (line !== '') {
+      nodes.push(<InlineText key={i} text={line} style={styles.para} />);
+    }
+
+    i++;
   }
-  h1 {
-    color: #C9A84C;
-    font-size: 22px;
-    font-weight: 700;
-    letter-spacing: -0.5px;
-    margin-bottom: 6px;
-  }
-  h2 {
-    color: #E8E0D0;
-    font-size: 15px;
-    font-weight: 700;
-    letter-spacing: 0.3px;
-    margin-top: 32px;
-    margin-bottom: 10px;
-    padding-bottom: 8px;
-    border-bottom: 1px solid #1E1E20;
-  }
-  h3 {
-    color: #A89070;
-    font-size: 13px;
-    font-weight: 600;
-    letter-spacing: 0.2px;
-    margin-top: 20px;
-    margin-bottom: 6px;
-  }
-  p { margin: 8px 0; }
-  strong { color: #E8E0D0; font-weight: 600; }
-  ul { padding-left: 20px; margin: 8px 0; }
-  li { margin: 5px 0; }
-  a { color: #C9A84C; text-decoration: none; }
-`;
+
+  return nodes;
+}
+
+// ─── Modal ────────────────────────────────────────────────────────────────────
 
 interface Props {
   visible: boolean;
@@ -96,26 +63,22 @@ interface Props {
 }
 
 export default function PolicyModal({ visible, title, content, onClose }: Props) {
-  const html = `<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><style>${CSS}</style></head><body>${mdToHtml(content)}</body></html>`;
-
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
       <SafeAreaView style={styles.container}>
         <View style={styles.header}>
-          <Text style={styles.title}>{title}</Text>
+          <Text style={styles.headerTitle}>{title}</Text>
           <TouchableOpacity style={styles.closeBtn} onPress={onClose} activeOpacity={0.7}>
             <Text style={styles.closeTxt}>×</Text>
           </TouchableOpacity>
         </View>
         <View style={styles.divider} />
-        <WebView
-          source={{ html }}
-          style={styles.web}
-          originWhitelist={['*']}
-          scrollEnabled
+        <ScrollView
+          contentContainerStyle={styles.scroll}
           showsVerticalScrollIndicator={false}
-          backgroundColor={COLORS.background}
-        />
+        >
+          {renderMarkdown(content)}
+        </ScrollView>
       </SafeAreaView>
     </Modal>
   );
@@ -131,7 +94,7 @@ const styles = StyleSheet.create({
     paddingTop: SPACING.md,
     paddingBottom: SPACING.sm,
   },
-  title: {
+  headerTitle: {
     fontSize: FONTS.sizes.xl,
     fontWeight: FONTS.weights.bold,
     color: COLORS.text,
@@ -145,5 +108,56 @@ const styles = StyleSheet.create({
   },
   closeTxt: { fontSize: 20, color: COLORS.textDim, lineHeight: 22 },
   divider: { height: StyleSheet.hairlineWidth, backgroundColor: COLORS.border },
-  web: { flex: 1, backgroundColor: COLORS.background },
+
+  scroll: { padding: SPACING.lg, paddingBottom: 60, gap: 10 },
+
+  h1: {
+    fontSize: FONTS.sizes.xl,
+    fontWeight: FONTS.weights.bold,
+    color: COLORS.gold,
+    letterSpacing: FONTS.tracking.tight,
+    marginTop: SPACING.sm,
+    marginBottom: 4,
+  },
+  h2: {
+    fontSize: FONTS.sizes.md,
+    fontWeight: FONTS.weights.bold,
+    color: COLORS.text,
+    letterSpacing: 0.3,
+    marginTop: SPACING.lg,
+    paddingBottom: SPACING.sm,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: COLORS.border,
+  },
+  h3: {
+    fontSize: FONTS.sizes.sm,
+    fontWeight: FONTS.weights.semibold,
+    color: COLORS.textDim,
+    marginTop: SPACING.sm,
+  },
+  para: {
+    fontSize: FONTS.sizes.md,
+    color: COLORS.textDim,
+    lineHeight: FONTS.sizes.md * 1.75,
+  },
+  bold: {
+    fontWeight: FONTS.weights.semibold,
+    color: COLORS.text,
+  },
+  listRow: {
+    flexDirection: 'row',
+    gap: SPACING.sm,
+    paddingLeft: SPACING.sm,
+  },
+  bullet: {
+    fontSize: FONTS.sizes.md,
+    color: COLORS.gold,
+    lineHeight: FONTS.sizes.md * 1.75,
+  },
+  listTxt: {
+    flex: 1,
+    fontSize: FONTS.sizes.md,
+    color: COLORS.textDim,
+    lineHeight: FONTS.sizes.md * 1.75,
+  },
 });
