@@ -6,7 +6,9 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
 import TierBadge from '../components/TierBadge';
+import PolicyModal from '../components/PolicyModal';
 import { COLORS, FONTS, SPACING, RADIUS, TIERS, CARD_SHADOW } from '../constants/theme';
+import { PRIVACY_POLICY, TERMS_OF_SERVICE } from '../constants/legal';
 import { resetOnboarding } from '../services/onboarding';
 import { useRealProfile } from '../services/userProfile';
 import { supabase } from '../services/supabase';
@@ -23,8 +25,6 @@ const LANGUAGES  = ['English', 'Spanish', 'French', 'German', 'Portuguese'];
 
 const APP_STORE_URL  = 'https://apps.apple.com/app/id6740384574';
 const PLAY_STORE_URL = 'https://play.google.com/store/apps/details?id=com.getvault.app';
-const PRIVACY_URL    = 'https://getvault.app/privacy';
-const TERMS_URL      = 'https://getvault.app/terms';
 const INVITE_URL     = 'https://getvault.app';
 
 // ─── Sub-components ──────────────────────────────────────────────────────────
@@ -113,9 +113,11 @@ export default function SettingsScreen({ onClose, onResetOnboarding }: Props) {
   const [language,  setLanguage]  = useState('English');
 
   // Modals
-  const [showPlaid,   setShowPlaid]   = useState(false);
+  const [showPlaid,    setShowPlaid]    = useState(false);
   const [connectedBanks, setConnectedBanks] = useState(0);
-  const [showUpgrade, setShowUpgrade] = useState(false);
+  const [showUpgrade,  setShowUpgrade]  = useState(false);
+  const [showPrivacy,  setShowPrivacy]  = useState(false);
+  const [showTerms,    setShowTerms]    = useState(false);
 
   // ── Load persisted prefs on mount ─────────────────────────────────────────
   useEffect(() => {
@@ -194,15 +196,13 @@ export default function SettingsScreen({ onClose, onResetOnboarding }: Props) {
   };
 
   const handlePrivacy = () => {
-    Linking.openURL(PRIVACY_URL).catch(() =>
-      Alert.alert('Error', 'Could not open the privacy policy. Visit getvault.app/privacy')
-    );
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    setShowPrivacy(true);
   };
 
   const handleTerms = () => {
-    Linking.openURL(TERMS_URL).catch(() =>
-      Alert.alert('Error', 'Could not open the terms. Visit getvault.app/terms')
-    );
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    setShowTerms(true);
   };
 
   const handleExport = async () => {
@@ -352,6 +352,18 @@ export default function SettingsScreen({ onClose, onResetOnboarding }: Props) {
       <UpgradeScreen
         visible={showUpgrade}
         onClose={() => setShowUpgrade(false)}
+      />
+      <PolicyModal
+        visible={showPrivacy}
+        title="Privacy Policy"
+        content={PRIVACY_POLICY}
+        onClose={() => setShowPrivacy(false)}
+      />
+      <PolicyModal
+        visible={showTerms}
+        title="Terms of Service"
+        content={TERMS_OF_SERVICE}
+        onClose={() => setShowTerms(false)}
       />
       <PlaidLinkScreen
         visible={showPlaid}
