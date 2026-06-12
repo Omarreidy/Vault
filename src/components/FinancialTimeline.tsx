@@ -2,7 +2,6 @@ import React, { useRef, useEffect, useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, Animated,
 } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
 import { COLORS, FONTS, SPACING, RADIUS, CARD_SHADOW } from '../constants/theme';
 import {
@@ -410,7 +409,7 @@ export default function FinancialTimeline({ onConnectBank }: { onConnectBank?: (
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: COLORS.background },
-  content: { padding: SPACING.lg, gap: SPACING.lg },
+  content: { flexGrow: 1, padding: SPACING.lg, gap: SPACING.lg },
 
   // Ribbon
   ribbon: {
@@ -618,7 +617,7 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
   emptyHint: {
-    marginTop: SPACING.sm,
+    marginTop: SPACING.lg,
     paddingHorizontal: SPACING.lg,
     paddingVertical: SPACING.sm,
     backgroundColor: COLORS.goldGlow,
