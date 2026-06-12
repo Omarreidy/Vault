@@ -256,14 +256,38 @@ function SummaryRibbon() {
   );
 }
 
-// ─── Greene empty state ───────────────────────────────────────────────────────
+// ─── Empty biography state ───────────────────────────────────────────────────
 
 function EmptyBiography({ onViewSample }: { onViewSample: () => void }) {
-  const opacity = useRef(new Animated.Value(0)).current;
+  const opacity   = useRef(new Animated.Value(0)).current;
+  const btnScale  = useRef(new Animated.Value(1)).current;
+  const btnGlow   = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     Animated.timing(opacity, { toValue: 1, duration: 600, useNativeDriver: false }).start();
   }, []);
+
+  const handlePress = () => {
+    // Triple haptic burst — heavyweight dopamine hit
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+    setTimeout(() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => {}), 90);
+    setTimeout(() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => {}), 210);
+
+    // Button bounces then fires the reveal
+    Animated.sequence([
+      Animated.spring(btnScale, { toValue: 1.12, tension: 320, friction: 5, useNativeDriver: false }),
+      Animated.spring(btnScale, { toValue: 0.94, tension: 320, friction: 5, useNativeDriver: false }),
+      Animated.spring(btnScale, { toValue: 1,    tension: 200, friction: 7, useNativeDriver: false }),
+    ]).start(() => onViewSample());
+
+    // Glow pulse behind button
+    Animated.sequence([
+      Animated.timing(btnGlow, { toValue: 1, duration: 200, useNativeDriver: false }),
+      Animated.timing(btnGlow, { toValue: 0, duration: 400, useNativeDriver: false }),
+    ]).start();
+  };
+
+  const glowOpacity = btnGlow.interpolate({ inputRange: [0, 1], outputRange: [0, 0.35] });
 
   return (
     <Animated.View style={[styles.emptyWrap, { opacity }]}>
@@ -278,9 +302,16 @@ function EmptyBiography({ onViewSample }: { onViewSample: () => void }) {
           Every master starts here. Every entry is real.
         </Text>
       </View>
-      <TouchableOpacity style={styles.sampleBtn} onPress={onViewSample} activeOpacity={0.8}>
-        <Text style={styles.sampleBtnTxt}>View sample biography →</Text>
-      </TouchableOpacity>
+
+      {/* Dopamine button */}
+      <View style={styles.sampleBtnWrap}>
+        <Animated.View style={[styles.sampleBtnGlow, { opacity: glowOpacity }]} />
+        <Animated.View style={{ transform: [{ scale: btnScale }] }}>
+          <TouchableOpacity style={styles.sampleBtn} onPress={handlePress} activeOpacity={0.9}>
+            <Text style={styles.sampleBtnTxt}>✦  View sample biography</Text>
+          </TouchableOpacity>
+        </Animated.View>
+      </View>
     </Animated.View>
   );
 }
@@ -291,12 +322,27 @@ export default function FinancialTimeline({ onConnectBank }: { onConnectBank?: (
   const { months, totals, loading } = useTimeline();
   const [showSample, setShowSample] = useState(false);
 
-  const hasOnlyJoined = months.length === 1 && months[0].entries.length === 1 && months[0].entries[0].type === 'joined';
-  const showEmpty = !showSample && !loading && (months.length === 0 || hasOnlyJoined);
+  // Spring-in animation for the timeline reveal
+  const revealY       = useRef(new Animated.Value(60)).current;
+  const revealOpacity = useRef(new Animated.Value(0)).current;
 
-  const displayMonths = showSample ? TIMELINE : months;
-  const displayTotals = showSample ? TIMELINE_TOTALS : totals;
-  const showContent   = showSample || (!showEmpty && !loading && months.length > 0);
+  const hasOnlyJoined = months.length === 1 && months[0].entries.length === 1 && months[0].entries[0].type === 'joined';
+  const hasRealData   = !loading && months.length > 0 && !hasOnlyJoined;
+  const showEmpty     = !showSample && !loading && !hasRealData;
+  const showContent   = showSample || hasRealData;
+
+  const displayMonths = (showSample || !hasRealData) ? TIMELINE : months;
+  const displayTotals = (showSample || !hasRealData) ? TIMELINE_TOTALS : totals;
+
+  const handleViewSample = () => {
+    setShowSample(true);
+    revealY.setValue(60);
+    revealOpacity.setValue(0);
+    Animated.parallel([
+      Animated.spring(revealY,       { toValue: 0, tension: 55, friction: 10, useNativeDriver: false }),
+      Animated.timing(revealOpacity, { toValue: 1, duration: 380, useNativeDriver: false }),
+    ]).start();
+  };
 
   return (
     <ScrollView
@@ -304,7 +350,7 @@ export default function FinancialTimeline({ onConnectBank }: { onConnectBank?: (
       contentContainerStyle={styles.content}
       showsVerticalScrollIndicator={false}
     >
-      {/* Sample banner — only when viewing sample */}
+      {/* Sample banner — shown when viewing sample (not real data) */}
       {showSample && (
         <TouchableOpacity
           style={styles.sampleBanner}
@@ -314,8 +360,8 @@ export default function FinancialTimeline({ onConnectBank }: { onConnectBank?: (
           <View style={styles.sampleBannerLeft}>
             <Text style={styles.sampleBannerIcon}>◇</Text>
             <View style={{ flex: 1 }}>
-              <Text style={styles.sampleBannerTitle}>Sample timeline</Text>
-              <Text style={styles.sampleBannerSub}>This is a sample. Connect your bank to build your real financial biography.</Text>
+              <Text style={styles.sampleBannerTitle}>Sample projection</Text>
+              <Text style={styles.sampleBannerSub}>Based on a typical profile. Connect your bank to see your real financial biography.</Text>
             </View>
           </View>
           <Text style={styles.sampleBannerCta}>Connect →</Text>
@@ -323,7 +369,7 @@ export default function FinancialTimeline({ onConnectBank }: { onConnectBank?: (
       )}
 
       {showContent && (
-        <>
+        <Animated.View style={{ opacity: showSample ? revealOpacity : 1, transform: [{ translateY: showSample ? revealY : 0 }] }}>
           <View style={[styles.ribbon, CARD_SHADOW]}>
             <View style={styles.ribbonAccent} />
             <View style={styles.ribbonBody}>
@@ -352,10 +398,10 @@ export default function FinancialTimeline({ onConnectBank }: { onConnectBank?: (
           {displayMonths.map((month, i) => (
             <MonthBlock key={month.id} month={month} monthIndex={i} />
           ))}
-        </>
+        </Animated.View>
       )}
 
-      {showEmpty && <EmptyBiography onViewSample={() => setShowSample(true)} />}
+      {showEmpty && <EmptyBiography onViewSample={handleViewSample} />}
 
       <View style={{ height: SPACING.xxl }} />
     </ScrollView>
@@ -404,7 +450,7 @@ const styles = StyleSheet.create({
   statVal: { fontSize: FONTS.sizes.md, fontWeight: FONTS.weights.bold, color: COLORS.background },
   statLbl: { fontSize: 7, color: 'rgba(242,239,233,0.4)', letterSpacing: 1.2, fontWeight: FONTS.weights.bold },
 
-  // Sample banner
+  // Sample projection banner
   sampleBanner: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     backgroundColor: COLORS.card,
@@ -418,23 +464,6 @@ const styles = StyleSheet.create({
   sampleBannerTitle: { fontSize: FONTS.sizes.sm, fontWeight: FONTS.weights.semibold, color: COLORS.text },
   sampleBannerSub: { fontSize: FONTS.sizes.xs, color: COLORS.textDim, marginTop: 2, lineHeight: 17 },
   sampleBannerCta: { fontSize: FONTS.sizes.sm, color: COLORS.gold, fontWeight: FONTS.weights.semibold, marginLeft: SPACING.sm },
-
-  // View sample button on empty state
-  sampleBtn: {
-    marginTop: SPACING.lg,
-    paddingVertical: 12,
-    paddingHorizontal: SPACING.xl,
-    borderRadius: RADIUS.full,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: COLORS.gold + '40',
-    backgroundColor: COLORS.goldGlow,
-  },
-  sampleBtnTxt: {
-    fontSize: FONTS.sizes.sm,
-    color: COLORS.gold,
-    fontWeight: FONTS.weights.semibold,
-    letterSpacing: 0.3,
-  },
 
   // Nudge
   nudgeBanner: {
@@ -565,7 +594,7 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
 
-  // Empty biography state
+  // Empty biography
   emptyWrap: {
     flex: 1,
     alignItems: 'center',
@@ -574,11 +603,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: SPACING.xl,
     gap: SPACING.md,
   },
-  emptyGlyph: {
-    fontSize: 32,
-    color: COLORS.gold,
-    marginBottom: SPACING.sm,
-  },
+  emptyGlyph: { fontSize: 32, color: COLORS.gold, marginBottom: SPACING.sm },
   emptyTitle: {
     fontSize: FONTS.sizes.xl,
     fontWeight: FONTS.weights.bold,
@@ -593,7 +618,7 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
   emptyHint: {
-    marginTop: SPACING.lg,
+    marginTop: SPACING.sm,
     paddingHorizontal: SPACING.lg,
     paddingVertical: SPACING.sm,
     backgroundColor: COLORS.goldGlow,
@@ -607,5 +632,32 @@ const styles = StyleSheet.create({
     fontWeight: FONTS.weights.semibold,
     letterSpacing: 0.3,
     textAlign: 'center',
+  },
+
+  // View sample button
+  sampleBtnWrap: { marginTop: SPACING.lg, alignItems: 'center', position: 'relative' },
+  sampleBtnGlow: {
+    position: 'absolute',
+    width: 220, height: 54,
+    borderRadius: RADIUS.full,
+    backgroundColor: COLORS.gold,
+    top: 0,
+  },
+  sampleBtn: {
+    paddingVertical: 14,
+    paddingHorizontal: SPACING.xl + 8,
+    borderRadius: RADIUS.full,
+    backgroundColor: COLORS.gold,
+    shadowColor: COLORS.gold,
+    shadowOpacity: 0.45,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 10,
+  },
+  sampleBtnTxt: {
+    fontSize: FONTS.sizes.md,
+    fontWeight: FONTS.weights.bold,
+    color: COLORS.background,
+    letterSpacing: 0.5,
   },
 });
