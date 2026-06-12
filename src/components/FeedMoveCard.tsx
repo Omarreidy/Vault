@@ -304,7 +304,7 @@ const styles = StyleSheet.create({
   effort: { fontSize: FONTS.sizes.xs, color: COLORS.textMuted, letterSpacing: FONTS.tracking.wide },
   counter: { fontSize: FONTS.sizes.xs, color: COLORS.textMuted, letterSpacing: FONTS.tracking.widest },
 
-  body: { flex: 1, justifyContent: 'center', gap: 16, overflow: 'hidden' },
+  body: { flex: 1, justifyContent: 'flex-start', paddingTop: SPACING.lg, gap: 16, overflow: 'hidden' },
   title: {
     fontSize: 30,
     fontWeight: FONTS.weights.bold,
@@ -365,8 +365,8 @@ const styles = StyleSheet.create({
   conciergeTxt: { fontSize: FONTS.sizes.xs, color: COLORS.gold, fontWeight: FONTS.weights.semibold, letterSpacing: FONTS.tracking.wide },
 
   actions: { flexDirection: 'row', gap: SPACING.sm },
-  skipBtn: { flex: 1, paddingVertical: 16, alignItems: 'center', justifyContent: 'center' },
+  skipBtn: { flex: 1, paddingVertical: 12, alignItems: 'center', justifyContent: 'center' },
   skipTxt: { fontSize: FONTS.sizes.sm, color: COLORS.textMuted, letterSpacing: FONTS.tracking.wide },
-  actBtn: { flex: 2.5, paddingVertical: 16, borderRadius: RADIUS.md, alignItems: 'center', justifyContent: 'center' },
+  actBtn: { flex: 2.5, paddingVertical: 12, borderRadius: RADIUS.md, alignItems: 'center', justifyContent: 'center' },
   actTxt: { fontSize: FONTS.sizes.sm, fontWeight: FONTS.weights.bold, color: '#FFFFFF', letterSpacing: FONTS.tracking.wide },
 });

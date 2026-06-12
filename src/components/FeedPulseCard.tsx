@@ -115,7 +115,7 @@ const styles = StyleSheet.create({
   counter: { fontSize: FONTS.sizes.xs, color: COLORS.textMuted, letterSpacing: FONTS.tracking.widest },
   saveIcon: { fontSize: 18, color: COLORS.textMuted, fontFamily: FONTS.display },
 
-  body: { flex: 1, justifyContent: 'center', gap: 16, overflow: 'hidden' },
+  body: { flex: 1, justifyContent: 'flex-start', paddingTop: SPACING.lg, gap: 16, overflow: 'hidden' },
   eyebrow: { fontSize: FONTS.sizes.xs, color: COLORS.textMuted, letterSpacing: FONTS.tracking.widest },
   headline: {
     fontSize: 26,
