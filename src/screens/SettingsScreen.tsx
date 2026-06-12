@@ -451,7 +451,7 @@ export default function SettingsScreen({ onClose, onResetOnboarding }: Props) {
           <Divider />
           <LinkRow label="Language" value={language} onPress={handleLanguage} />
           <Divider />
-          <ToggleRow label="Dark mode" value={darkMode} onChange={handleDarkMode} />
+          <ToggleRow label="Dark mode" sub="Coming soon" value={darkMode} onChange={() => {}} />
         </Section>
 
         {/* Connected accounts */}
