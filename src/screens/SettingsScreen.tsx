@@ -1,15 +1,33 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, SafeAreaView,
-  TouchableOpacity, Switch, Alert,
+  TouchableOpacity, Switch, Alert, Linking, Share, Platform,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
 import TierBadge from '../components/TierBadge';
 import { COLORS, FONTS, SPACING, RADIUS, TIERS, CARD_SHADOW } from '../constants/theme';
 import { resetOnboarding } from '../services/onboarding';
 import { useRealProfile } from '../services/userProfile';
+import { supabase } from '../services/supabase';
 import PlaidLinkScreen from './PlaidLinkScreen';
 import UpgradeScreen from './UpgradeScreen';
+
+const NOTIF_PREFS_KEY  = '@vault_notif_prefs';
+const CURRENCY_KEY     = '@vault_currency';
+const LANGUAGE_KEY     = '@vault_language';
+const DARK_MODE_KEY    = '@vault_dark_mode';
+
+const CURRENCIES = ['USD', 'EUR', 'GBP', 'CAD', 'AUD'];
+const LANGUAGES  = ['English', 'Spanish', 'French', 'German', 'Portuguese'];
+
+const APP_STORE_URL  = 'https://apps.apple.com/app/id6740384574';
+const PLAY_STORE_URL = 'https://play.google.com/store/apps/details?id=com.getvault.app';
+const PRIVACY_URL    = 'https://getvault.app/privacy';
+const TERMS_URL      = 'https://getvault.app/terms';
+const INVITE_URL     = 'https://getvault.app';
+
+// ─── Sub-components ──────────────────────────────────────────────────────────
 
 interface ToggleRowProps {
   label: string;
@@ -71,6 +89,8 @@ function Divider() {
   return <View style={styles.rowDivider} />;
 }
 
+// ─── Main component ───────────────────────────────────────────────────────────
+
 interface Props {
   onClose: () => void;
   onResetOnboarding?: () => void;
@@ -88,12 +108,225 @@ export default function SettingsScreen({ onClose, onResetOnboarding }: Props) {
   const [notifInsight, setNotifInsight] = useState(false);
 
   // Preferences
-  const [darkMode, setDarkMode] = useState(false);
-  const [showPlaid, setShowPlaid] = useState(false);
+  const [darkMode,  setDarkMode]  = useState(false);
+  const [currency,  setCurrency]  = useState('USD');
+  const [language,  setLanguage]  = useState('English');
+
+  // Modals
+  const [showPlaid,   setShowPlaid]   = useState(false);
   const [connectedBanks, setConnectedBanks] = useState(0);
   const [showUpgrade, setShowUpgrade] = useState(false);
 
-  const handleResetOnboarding = async () => {
+  // ── Load persisted prefs on mount ─────────────────────────────────────────
+  useEffect(() => {
+    AsyncStorage.multiGet([NOTIF_PREFS_KEY, CURRENCY_KEY, LANGUAGE_KEY, DARK_MODE_KEY])
+      .then(pairs => {
+        for (const [key, val] of pairs) {
+          if (!val) continue;
+          if (key === NOTIF_PREFS_KEY) {
+            const p = JSON.parse(val);
+            if (p.moves   !== undefined) setNotifMoves(p.moves);
+            if (p.streak  !== undefined) setNotifStreak(p.streak);
+            if (p.score   !== undefined) setNotifScore(p.score);
+            if (p.weekly  !== undefined) setNotifWeekly(p.weekly);
+            if (p.insight !== undefined) setNotifInsight(p.insight);
+          }
+          if (key === CURRENCY_KEY)  setCurrency(val);
+          if (key === LANGUAGE_KEY)  setLanguage(val);
+          if (key === DARK_MODE_KEY) setDarkMode(val === 'true');
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  // ── Persist notification prefs whenever any toggle changes ────────────────
+  useEffect(() => {
+    AsyncStorage.setItem(NOTIF_PREFS_KEY, JSON.stringify({
+      moves: notifMoves, streak: notifStreak, score: notifScore,
+      weekly: notifWeekly, insight: notifInsight,
+    })).catch(() => {});
+  }, [notifMoves, notifStreak, notifScore, notifWeekly, notifInsight]);
+
+  // ── Handlers ──────────────────────────────────────────────────────────────
+
+  const handleCurrency = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    Alert.alert(
+      'Currency',
+      'Select your preferred currency',
+      [
+        ...CURRENCIES.map(c => ({
+          text: c === currency ? `${c}  ✓` : c,
+          onPress: () => {
+            setCurrency(c);
+            AsyncStorage.setItem(CURRENCY_KEY, c).catch(() => {});
+          },
+        })),
+        { text: 'Cancel', style: 'cancel' as const },
+      ]
+    );
+  };
+
+  const handleLanguage = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    Alert.alert(
+      'Language',
+      'Select your preferred language',
+      [
+        ...LANGUAGES.map(l => ({
+          text: l === language ? `${l}  ✓` : l,
+          onPress: () => {
+            setLanguage(l);
+            AsyncStorage.setItem(LANGUAGE_KEY, l).catch(() => {});
+          },
+        })),
+        { text: 'Cancel', style: 'cancel' as const },
+      ]
+    );
+  };
+
+  const handleDarkMode = (v: boolean) => {
+    setDarkMode(v);
+    AsyncStorage.setItem(DARK_MODE_KEY, String(v)).catch(() => {});
+    if (v) {
+      Alert.alert('Dark Mode Enabled', 'Restart VAULT to apply the new theme.', [{ text: 'Got it' }]);
+    }
+  };
+
+  const handlePrivacy = () => {
+    Linking.openURL(PRIVACY_URL).catch(() =>
+      Alert.alert('Error', 'Could not open the privacy policy. Visit getvault.app/privacy')
+    );
+  };
+
+  const handleTerms = () => {
+    Linking.openURL(TERMS_URL).catch(() =>
+      Alert.alert('Error', 'Could not open the terms. Visit getvault.app/terms')
+    );
+  };
+
+  const handleExport = async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      const profileJson = await AsyncStorage.getItem('@vault_onboarding_result').catch(() => null);
+      const profile = profileJson ? JSON.parse(profileJson) : {};
+      const lines = [
+        'VAULT DATA EXPORT',
+        `Generated: ${new Date().toLocaleDateString('en-US', { dateStyle: 'long' })}`,
+        '',
+        'PROFILE',
+        `Name: ${profile.name || name || '—'}`,
+        `Score: ${profile.score ?? '—'}`,
+        `Tier: ${tier}`,
+        `Email: ${user?.email ?? '—'}`,
+        '',
+        'PREFERENCES',
+        `Currency: ${currency}`,
+        `Language: ${language}`,
+        '',
+        'NOTIFICATIONS',
+        `New wealth moves: ${notifMoves ? 'On' : 'Off'}`,
+        `Streak reminder: ${notifStreak ? 'On' : 'Off'}`,
+        `Score updates: ${notifScore ? 'On' : 'Off'}`,
+        `Weekly report: ${notifWeekly ? 'On' : 'Off'}`,
+        `Market insights: ${notifInsight ? 'On' : 'Off'}`,
+        '',
+        'VAULT · Building wealth differently',
+        'getvault.app',
+      ];
+      await Share.share({
+        title: 'My VAULT Data Export',
+        message: lines.join('\n'),
+      });
+    } catch {}
+  };
+
+  const handleRate = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    const url = Platform.OS === 'android' ? PLAY_STORE_URL : APP_STORE_URL;
+    Linking.openURL(url).catch(() =>
+      Alert.alert('Error', 'Could not open the store listing.')
+    );
+  };
+
+  const handleShare = async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+    try {
+      await Share.share({
+        title: 'Join VAULT',
+        message:
+          `I've been using VAULT to track my financial moves and build wealth. Join me — it's free.\n\n${INVITE_URL}`,
+        url: INVITE_URL,
+      });
+    } catch {}
+  };
+
+  const handleRestorePurchase = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    Alert.alert(
+      'Restore Purchase',
+      'No active subscriptions found on this account.\n\nIf you believe this is an error, contact support@getvault.app',
+      [{ text: 'OK' }]
+    );
+  };
+
+  const handleSignOut = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+    Alert.alert(
+      'Sign Out',
+      'Are you sure you want to sign out?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Sign Out',
+          style: 'destructive',
+          onPress: async () => {
+            await supabase.auth.signOut().catch(() => {});
+            await AsyncStorage.multiRemove([
+              '@vault_onboarding_result',
+              '@vault_onboarding_answers',
+              NOTIF_PREFS_KEY,
+              CURRENCY_KEY,
+              LANGUAGE_KEY,
+              DARK_MODE_KEY,
+            ]).catch(() => {});
+            onResetOnboarding?.();
+            onClose();
+          },
+        },
+      ]
+    );
+  };
+
+  const handleDeleteAccount = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => {});
+    Alert.alert(
+      'Delete Account',
+      'This will permanently delete your account and all data. This cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const { data: { user } } = await supabase.auth.getUser();
+              if (user) {
+                try { await supabase.from('profiles').delete().eq('id', user.id); } catch {}
+              }
+              await supabase.auth.signOut().catch(() => {});
+              await AsyncStorage.clear().catch(() => {});
+            } catch {}
+            onResetOnboarding?.();
+            onClose();
+          },
+        },
+      ]
+    );
+  };
+
+  const handleResetOnboarding = () => {
     Alert.alert(
       'Replay Onboarding',
       'This will restart the onboarding experience. Continue?',
@@ -105,22 +338,14 @@ export default function SettingsScreen({ onClose, onResetOnboarding }: Props) {
           onPress: async () => {
             await resetOnboarding();
             onResetOnboarding?.();
+            onClose();
           },
         },
       ]
     );
   };
 
-  const handleDeleteAccount = () => {
-    Alert.alert(
-      'Delete Account',
-      'This will permanently delete your account and all data. This cannot be undone.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Delete', style: 'destructive', onPress: () => {} },
-      ]
-    );
-  };
+  // ── Render ────────────────────────────────────────────────────────────────
 
   return (
     <SafeAreaView style={styles.container}>
@@ -137,6 +362,7 @@ export default function SettingsScreen({ onClose, onResetOnboarding }: Props) {
           Alert.alert('Connected!', `${accounts.length} account${accounts.length !== 1 ? 's' : ''} linked successfully.`);
         }}
       />
+
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Settings</Text>
@@ -155,24 +381,43 @@ export default function SettingsScreen({ onClose, onResetOnboarding }: Props) {
             <Text style={styles.profileName}>{name}</Text>
             <Text style={[styles.profileTier, { color: info.color }]}>{info.name} Member</Text>
           </View>
-          <View style={[styles.upgradePill, { borderColor: info.color + '50' }]}>
+          <TouchableOpacity
+            style={[styles.upgradePill, { borderColor: info.color + '50' }]}
+            onPress={() => {
+              if (tier !== 'BLACK') {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+                setShowUpgrade(true);
+              }
+            }}
+            activeOpacity={tier === 'BLACK' ? 1 : 0.7}
+          >
             <Text style={[styles.upgradeTxt, { color: info.color }]}>
               {tier === 'BLACK' ? 'Max tier' : 'Upgrade →'}
             </Text>
-          </View>
+          </TouchableOpacity>
         </View>
 
-        {/* Subscription */}
+        {/* Membership */}
         <Section title="MEMBERSHIP">
-          <LinkRow label="Current plan" value="Free" onPress={() => {}} />
+          <LinkRow
+            label="Current plan"
+            value="Free"
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+              setShowUpgrade(true);
+            }}
+          />
           <Divider />
           <LinkRow
             label="Upgrade to Premium"
             sub="$13/mo · Unlimited concierge · All features"
-            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {}); setShowUpgrade(true); }}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+              setShowUpgrade(true);
+            }}
           />
           <Divider />
-          <LinkRow label="Restore purchase" onPress={() => {}} />
+          <LinkRow label="Restore purchase" onPress={handleRestorePurchase} />
         </Section>
 
         {/* Notifications */}
@@ -190,48 +435,53 @@ export default function SettingsScreen({ onClose, onResetOnboarding }: Props) {
 
         {/* Preferences */}
         <Section title="PREFERENCES">
-          <LinkRow label="Currency" value="USD" onPress={() => {}} />
+          <LinkRow label="Currency" value={currency} onPress={handleCurrency} />
           <Divider />
-          <LinkRow label="Language" value="English" onPress={() => {}} />
+          <LinkRow label="Language" value={language} onPress={handleLanguage} />
           <Divider />
-          <ToggleRow label="Dark mode" sub="Coming soon" value={darkMode} onChange={setDarkMode} />
+          <ToggleRow label="Dark mode" value={darkMode} onChange={handleDarkMode} />
         </Section>
 
         {/* Connected accounts */}
         <Section title="CONNECTED ACCOUNTS">
           <LinkRow
             label="Bank accounts"
-            sub={connectedBanks > 0 ? `${connectedBanks} account${connectedBanks !== 1 ? 's' : ''} connected` : 'Connect via Plaid'}
+            sub={connectedBanks > 0
+              ? `${connectedBanks} account${connectedBanks !== 1 ? 's' : ''} connected`
+              : 'Connect via Plaid'}
             value={connectedBanks > 0 ? '✓' : ''}
-            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {}); setShowPlaid(true); }}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+              setShowPlaid(true);
+            }}
           />
           <Divider />
           <LinkRow label="Investment accounts" sub="Brokerage sync — coming soon" onPress={() => {}} />
         </Section>
 
-        {/* Privacy */}
+        {/* Privacy & Data */}
         <Section title="PRIVACY & DATA">
-          <LinkRow label="Privacy policy"    onPress={() => {}} />
+          <LinkRow label="Privacy policy"    onPress={handlePrivacy} />
           <Divider />
-          <LinkRow label="Terms of service"  onPress={() => {}} />
+          <LinkRow label="Terms of service"  onPress={handleTerms} />
           <Divider />
-          <LinkRow label="Export my data"    sub="Download a copy of your data" onPress={() => {}} />
+          <LinkRow label="Export my data"    sub="Download a copy of your data" onPress={handleExport} />
         </Section>
 
         {/* About */}
         <Section title="ABOUT">
-          <LinkRow label="Version"    value="1.0.0 (1)" onPress={() => {}} />
+          <LinkRow label="Version" value="1.0.0 (1)" onPress={() => {}} />
           <Divider />
-          <LinkRow label="Rate VAULT" sub="Help us grow"  onPress={() => {}} />
+          <LinkRow label="Rate VAULT"  sub="Help us grow"       onPress={handleRate} />
           <Divider />
-          <LinkRow label="Share VAULT" sub="Invite a friend" onPress={() => {}} />
+          <LinkRow label="Share VAULT" sub="Invite a friend"    onPress={handleShare} />
         </Section>
 
-        {/* Danger zone */}
+        {/* Account */}
         <Section title="ACCOUNT">
           <LinkRow label="Replay onboarding" sub="For testing" onPress={handleResetOnboarding} />
           <Divider />
-          <LinkRow label="Sign out"     onPress={() => {}} />
+          <LinkRow label="Sign out"      onPress={handleSignOut} />
           <Divider />
           <LinkRow label="Delete account" onPress={handleDeleteAccount} danger />
         </Section>
