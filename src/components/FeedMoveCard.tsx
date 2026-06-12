@@ -43,23 +43,30 @@ function LessonSheet({
   onClose: () => void;
   onLearned: () => void;
 }) {
-  const slideY   = useRef(new Animated.Value(300)).current;
+  const slideY    = useRef(new Animated.Value(300)).current;
   const bgOpacity = useRef(new Animated.Value(0)).current;
   const btnScale  = useRef(new Animated.Value(1)).current;
   const xpOpacity = useRef(new Animated.Value(0)).current;
   const xpSlideY  = useRef(new Animated.Value(0)).current;
+  // Prevent double-tap on "Got it"
+  const gotItFired = useRef(false);
 
   const open = () => {
+    // Reset XP float state on every open so it doesn't linger from a prior session
+    xpOpacity.setValue(0);
+    xpSlideY.setValue(0);
+    btnScale.setValue(1);
+    gotItFired.current = false;
     Animated.parallel([
-      Animated.timing(bgOpacity, { toValue: 1, duration: 220, useNativeDriver: false }),
-      Animated.spring(slideY,    { toValue: 0, tension: 70, friction: 10, useNativeDriver: false }),
+      Animated.timing(bgOpacity, { toValue: 1, duration: 220, useNativeDriver: true }),
+      Animated.spring(slideY,    { toValue: 0, tension: 70, friction: 10, useNativeDriver: true }),
     ]).start();
   };
 
   const close = (callback?: () => void) => {
     Animated.parallel([
-      Animated.timing(bgOpacity, { toValue: 0, duration: 180, useNativeDriver: false }),
-      Animated.timing(slideY,    { toValue: 300, duration: 200, useNativeDriver: false }),
+      Animated.timing(bgOpacity, { toValue: 0, duration: 180, useNativeDriver: true }),
+      Animated.timing(slideY,    { toValue: 300, duration: 200, useNativeDriver: true }),
     ]).start(() => {
       slideY.setValue(300);
       bgOpacity.setValue(0);
@@ -68,14 +75,16 @@ function LessonSheet({
   };
 
   const handleGotIt = () => {
+    if (gotItFired.current) return;
+    gotItFired.current = true;
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
     xpOpacity.setValue(1);
     xpSlideY.setValue(0);
     Animated.sequence([
-      Animated.spring(btnScale, { toValue: 1.12, tension: 200, friction: 6, useNativeDriver: false }),
-      Animated.spring(btnScale, { toValue: 1,    tension: 200, friction: 6, useNativeDriver: false }),
+      Animated.spring(btnScale, { toValue: 1.12, tension: 200, friction: 6, useNativeDriver: true }),
+      Animated.spring(btnScale, { toValue: 1,    tension: 200, friction: 6, useNativeDriver: true }),
     ]).start();
-    Animated.timing(xpSlideY, { toValue: -30, duration: 500, useNativeDriver: false }).start();
+    Animated.timing(xpSlideY, { toValue: -30, duration: 500, useNativeDriver: true }).start();
     setTimeout(() => {
       close(onLearned);
     }, 600);
@@ -170,15 +179,22 @@ export default function FeedMoveCard({ move, onAct, onSkip, onAskConcierge, inde
   const [lessonOpen, setLessonOpen] = useState(false);
   const [learned, setLearned]       = useState(false);
 
-  const actScale  = useRef(new Animated.Value(1)).current;
-  const skipScale = useRef(new Animated.Value(1)).current;
+  const actScale   = useRef(new Animated.Value(1)).current;
+  const skipScale  = useRef(new Animated.Value(1)).current;
+  // Guard: prevent double-fire if user taps Act or Skip rapidly
+  const pressing = useRef(false);
 
   const press = (anim: Animated.Value, cb: () => void) => {
+    if (pressing.current) return;
+    pressing.current = true;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
     Animated.sequence([
       Animated.timing(anim, { toValue: 0.96, duration: 70, useNativeDriver: true }),
       Animated.timing(anim, { toValue: 1,    duration: 70, useNativeDriver: true }),
-    ]).start(cb);
+    ]).start(() => {
+      pressing.current = false;
+      cb();
+    });
   };
 
   return (

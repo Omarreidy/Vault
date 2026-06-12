@@ -54,8 +54,8 @@ function EndOfFeedCard({ streakDays, onBackToTop }: { streakDays: number; onBack
 
   useEffect(() => {
     Animated.parallel([
-      Animated.spring(scale,   { toValue: 1, useNativeDriver: false, tension: 60, friction: 9 }),
-      Animated.timing(opacity, { toValue: 1, duration: 500, useNativeDriver: false }),
+      Animated.spring(scale,   { toValue: 1, useNativeDriver: true, tension: 60, friction: 9 }),
+      Animated.timing(opacity, { toValue: 1, duration: 500, useNativeDriver: true }),
     ]).start();
   }, []);
 
@@ -209,10 +209,14 @@ export default function HomeScreen() {
   const isAnimating      = useRef(false);
 
   const itemHeightRef = useRef(Dimensions.get('window').height);
+  // Keep a ref to the feed length so scrollToNext and handleAct always see
+  // the latest value without needing to be re-created on every feed update.
+  const feedLengthRef = useRef(feed.length);
+  useEffect(() => { feedLengthRef.current = feed.length; }, [feed]);
 
   const scrollToNext = useCallback(() => {
     const next = currentIndexRef.current + 1;
-    if (next <= feed.length) {
+    if (next <= feedLengthRef.current) {
       currentIndexRef.current = next; // update immediately — don't wait for viewable callback
       flatListRef.current?.scrollToOffset({
         offset: itemHeightRef.current * next,
@@ -255,6 +259,8 @@ export default function HomeScreen() {
   }, []);
 
   const handleAct = useCallback((moveTitle: string) => {
+    // Guard against double-fire from rapid taps
+    if (isAnimating.current) return;
     const xp  = pickXP();
     const msg = pickMsg();
     const newCount = actedCount + 1;
@@ -271,7 +277,7 @@ export default function HomeScreen() {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
     }, 80);
     showReward(xp, msg, moveTitle);
-  }, [showReward]);
+  }, [showReward, actedCount, plaidConnected]);
 
   const handleSkip = useCallback(() => {
     if (isAnimating.current) return;
@@ -281,8 +287,16 @@ export default function HomeScreen() {
     setTimeout(() => { isAnimating.current = false; }, 500);
   }, [scrollToNext]);
 
-  const handleSave = useCallback(() => {
+  const handleSave = useCallback((insightId: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    // Persist the saved toggle into the feed array so the card keeps its state
+    // even if it unmounts and remounts due to windowing (scrolling far away).
+    setFeed(prev => prev.map(item => {
+      if (item.type === 'pulse' && (item.data as Insight).id === insightId) {
+        return { ...item, data: { ...(item.data as Insight), saved: !(item.data as Insight).saved } };
+      }
+      return item;
+    }));
   }, []);
 
   const onViewableItemsChanged = useRef(({ viewableItems }: any) => {
@@ -293,6 +307,8 @@ export default function HomeScreen() {
 
   const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 50 }).current;
 
+  const feedLength = feed.length;
+
   const renderItem = useCallback(({ item, index }: { item: FeedItem; index: number }) => (
     <View style={{ height: itemHeight, width: '100%' }}>
       {item.type === 'move' && (
@@ -302,16 +318,16 @@ export default function HomeScreen() {
           onSkip={handleSkip}
           onAskConcierge={() => setShowConcierge(true)}
           index={index}
-          total={feed.length}
+          total={feedLength}
         />
       )}
       {item.type === 'pulse' && (
         <FeedPulseCard
           insight={item.data as Insight}
-          onSave={handleSave}
+          onSave={() => handleSave((item.data as Insight).id)}
           onAskConcierge={() => setShowConcierge(true)}
           index={index}
-          total={feed.length}
+          total={feedLength}
         />
       )}
       {item.type === 'win' && (
@@ -319,18 +335,18 @@ export default function HomeScreen() {
           win={item.data as WealthWin}
           onAskConcierge={() => setShowConcierge(true)}
           index={index}
-          total={feed.length}
+          total={feedLength}
         />
       )}
       {item.type === 'beliefs' && (
         <BeliefsAuditCard
           index={index}
-          total={feed.length}
+          total={feedLength}
           onComplete={scrollToNext}
         />
       )}
     </View>
-  ), [itemHeight, handleAct, handleSkip, handleSave]);
+  ), [itemHeight, handleAct, handleSkip, handleSave, feedLength, scrollToNext]);
 
   return (
     <View style={styles.root}>

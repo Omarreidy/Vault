@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Dimensions, Animated } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { Insight } from '../services/insights';
@@ -33,6 +33,12 @@ export default function FeedPulseCard({ insight, onSave, onAskConcierge, index, 
   const saveScale = useRef(new Animated.Value(1)).current;
   const tagColor    = TAG_COLORS[insight.tag]    ?? COLORS.gold;
   const impactColor = IMPACT_COLORS[insight.impactType] ?? COLORS.gold;
+
+  // Re-sync local saved state when the parent feed updates insight.saved
+  // (e.g. after the card remounts from windowing, or after feed mutation).
+  useEffect(() => {
+    setSaved(insight.saved);
+  }, [insight.saved]);
 
   const handleSave = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
@@ -84,7 +90,9 @@ export default function FeedPulseCard({ insight, onSave, onAskConcierge, index, 
               <Text style={styles.conciergeTxt} numberOfLines={1}>✦ Ask Concierge about this</Text>
             </TouchableOpacity>
           )}
-          <Text style={styles.swipeHint}>↑ swipe for next</Text>
+          {index < total - 1 && (
+            <Text style={styles.swipeHint}>↑ swipe for next</Text>
+          )}
         </View>
 
       </View>
