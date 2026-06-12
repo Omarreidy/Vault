@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, SafeAreaView,
-  TouchableOpacity, Switch, Alert, Linking, Share, Platform,
+  TouchableOpacity, Switch, Alert, Linking, Share, Platform, Modal,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
@@ -89,6 +89,41 @@ function Divider() {
   return <View style={styles.rowDivider} />;
 }
 
+function PickerSheet({ visible, title, options, selected, onSelect, onClose }: {
+  visible: boolean;
+  title: string;
+  options: string[];
+  selected: string;
+  onSelect: (v: string) => void;
+  onClose: () => void;
+}) {
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <TouchableOpacity style={pickerStyles.backdrop} activeOpacity={1} onPress={onClose} />
+      <View style={pickerStyles.sheet}>
+        <View style={pickerStyles.handle} />
+        <Text style={pickerStyles.title}>{title}</Text>
+        {options.map(opt => (
+          <TouchableOpacity
+            key={opt}
+            style={pickerStyles.option}
+            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {}); onSelect(opt); onClose(); }}
+            activeOpacity={0.7}
+          >
+            <Text style={[pickerStyles.optionTxt, opt === selected && pickerStyles.optionTxtActive]}>
+              {opt}
+            </Text>
+            {opt === selected && <Text style={pickerStyles.check}>✓</Text>}
+          </TouchableOpacity>
+        ))}
+        <TouchableOpacity style={pickerStyles.cancel} onPress={onClose} activeOpacity={0.7}>
+          <Text style={pickerStyles.cancelTxt}>Cancel</Text>
+        </TouchableOpacity>
+      </View>
+    </Modal>
+  );
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 
 interface Props {
@@ -113,11 +148,13 @@ export default function SettingsScreen({ onClose, onResetOnboarding }: Props) {
   const [language,  setLanguage]  = useState('English');
 
   // Modals
-  const [showPlaid,    setShowPlaid]    = useState(false);
+  const [showPlaid,      setShowPlaid]      = useState(false);
   const [connectedBanks, setConnectedBanks] = useState(0);
-  const [showUpgrade,  setShowUpgrade]  = useState(false);
-  const [showPrivacy,  setShowPrivacy]  = useState(false);
-  const [showTerms,    setShowTerms]    = useState(false);
+  const [showUpgrade,    setShowUpgrade]    = useState(false);
+  const [showPrivacy,    setShowPrivacy]    = useState(false);
+  const [showTerms,      setShowTerms]      = useState(false);
+  const [showCurrency,   setShowCurrency]   = useState(false);
+  const [showLanguage,   setShowLanguage]   = useState(false);
 
   // ── Load persisted prefs on mount ─────────────────────────────────────────
   useEffect(() => {
@@ -153,38 +190,12 @@ export default function SettingsScreen({ onClose, onResetOnboarding }: Props) {
 
   const handleCurrency = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-    Alert.alert(
-      'Currency',
-      'Select your preferred currency',
-      [
-        ...CURRENCIES.map(c => ({
-          text: c === currency ? `${c}  ✓` : c,
-          onPress: () => {
-            setCurrency(c);
-            AsyncStorage.setItem(CURRENCY_KEY, c).catch(() => {});
-          },
-        })),
-        { text: 'Cancel', style: 'cancel' as const },
-      ]
-    );
+    setShowCurrency(true);
   };
 
   const handleLanguage = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-    Alert.alert(
-      'Language',
-      'Select your preferred language',
-      [
-        ...LANGUAGES.map(l => ({
-          text: l === language ? `${l}  ✓` : l,
-          onPress: () => {
-            setLanguage(l);
-            AsyncStorage.setItem(LANGUAGE_KEY, l).catch(() => {});
-          },
-        })),
-        { text: 'Cancel', style: 'cancel' as const },
-      ]
-    );
+    setShowLanguage(true);
   };
 
   const handleDarkMode = (v: boolean) => {
@@ -364,6 +375,22 @@ export default function SettingsScreen({ onClose, onResetOnboarding }: Props) {
         title="Terms of Service"
         content={TERMS_OF_SERVICE}
         onClose={() => setShowTerms(false)}
+      />
+      <PickerSheet
+        visible={showCurrency}
+        title="Currency"
+        options={CURRENCIES}
+        selected={currency}
+        onSelect={v => { setCurrency(v); AsyncStorage.setItem(CURRENCY_KEY, v).catch(() => {}); }}
+        onClose={() => setShowCurrency(false)}
+      />
+      <PickerSheet
+        visible={showLanguage}
+        title="Language"
+        options={LANGUAGES}
+        selected={language}
+        onSelect={v => { setLanguage(v); AsyncStorage.setItem(LANGUAGE_KEY, v).catch(() => {}); }}
+        onClose={() => setShowLanguage(false)}
       />
       <PlaidLinkScreen
         visible={showPlaid}
@@ -563,5 +590,66 @@ const styles = StyleSheet.create({
     fontSize: FONTS.sizes.xs, color: COLORS.textMuted,
     textAlign: 'center', letterSpacing: FONTS.tracking.widest,
     paddingTop: SPACING.sm,
+  },
+});
+
+const pickerStyles = StyleSheet.create({
+  backdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+  },
+  sheet: {
+    backgroundColor: COLORS.surface,
+    borderTopLeftRadius: RADIUS.xl,
+    borderTopRightRadius: RADIUS.xl,
+    paddingHorizontal: SPACING.lg,
+    paddingBottom: 40,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: COLORS.border,
+    borderBottomWidth: 0,
+  },
+  handle: {
+    width: 36, height: 4, borderRadius: 2,
+    backgroundColor: COLORS.border,
+    alignSelf: 'center',
+    marginTop: SPACING.sm,
+    marginBottom: SPACING.md,
+  },
+  title: {
+    fontSize: FONTS.sizes.xs,
+    fontWeight: FONTS.weights.bold,
+    color: COLORS.textMuted,
+    letterSpacing: FONTS.tracking.widest,
+    marginBottom: SPACING.sm,
+  },
+  option: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 14,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: COLORS.border,
+  },
+  optionTxt: {
+    fontSize: FONTS.sizes.md,
+    color: COLORS.text,
+  },
+  optionTxtActive: {
+    color: COLORS.gold,
+    fontWeight: FONTS.weights.semibold,
+  },
+  check: {
+    fontSize: FONTS.sizes.sm,
+    color: COLORS.gold,
+    fontWeight: FONTS.weights.bold,
+  },
+  cancel: {
+    alignItems: 'center',
+    paddingVertical: SPACING.md,
+    marginTop: SPACING.sm,
+  },
+  cancelTxt: {
+    fontSize: FONTS.sizes.md,
+    color: COLORS.textMuted,
   },
 });
