@@ -290,7 +290,7 @@ export default function TrajectoryScreen() {
       </View>
 
       {activeTab === 'timeline' ? (
-        <FinancialTimeline />
+        <FinancialTimeline onConnectBank={() => setShowPlaid(true)} />
       ) : (
       <ScrollView
         style={styles.scroll}

@@ -2,11 +2,12 @@ import React, { useRef, useEffect, useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, Animated,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
 import { COLORS, FONTS, SPACING, RADIUS, CARD_SHADOW } from '../constants/theme';
 import {
   TimelineEntry, TimelineMonth,
-  CATEGORY_COLORS, daysAgoLabel, useTimeline, TIMELINE_TOTALS,
+  CATEGORY_COLORS, daysAgoLabel, useTimeline, TIMELINE, TIMELINE_TOTALS,
 } from '../services/financialTimeline';
 
 // ─── Stat pill at the top ───────────────────────────────────────────────────
@@ -257,7 +258,7 @@ function SummaryRibbon() {
 
 // ─── Greene empty state ───────────────────────────────────────────────────────
 
-function EmptyBiography() {
+function EmptyBiography({ onViewSample }: { onViewSample: () => void }) {
   const opacity = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -277,16 +278,25 @@ function EmptyBiography() {
           Every master starts here. Every entry is real.
         </Text>
       </View>
+      <TouchableOpacity style={styles.sampleBtn} onPress={onViewSample} activeOpacity={0.8}>
+        <Text style={styles.sampleBtnTxt}>View sample biography →</Text>
+      </TouchableOpacity>
     </Animated.View>
   );
 }
 
 // ─── Root export ─────────────────────────────────────────────────────────────
 
-export default function FinancialTimeline() {
+export default function FinancialTimeline({ onConnectBank }: { onConnectBank?: () => void }) {
   const { months, totals, loading } = useTimeline();
+  const [showSample, setShowSample] = useState(false);
+
   const hasOnlyJoined = months.length === 1 && months[0].entries.length === 1 && months[0].entries[0].type === 'joined';
-  const showEmpty = !loading && (months.length === 0 || hasOnlyJoined);
+  const showEmpty = !showSample && !loading && (months.length === 0 || hasOnlyJoined);
+
+  const displayMonths = showSample ? TIMELINE : months;
+  const displayTotals = showSample ? TIMELINE_TOTALS : totals;
+  const showContent   = showSample || (!showEmpty && !loading && months.length > 0);
 
   return (
     <ScrollView
@@ -294,7 +304,25 @@ export default function FinancialTimeline() {
       contentContainerStyle={styles.content}
       showsVerticalScrollIndicator={false}
     >
-      {!showEmpty && (
+      {/* Sample banner — only when viewing sample */}
+      {showSample && (
+        <TouchableOpacity
+          style={styles.sampleBanner}
+          onPress={onConnectBank}
+          activeOpacity={0.82}
+        >
+          <View style={styles.sampleBannerLeft}>
+            <Text style={styles.sampleBannerIcon}>◇</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.sampleBannerTitle}>Sample timeline</Text>
+              <Text style={styles.sampleBannerSub}>This is a sample. Connect your bank to build your real financial biography.</Text>
+            </View>
+          </View>
+          <Text style={styles.sampleBannerCta}>Connect →</Text>
+        </TouchableOpacity>
+      )}
+
+      {showContent && (
         <>
           <View style={[styles.ribbon, CARD_SHADOW]}>
             <View style={styles.ribbonAccent} />
@@ -302,32 +330,32 @@ export default function FinancialTimeline() {
               <View style={styles.ribbonLeft}>
                 <Text style={styles.ribbonEye}>YOUR FINANCIAL BIOGRAPHY</Text>
                 <Text style={styles.ribbonTitle}>
-                  {totals.totalMoves} moves · {totals.monthsActive} months
+                  {displayTotals.totalMoves} moves · {displayTotals.monthsActive} months
                 </Text>
                 <Text style={styles.ribbonSub}>
-                  +${totals.totalNetWorthGain.toLocaleString()} net worth since joining
+                  +${displayTotals.totalNetWorthGain.toLocaleString()} net worth since joining
                 </Text>
               </View>
               <View style={styles.ribbonXP}>
-                <Text style={styles.ribbonXPVal}>{totals.totalXp}</Text>
+                <Text style={styles.ribbonXPVal}>{displayTotals.totalXp}</Text>
                 <Text style={styles.ribbonXPLbl}>XP TOTAL</Text>
               </View>
             </View>
             <View style={styles.pillRow}>
-              <StatPill label="MOVES"   value={String(totals.totalMoves)}   delay={100} />
-              <StatPill label="MONTHS"  value={String(totals.monthsActive)} delay={180} />
-              <StatPill label="NET GAIN" value={`+$${(totals.totalNetWorthGain / 1000).toFixed(1)}K`} delay={260} />
-              <StatPill label="XP"      value={String(totals.totalXp)}      delay={340} />
+              <StatPill label="MOVES"    value={String(displayTotals.totalMoves)}    delay={100} />
+              <StatPill label="MONTHS"   value={String(displayTotals.monthsActive)}  delay={180} />
+              <StatPill label="NET GAIN" value={`+$${(displayTotals.totalNetWorthGain / 1000).toFixed(1)}K`} delay={260} />
+              <StatPill label="XP"       value={String(displayTotals.totalXp)}       delay={340} />
             </View>
           </View>
 
-          {months.map((month, i) => (
+          {displayMonths.map((month, i) => (
             <MonthBlock key={month.id} month={month} monthIndex={i} />
           ))}
         </>
       )}
 
-      {showEmpty && <EmptyBiography />}
+      {showEmpty && <EmptyBiography onViewSample={() => setShowSample(true)} />}
 
       <View style={{ height: SPACING.xxl }} />
     </ScrollView>
@@ -375,6 +403,38 @@ const styles = StyleSheet.create({
   },
   statVal: { fontSize: FONTS.sizes.md, fontWeight: FONTS.weights.bold, color: COLORS.background },
   statLbl: { fontSize: 7, color: 'rgba(242,239,233,0.4)', letterSpacing: 1.2, fontWeight: FONTS.weights.bold },
+
+  // Sample banner
+  sampleBanner: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    backgroundColor: COLORS.card,
+    borderRadius: RADIUS.md,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: COLORS.gold + '40',
+    padding: SPACING.md,
+  },
+  sampleBannerLeft: { flexDirection: 'row', alignItems: 'flex-start', gap: SPACING.sm, flex: 1 },
+  sampleBannerIcon: { fontSize: 16, color: COLORS.gold, marginTop: 1 },
+  sampleBannerTitle: { fontSize: FONTS.sizes.sm, fontWeight: FONTS.weights.semibold, color: COLORS.text },
+  sampleBannerSub: { fontSize: FONTS.sizes.xs, color: COLORS.textDim, marginTop: 2, lineHeight: 17 },
+  sampleBannerCta: { fontSize: FONTS.sizes.sm, color: COLORS.gold, fontWeight: FONTS.weights.semibold, marginLeft: SPACING.sm },
+
+  // View sample button on empty state
+  sampleBtn: {
+    marginTop: SPACING.lg,
+    paddingVertical: 12,
+    paddingHorizontal: SPACING.xl,
+    borderRadius: RADIUS.full,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: COLORS.gold + '40',
+    backgroundColor: COLORS.goldGlow,
+  },
+  sampleBtnTxt: {
+    fontSize: FONTS.sizes.sm,
+    color: COLORS.gold,
+    fontWeight: FONTS.weights.semibold,
+    letterSpacing: 0.3,
+  },
 
   // Nudge
   nudgeBanner: {
