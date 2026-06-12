@@ -287,7 +287,7 @@ const styles = StyleSheet.create({
   inner: {
     flex: 1,
     paddingHorizontal: SPACING.lg,
-    paddingTop: 80,
+    paddingTop: 48,
     paddingBottom: SPACING.xl,
     justifyContent: 'space-between',
   },
