@@ -175,16 +175,20 @@ export default function HomeScreen() {
       .eq('onboarding_complete', true)
       .then(({ count }) => { if (count) setMemberCount(count); });
 
-    // Try to load personalized moves from Plaid
+    // Try to load personalized moves from Plaid — splice into existing feed
+    // (never rebuild from scratch so the daily order stays stable)
     fetchPersonalizedMoves().then(personalizedMoves => {
       if (personalizedMoves && personalizedMoves.length > 0) {
-        // Prepend personalized moves to the feed
-        const personalizedFeed = buildFeed(
-          [...personalizedMoves, ...ALL_MOVES],
-          INSIGHTS,
-          [],
-        );
-        setFeed(personalizedFeed);
+        const personalizedItems: FeedItem[] = personalizedMoves.slice(0, 5).map(m => ({
+          id: `move-${m.id}`,
+          type: 'move' as const,
+          data: m,
+        }));
+        setFeed(prev => {
+          const next = [...prev];
+          next.splice(1, 0, ...personalizedItems);
+          return next;
+        });
       }
     });
   }, []);

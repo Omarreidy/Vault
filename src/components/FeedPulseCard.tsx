@@ -68,9 +68,9 @@ export default function FeedPulseCard({ insight, onSave, onAskConcierge, index, 
 
         <View style={styles.body}>
           <Text style={styles.eyebrow}>PULSE · {insight.timeAgo.toUpperCase()}</Text>
-          <Text style={styles.headline}>{insight.headline}</Text>
+          <Text style={styles.headline} numberOfLines={4}>{insight.headline}</Text>
           <View style={styles.divider} />
-          <Text style={styles.bodyTxt}>{insight.body}</Text>
+          <Text style={styles.bodyTxt} numberOfLines={5}>{insight.body}</Text>
         </View>
 
         <View style={styles.bottom}>
@@ -115,7 +115,7 @@ const styles = StyleSheet.create({
   counter: { fontSize: FONTS.sizes.xs, color: COLORS.textMuted, letterSpacing: FONTS.tracking.widest },
   saveIcon: { fontSize: 18, color: COLORS.textMuted, fontFamily: FONTS.display },
 
-  body: { flex: 1, justifyContent: 'center', gap: 16 },
+  body: { flex: 1, justifyContent: 'center', gap: 16, overflow: 'hidden' },
   eyebrow: { fontSize: FONTS.sizes.xs, color: COLORS.textMuted, letterSpacing: FONTS.tracking.widest },
   headline: {
     fontSize: 26,

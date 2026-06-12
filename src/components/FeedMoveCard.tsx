@@ -198,15 +198,20 @@ export default function FeedMoveCard({ move, onAct, onSkip, onAskConcierge, inde
         </View>
 
         <View style={styles.body}>
-          <Text style={styles.title}>{move.title}</Text>
-          <Text style={styles.desc}>{move.description}</Text>
+          <Text style={styles.title} numberOfLines={3}>{move.title}</Text>
+          <Text style={styles.desc} numberOfLines={5}>{move.description}</Text>
         </View>
 
         <View style={styles.bottomSection}>
 
           <View style={styles.impactBlock}>
             <Text style={styles.impactLabel}>POTENTIAL VALUE</Text>
-            <Text style={[styles.impactValue, { color: meta.accent, fontFamily: FONTS.display }]}>
+            <Text
+              style={[styles.impactValue, { color: meta.accent, fontFamily: FONTS.display }]}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontSize={20}
+            >
               {move.impact}
             </Text>
           </View>
@@ -299,7 +304,7 @@ const styles = StyleSheet.create({
   effort: { fontSize: FONTS.sizes.xs, color: COLORS.textMuted, letterSpacing: FONTS.tracking.wide },
   counter: { fontSize: FONTS.sizes.xs, color: COLORS.textMuted, letterSpacing: FONTS.tracking.widest },
 
-  body: { flex: 1, justifyContent: 'center', gap: 16 },
+  body: { flex: 1, justifyContent: 'center', gap: 16, overflow: 'hidden' },
   title: {
     fontSize: 30,
     fontWeight: FONTS.weights.bold,
