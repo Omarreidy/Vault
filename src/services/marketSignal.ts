@@ -35,8 +35,8 @@ export interface NewsItem {
   url?: string;
 }
 
-const SUPABASE_URL = 'https://gvdfypehwmemootjizmd.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_tHoiSHF-49L1_p0OLRPeKw_5mfSi0fs';
+const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? 'https://gvdfypehwmemootjizmd.supabase.co';
+const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? 'sb_publishable_tHoiSHF-49L1_p0OLRPeKw_5mfSi0fs';
 
 const headers = {
   'Content-Type': 'application/json',

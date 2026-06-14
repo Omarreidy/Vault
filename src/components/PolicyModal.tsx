@@ -1,8 +1,9 @@
 import React from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity,
-  Modal, SafeAreaView, ScrollView,
+  Modal, ScrollView,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS, FONTS, SPACING, RADIUS } from '../constants/theme';
 
 // ─── Inline bold renderer ─────────────────────────────────────────────────────

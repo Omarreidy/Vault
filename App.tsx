@@ -2,6 +2,7 @@ import 'react-native-gesture-handler';
 import React, { useState, useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StyleSheet, View, Text } from 'react-native';
 import { Session } from '@supabase/supabase-js';
 import AppNavigator from './src/navigation/AppNavigator';
@@ -116,7 +117,9 @@ function AppContent() {
 export default function App() {
   return (
     <ErrorBoundary>
-      <AppContent />
+      <SafeAreaProvider>
+        <AppContent />
+      </SafeAreaProvider>
     </ErrorBoundary>
   );
 }

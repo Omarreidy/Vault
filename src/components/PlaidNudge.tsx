@@ -100,7 +100,7 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
     borderWidth: 1, borderColor: COLORS.border,
   },
-  dismissTxt: { fontSize: 10, color: COLORS.textDim, fontWeight: FONTS.weights.bold },
+  dismissTxt: { fontSize: FONTS.sizes.xs, color: COLORS.textDim, fontWeight: FONTS.weights.bold },
   headline: { fontSize: FONTS.sizes.lg, fontWeight: FONTS.weights.bold, color: COLORS.text, letterSpacing: -0.3 },
   sub: { fontSize: FONTS.sizes.sm, color: COLORS.textDim, lineHeight: 20 },
   trustRow: { gap: 6 },

@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, TextInput, TouchableOpacity,
-  SafeAreaView, KeyboardAvoidingView, Platform, Animated,
+  KeyboardAvoidingView, Platform, Animated,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import { supabase } from '../services/supabase';
 import { COLORS, FONTS, SPACING, RADIUS, CARD_SHADOW } from '../constants/theme';

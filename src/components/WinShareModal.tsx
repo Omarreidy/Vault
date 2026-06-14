@@ -1,8 +1,9 @@
 import React, { useRef } from 'react';
 import {
   View, Text, StyleSheet, Modal, TouchableOpacity,
-  Share, SafeAreaView, Animated, Dimensions,
+  Share, Animated, Dimensions,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import WealthWinCard from './WealthWinCard';
 import { WealthWin } from '../types';

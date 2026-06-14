@@ -1,9 +1,12 @@
 import React, { useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, Animated } from 'react-native';
+import Svg, { Circle } from 'react-native-svg';
 import { Goal, getGoalProgress, getMonthsToGoal } from '../services/goals';
 import { COLORS, FONTS, SPACING, RADIUS, CARD_SHADOW } from '../constants/theme';
 
-// Simple arc progress using a layered approach
+const AnimatedCircle = Animated.createAnimatedComponent(Circle);
+
+// Smooth arc progress — the ring fills to the exact progress value
 function CircleProgress({ progress, color, size = 72 }: { progress: number; color: string; size?: number }) {
   const anim = useRef(new Animated.Value(0)).current;
 
@@ -11,29 +14,44 @@ function CircleProgress({ progress, color, size = 72 }: { progress: number; colo
     Animated.timing(anim, { toValue: progress, duration: 1200, delay: 300, useNativeDriver: false }).start();
   }, [progress]);
 
+  const stroke = 4;
+  const radius = (size - stroke) / 2;
+  const circumference = 2 * Math.PI * radius;
+  // Animate the stroke offset so the arc reveals proportionally to progress
+  const dashOffset = anim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [circumference, 0],
+  });
+
   const pct = Math.round(progress * 100);
 
   return (
     <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
-      {/* Track ring */}
-      <View style={{
-        width: size, height: size, borderRadius: size / 2,
-        borderWidth: 4, borderColor: color + '20',
-        position: 'absolute',
-      }} />
-      {/* Progress overlay — simple indicator */}
-      <View style={{
-        width: size, height: size, borderRadius: size / 2,
-        borderWidth: 4,
-        borderColor: color,
-        borderTopColor: progress > 0.25 ? color : 'transparent',
-        borderRightColor: progress > 0.5 ? color : 'transparent',
-        borderBottomColor: progress > 0.75 ? color : 'transparent',
-        borderLeftColor: progress > 0.0 ? color : 'transparent',
-        position: 'absolute',
-        transform: [{ rotate: '-90deg' }],
-      }} />
-      <Text style={{ fontFamily: FONTS.display, fontSize: 17, fontWeight: FONTS.weights.light, color }}>{pct}%</Text>
+      <Svg width={size} height={size} style={{ position: 'absolute' }}>
+        {/* Track ring */}
+        <Circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          stroke={color + '20'}
+          strokeWidth={stroke}
+          fill="none"
+        />
+        {/* Progress arc — starts at 12 o'clock */}
+        <AnimatedCircle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          stroke={color}
+          strokeWidth={stroke}
+          fill="none"
+          strokeLinecap="round"
+          strokeDasharray={circumference}
+          strokeDashoffset={dashOffset}
+          transform={`rotate(-90 ${size / 2} ${size / 2})`}
+        />
+      </Svg>
+      <Text style={{ fontFamily: FONTS.display, fontSize: FONTS.sizes.lg, fontWeight: FONTS.weights.light, color }}>{pct}%</Text>
     </View>
   );
 }
@@ -55,7 +73,7 @@ export default function GoalCard({ goal }: Props) {
           <Text style={styles.current}>${goal.current.toLocaleString()}</Text>
           <Text style={styles.target}>of ${goal.target.toLocaleString()}</Text>
           <View style={styles.etaBadge}>
-            <Text style={styles.etaTxt}>{months} months away</Text>
+            <Text style={styles.etaTxt}>{goal.monthlyContribution > 0 ? `${months} months away` : 'Set a monthly amount'}</Text>
           </View>
         </View>
         <View style={styles.right}>

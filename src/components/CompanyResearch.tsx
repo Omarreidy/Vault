@@ -558,7 +558,7 @@ const vStyles = StyleSheet.create({
   reasonRow: { flexDirection: 'row', alignItems: 'flex-start', gap: SPACING.sm },
   reasonNum: {
     width: 20, height: 20, borderRadius: 10,
-    fontSize: 10, fontWeight: FONTS.weights.heavy,
+    fontSize: FONTS.sizes.xs, fontWeight: FONTS.weights.heavy,
     textAlign: 'center', lineHeight: 20,
     backgroundColor: 'rgba(255,255,255,0.15)',
     overflow: 'hidden',
@@ -669,7 +669,7 @@ const rStyles = StyleSheet.create({
   timelineLineFuture: { backgroundColor: COLORS.gold + '40' },
   timelineYear: { fontSize: FONTS.sizes.xs, fontWeight: FONTS.weights.bold, color: COLORS.textMuted, letterSpacing: 0.5 },
   timelineEvent: { fontSize: FONTS.sizes.xs, fontWeight: FONTS.weights.semibold, color: COLORS.text, lineHeight: 16 },
-  timelineImpact: { fontSize: 10, color: COLORS.textMuted, lineHeight: 14 },
+  timelineImpact: { fontSize: FONTS.sizes.xs, color: COLORS.textMuted, lineHeight: 14 },
   nowMarker: { alignItems: 'center', paddingHorizontal: SPACING.sm, gap: 4, width: 60 },
   nowLine: { width: 1, height: 40, backgroundColor: COLORS.gold },
   nowLabel: { fontSize: 9, fontWeight: FONTS.weights.heavy, color: COLORS.gold, letterSpacing: 1.5 },

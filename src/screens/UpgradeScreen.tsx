@@ -1,15 +1,16 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity, SafeAreaView,
+  View, Text, StyleSheet, TouchableOpacity,
   ScrollView, Animated, Linking, Modal,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { supabase } from '../services/supabase';
 import { COLORS, FONTS, SPACING, RADIUS, CARD_SHADOW } from '../constants/theme';
 
-const SUPABASE_URL = 'https://gvdfypehwmemootjizmd.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_tHoiSHF-49L1_p0OLRPeKw_5mfSi0fs';
+const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? 'https://gvdfypehwmemootjizmd.supabase.co';
+const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? 'sb_publishable_tHoiSHF-49L1_p0OLRPeKw_5mfSi0fs';
 
 const PERKS = [
   { icon: '◈', title: 'Unlimited AI Concierge', sub: 'Ask anything, any time — no limits' },
@@ -183,7 +184,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.surface, alignItems: 'center', justifyContent: 'center',
     borderWidth: 1, borderColor: COLORS.border,
   },
-  closeTxt: { fontSize: 12, color: COLORS.textDim, fontWeight: FONTS.weights.bold },
+  closeTxt: { fontSize: FONTS.sizes.sm, color: COLORS.textDim, fontWeight: FONTS.weights.bold },
 
   scroll: { padding: SPACING.lg, gap: SPACING.lg, paddingBottom: SPACING.xxl },
 

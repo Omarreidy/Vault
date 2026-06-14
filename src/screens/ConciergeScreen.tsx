@@ -1,8 +1,9 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity,
-  SafeAreaView, KeyboardAvoidingView, Platform, Animated, Modal,
+  KeyboardAvoidingView, Platform, Animated, Modal,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Message } from '../types';
 import { askConcierge, ConversationMessage } from '../services/concierge';
@@ -342,7 +343,7 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
     borderWidth: StyleSheet.hairlineWidth, borderColor: COLORS.border,
   },
-  closeTxt: { fontSize: 12, color: COLORS.textDim },
+  closeTxt: { fontSize: FONTS.sizes.sm, color: COLORS.textDim },
 
   limitBar: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',

@@ -3,7 +3,7 @@ import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
   Modal, Dimensions, Animated,
 } from 'react-native';
-import { SafeAreaView } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 
 import { buildFeed, fetchPersonalizedMoves, FeedItem } from '../services/feed';
@@ -142,6 +142,14 @@ const eofStyles = StyleSheet.create({
     letterSpacing: FONTS.tracking.wide,
   },
 });
+
+// Greeting that tracks the time of day
+function getGreeting() {
+  const hour = new Date().getHours();
+  if (hour < 12) return 'GOOD MORNING';
+  if (hour < 18) return 'GOOD AFTERNOON';
+  return 'GOOD EVENING';
+}
 
 export default function HomeScreen() {
   const realProfile = useRealProfile();
@@ -358,7 +366,7 @@ export default function HomeScreen() {
       <SafeAreaView style={styles.headerArea}>
         <View style={styles.header}>
           <View>
-            <Text style={styles.greeting}>GOOD MORNING</Text>
+            <Text style={styles.greeting}>{getGreeting()}</Text>
             <Text style={styles.name}>{userName}</Text>
             {memberCount !== null && memberCount > 1 && (
               <Text style={styles.memberBadge}>◆ {memberCount.toLocaleString()} members building wealth</Text>

@@ -1,8 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, Animated,
-  Dimensions, SafeAreaView, TextInput, ScrollView, Platform,
+  Dimensions, TextInput, ScrollView, Platform,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import {

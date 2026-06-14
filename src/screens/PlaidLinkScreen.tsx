@@ -1,15 +1,16 @@
 import React, { useEffect, useState, useRef } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity,
-  SafeAreaView, ActivityIndicator, Modal,
+  ActivityIndicator, Modal,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
 import * as Haptics from 'expo-haptics';
 import { supabase } from '../services/supabase';
 import { COLORS, FONTS, SPACING, RADIUS, CARD_SHADOW } from '../constants/theme';
 
-const SUPABASE_URL = 'https://gvdfypehwmemootjizmd.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_tHoiSHF-49L1_p0OLRPeKw_5mfSi0fs';
+const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? 'https://gvdfypehwmemootjizmd.supabase.co';
+const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? 'sb_publishable_tHoiSHF-49L1_p0OLRPeKw_5mfSi0fs';
 
 interface PlaidAccount {
   account_id: string;

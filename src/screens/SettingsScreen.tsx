@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, SafeAreaView,
+  View, Text, StyleSheet, ScrollView,
   TouchableOpacity, Switch, Alert, Linking, Share, Platform, Modal,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
 import TierBadge from '../components/TierBadge';
@@ -99,26 +100,28 @@ function PickerSheet({ visible, title, options, selected, onSelect, onClose }: {
 }) {
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <TouchableOpacity style={pickerStyles.backdrop} activeOpacity={1} onPress={onClose} />
-      <View style={pickerStyles.sheet}>
-        <View style={pickerStyles.handle} />
-        <Text style={pickerStyles.title}>{title}</Text>
-        {options.map(opt => (
-          <TouchableOpacity
-            key={opt}
-            style={pickerStyles.option}
-            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {}); onSelect(opt); onClose(); }}
-            activeOpacity={0.7}
-          >
-            <Text style={[pickerStyles.optionTxt, opt === selected && pickerStyles.optionTxtActive]}>
-              {opt}
-            </Text>
-            {opt === selected && <Text style={pickerStyles.check}>✓</Text>}
+      <View style={pickerStyles.root}>
+        <TouchableOpacity style={pickerStyles.backdrop} activeOpacity={1} onPress={onClose} />
+        <View style={pickerStyles.sheet}>
+          <View style={pickerStyles.handle} />
+          <Text style={pickerStyles.title}>{title}</Text>
+          {options.map(opt => (
+            <TouchableOpacity
+              key={opt}
+              style={pickerStyles.option}
+              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {}); onSelect(opt); onClose(); }}
+              activeOpacity={0.7}
+            >
+              <Text style={[pickerStyles.optionTxt, opt === selected && pickerStyles.optionTxtActive]}>
+                {opt}
+              </Text>
+              {opt === selected && <Text style={pickerStyles.check}>✓</Text>}
+            </TouchableOpacity>
+          ))}
+          <TouchableOpacity style={pickerStyles.cancel} onPress={onClose} activeOpacity={0.7}>
+            <Text style={pickerStyles.cancelTxt}>Cancel</Text>
           </TouchableOpacity>
-        ))}
-        <TouchableOpacity style={pickerStyles.cancel} onPress={onClose} activeOpacity={0.7}>
-          <Text style={pickerStyles.cancelTxt}>Cancel</Text>
-        </TouchableOpacity>
+        </View>
       </View>
     </Modal>
   );
@@ -594,8 +597,9 @@ const styles = StyleSheet.create({
 });
 
 const pickerStyles = StyleSheet.create({
+  root: { flex: 1, justifyContent: 'flex-end' },
   backdrop: {
-    flex: 1,
+    ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(0,0,0,0.4)',
   },
   sheet: {

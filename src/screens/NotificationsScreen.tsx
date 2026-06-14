@@ -1,8 +1,9 @@
 import React, { useState, useRef } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  Animated, SafeAreaView,
+  Animated,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import { VaultNotification, timeAgo, NotifType } from '../services/notifications';
 import { COLORS, FONTS, SPACING, RADIUS, CARD_SHADOW } from '../constants/theme';

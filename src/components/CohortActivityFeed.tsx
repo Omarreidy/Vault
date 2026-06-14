@@ -214,7 +214,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.goldGlow,
   },
   initials: {
-    fontSize: 12,
+    fontSize: FONTS.sizes.sm,
     fontWeight: FONTS.weights.bold,
     color: COLORS.textDim,
   },

@@ -1,8 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
   View, Text, StyleSheet, Animated, PanResponder,
-  Dimensions, SafeAreaView, TouchableOpacity, ScrollView,
+  Dimensions, TouchableOpacity, ScrollView,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import { INSIGHTS, Insight } from '../services/insights';
 import { COLORS, FONTS, SPACING, RADIUS, CARD_SHADOW, CARD_SHADOW_STRONG } from '../constants/theme';

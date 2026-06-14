@@ -2,8 +2,8 @@ import { VelocityScore, TierName } from '../types';
 import { TIERS } from '../constants/theme';
 import { supabase } from './supabase';
 
-const SUPABASE_URL = 'https://gvdfypehwmemootjizmd.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_tHoiSHF-49L1_p0OLRPeKw_5mfSi0fs';
+const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? 'https://gvdfypehwmemootjizmd.supabase.co';
+const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? 'sb_publishable_tHoiSHF-49L1_p0OLRPeKw_5mfSi0fs';
 
 export function getTierFromScore(score: number): TierName {
   if (score >= 900) return 'BLACK';

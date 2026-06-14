@@ -226,7 +226,7 @@ export default function FeedMoveCard({ move, onAct, onSkip, onAskConcierge, inde
               style={[styles.impactValue, { color: meta.accent, fontFamily: FONTS.display }]}
               numberOfLines={1}
               adjustsFontSizeToFit
-              minimumFontSize={20}
+              minimumFontScale={0.42}
             >
               {move.impact}
             </Text>

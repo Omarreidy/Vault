@@ -437,7 +437,7 @@ export default function FinancialScanner({ visible, onClose }: Props) {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
     try {
       const res = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: ['images'],
         allowsEditing: true,
         aspect: [1, 1],
         quality: 0.8,
@@ -562,7 +562,7 @@ const rootStyles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: COLORS.border,
   },
-  closeTxt: { fontSize: 12, color: COLORS.textDim, fontWeight: FONTS.weights.bold },
+  closeTxt: { fontSize: FONTS.sizes.sm, color: COLORS.textDim, fontWeight: FONTS.weights.bold },
   content: { flex: 1 },
   scanningWrap: { flex: 1, alignItems: 'center', justifyContent: 'center' },
 });

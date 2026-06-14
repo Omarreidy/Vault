@@ -1,5 +1,6 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, SafeAreaView, Animated, TouchableOpacity, Modal, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Animated, TouchableOpacity, Modal, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { getStreak } from '../services/streak';
 import * as Haptics from 'expo-haptics';
 import { GOALS, Goal, getGoalProgress, getMonthsToGoal } from '../services/goals';
@@ -150,7 +151,12 @@ export default function ScoreScreen() {
       </View>
 
       {/* Internal tab bar */}
-      <View style={styles.tabRow}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={styles.tabScroll}
+        contentContainerStyle={styles.tabRow}
+      >
         {TABS.map(tab => (
           <TouchableOpacity
             key={tab}
@@ -161,7 +167,7 @@ export default function ScoreScreen() {
             <Text style={[styles.tabTxt, activeTab === tab && styles.tabTxtActive]}>{tab}</Text>
           </TouchableOpacity>
         ))}
-      </View>
+      </ScrollView>
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
 
@@ -555,6 +561,7 @@ const styles = StyleSheet.create({
   dot: { width: 5, height: 5, borderRadius: 2.5, backgroundColor: COLORS.gold },
   streakTxt: { fontSize: FONTS.sizes.xs, color: COLORS.textDim, letterSpacing: FONTS.tracking.wide },
 
+  tabScroll: { flexGrow: 0 },
   tabRow: {
     flexDirection: 'row',
     paddingHorizontal: SPACING.lg,
@@ -700,7 +707,7 @@ const mStyles = StyleSheet.create({
   sheetTitle: { fontSize: FONTS.sizes.xl, fontWeight: FONTS.weights.bold, color: COLORS.text, letterSpacing: -0.5 },
   sheetSub: { fontSize: FONTS.sizes.sm, color: COLORS.textDim },
   closeBtn: { width: 30, height: 30, borderRadius: 15, backgroundColor: COLORS.card, alignItems: 'center', justifyContent: 'center', borderWidth: StyleSheet.hairlineWidth, borderColor: COLORS.border },
-  closeTxt: { fontSize: 12, color: COLORS.textDim, fontWeight: FONTS.weights.bold },
+  closeTxt: { fontSize: FONTS.sizes.sm, color: COLORS.textDim, fontWeight: FONTS.weights.bold },
 
   section: { paddingHorizontal: SPACING.lg, paddingTop: SPACING.lg, gap: SPACING.md },
   inputLabel: { fontSize: 9, color: COLORS.textMuted, fontWeight: FONTS.weights.bold, letterSpacing: FONTS.tracking.widest },

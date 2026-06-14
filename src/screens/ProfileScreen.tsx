@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, SafeAreaView, TouchableOpacity, Share, Animated, Modal } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Share, Animated, Modal } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import SettingsScreen from './SettingsScreen';
 import ConciergeScreen from './ConciergeScreen';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -188,7 +189,12 @@ export default function ProfileScreen({ onResetOnboarding }: ProfileProps = {}) 
       </View>
 
       {/* Tabs */}
-      <View style={styles.tabRow}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={styles.tabScroll}
+        contentContainerStyle={styles.tabRow}
+      >
         {TABS.map(tab => {
           const isCard = tab === 'Card';
           const isActive = activeTab === tab;
@@ -220,7 +226,7 @@ export default function ProfileScreen({ onResetOnboarding }: ProfileProps = {}) 
             </TouchableOpacity>
           );
         })}
-      </View>
+      </ScrollView>
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
 
@@ -241,17 +247,16 @@ export default function ProfileScreen({ onResetOnboarding }: ProfileProps = {}) 
                 </View>
               ))}
             </View>
-            <Text style={styles.sectionLabel}>RECENT ACHIEVEMENTS</Text>
-            <View style={styles.recentAchieve}>
-              {ACHIEVEMENTS.filter(a => a.unlocked).slice(0, 4).map(a => (
-                <AchievementBadge key={a.id} achievement={a} size="sm" />
-              ))}
-            </View>
-            <TouchableOpacity onPress={() => setActiveTab('Wins')} activeOpacity={0.7}>
-              <View style={[styles.viewAllBtn, CARD_SHADOW, { shadowOpacity: 0.06 }]}>
-                <Text style={styles.viewAllTxt}>View all {unlockedCount} achievements →</Text>
-              </View>
-            </TouchableOpacity>
+            {unlockedCount > 0 && (
+              <>
+                <Text style={styles.sectionLabel}>RECENT ACHIEVEMENTS</Text>
+                <View style={styles.recentAchieve}>
+                  {ACHIEVEMENTS.filter(a => a.unlocked).slice(0, 4).map(a => (
+                    <AchievementBadge key={a.id} achievement={a} size="sm" />
+                  ))}
+                </View>
+              </>
+            )}
 
             {/* Concierge entry */}
             <TouchableOpacity
@@ -424,7 +429,7 @@ export default function ProfileScreen({ onResetOnboarding }: ProfileProps = {}) 
                   onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {}); setShowWrapped(true); }}
                   activeOpacity={0.85}
                 >
-                  <Text style={styles.recapBtnEye}>MAY 2026</Text>
+                  <Text style={styles.recapBtnEye}>{new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' }).toUpperCase()}</Text>
                   <Text style={styles.recapBtnTitle}>View Monthly Recap</Text>
                   <Text style={styles.recapBtnArrow}>→</Text>
                 </TouchableOpacity>
@@ -490,6 +495,7 @@ const styles = StyleSheet.create({
   cardName: { fontSize: FONTS.sizes.xs, color: COLORS.textMuted, letterSpacing: FONTS.tracking.widest * 2 },
   cardDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: COLORS.gold },
 
+  tabScroll: { flexGrow: 0 },
   tabRow: { flexDirection: 'row', paddingHorizontal: SPACING.lg, paddingVertical: SPACING.md, gap: SPACING.sm },
   tab: { paddingHorizontal: 14, paddingVertical: 6, borderRadius: RADIUS.full, borderWidth: StyleSheet.hairlineWidth, borderColor: COLORS.border, backgroundColor: COLORS.surface },
   tabActive: { backgroundColor: COLORS.text, borderColor: COLORS.text },

@@ -3,7 +3,7 @@ import {
   View, Text, StyleSheet, ScrollView, Dimensions,
   Animated, TouchableOpacity,
 } from 'react-native';
-import { SafeAreaView } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { usePlaid } from '../context/PlaidContext';
 import Svg, { Path, Defs, LinearGradient as SvgGradient, Stop, Line, Text as SvgText, Circle } from 'react-native-svg';
 import * as Haptics from 'expo-haptics';
@@ -751,7 +751,7 @@ const styles = StyleSheet.create({
     borderColor: COLORS.gold,
   },
   nextBadgeTxt: { fontSize: 8, color: COLORS.goldDark, fontWeight: '700', letterSpacing: 1 },
-  milestoneDone: { fontSize: 14, color: COLORS.goldDark },
+  milestoneDone: { fontSize: FONTS.sizes.md, color: COLORS.goldDark },
 
   // Future self
   futureCard: {
