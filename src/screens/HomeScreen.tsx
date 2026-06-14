@@ -161,6 +161,23 @@ export default function HomeScreen() {
   const [feed, setFeed] = useState<FeedItem[]>(DEFAULT_FEED);
   const [streakDays, setStreakDays] = useState(0);
 
+  const loadPersonalizedFeed = useCallback(() => {
+    fetchPersonalizedMoves().then(personalizedMoves => {
+      if (personalizedMoves && personalizedMoves.length > 0) {
+        const personalizedItems: FeedItem[] = personalizedMoves.slice(0, 5).map(m => ({
+          id: `move-${m.id}`,
+          type: 'move' as const,
+          data: m,
+        }));
+        setFeed(() => {
+          const base = buildFeed(ALL_MOVES, INSIGHTS, []);
+          base.splice(1, 0, ...personalizedItems);
+          return base;
+        });
+      }
+    });
+  }, []);
+
   // Check if Plaid already connected + whether to show nudge + get member count
   useEffect(() => {
     updateStreak().then(setStreakDays);
@@ -175,23 +192,8 @@ export default function HomeScreen() {
       .eq('onboarding_complete', true)
       .then(({ count }) => { if (count) setMemberCount(count); });
 
-    // Try to load personalized moves from Plaid — splice into existing feed
-    // (never rebuild from scratch so the daily order stays stable)
-    fetchPersonalizedMoves().then(personalizedMoves => {
-      if (personalizedMoves && personalizedMoves.length > 0) {
-        const personalizedItems: FeedItem[] = personalizedMoves.slice(0, 5).map(m => ({
-          id: `move-${m.id}`,
-          type: 'move' as const,
-          data: m,
-        }));
-        setFeed(prev => {
-          const next = [...prev];
-          next.splice(1, 0, ...personalizedItems);
-          return next;
-        });
-      }
-    });
-  }, []);
+    loadPersonalizedFeed();
+  }, [loadPersonalizedFeed]);
   const [notifCount, setNotifCount] = useState(0);
   const [itemHeight, setItemHeight] = useState(Dimensions.get('window').height);
 
@@ -387,7 +389,7 @@ export default function HomeScreen() {
               }}
               activeOpacity={0.75}
             >
-              <Text style={styles.bellIcon}>◎</Text>
+              <Text style={styles.bellIcon}>◌</Text>
               {notifCount > 0 && (
                 <View style={styles.badge}>
                   <Text style={styles.badgeTxt}>{notifCount > 9 ? '9+' : notifCount}</Text>
@@ -501,6 +503,7 @@ export default function HomeScreen() {
           setShowPlaid(false);
           setPlaidConnected(true);
           AsyncStorage.setItem('@vault_plaid_connected', 'true');
+          loadPersonalizedFeed();
         }}
       />
 
