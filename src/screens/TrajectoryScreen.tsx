@@ -4,7 +4,7 @@ import {
   Animated, TouchableOpacity,
 } from 'react-native';
 import { SafeAreaView } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { usePlaid } from '../context/PlaidContext';
 import Svg, { Path, Defs, LinearGradient as SvgGradient, Stop, Line, Text as SvgText, Circle } from 'react-native-svg';
 import * as Haptics from 'expo-haptics';
 import { COLORS, FONTS, SPACING, RADIUS, CARD_SHADOW } from '../constants/theme';
@@ -212,18 +212,30 @@ export default function TrajectoryScreen() {
   const [activeTab, setActiveTab] = useState<'trajectory' | 'timeline'>('trajectory');
   const [actionsCompleted] = useState(0);
   const [activeScenario, setActiveScenario] = useState(0);
-  const [plaidConnected, setPlaidConnected] = useState(false);
+  const { plaidConnected, plaidSummary, refresh: refreshPlaid } = usePlaid();
   const [showPlaid, setShowPlaid] = useState(false);
-  const [trajectoryInputs, setTrajectoryInputs] = useState<TrajectoryInputs>(DEFAULT_TRAJECTORY_INPUTS);
+  const [onboardingInputs, setOnboardingInputs] = useState<TrajectoryInputs>(DEFAULT_TRAJECTORY_INPUTS);
 
   useEffect(() => {
-    AsyncStorage.getItem('@vault_plaid_connected').then(val => {
-      setPlaidConnected(val === 'true');
-    });
     getTrajectoryInputs().then(inputs => {
-      if (inputs) setTrajectoryInputs(inputs);
+      if (inputs) setOnboardingInputs(inputs);
     });
   }, []);
+
+  // Merge real Plaid data into trajectory inputs when connected
+  const trajectoryInputs: TrajectoryInputs = plaidSummary
+    ? {
+        ...onboardingInputs,
+        ...(plaidSummary.estimatedMonthlyIncome > 0 && {
+          annualIncome: plaidSummary.estimatedMonthlyIncome * 12,
+          annualExpenses: plaidSummary.monthlySpend > 0
+            ? plaidSummary.monthlySpend * 12
+            : onboardingInputs.annualExpenses,
+        }),
+        currentNetWorth:
+          plaidSummary.checking + plaidSummary.savings + plaidSummary.investments - plaidSummary.creditDebt,
+      }
+    : onboardingInputs;
 
   const handleTab = (tab: 'trajectory' | 'timeline') => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
@@ -514,9 +526,8 @@ export default function TrajectoryScreen() {
         visible={showPlaid}
         onClose={() => setShowPlaid(false)}
         onSuccess={() => {
-          AsyncStorage.setItem('@vault_plaid_connected', 'true');
-          setPlaidConnected(true);
           setShowPlaid(false);
+          refreshPlaid();
         }}
       />
     </SafeAreaView>

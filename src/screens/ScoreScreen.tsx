@@ -17,6 +17,7 @@ import WealthWrapped from '../components/WealthWrapped';
 import CohortCard from '../components/CohortCard';
 import { COLORS, FONTS, SPACING, TIERS, RADIUS, CARD_SHADOW } from '../constants/theme';
 import { getNextTier, getPointsToNextTier, fetchLiveScore, fetchProfileScore } from '../services/velocity';
+import { usePlaid } from '../context/PlaidContext';
 import { TierName, VelocityScore } from '../types';
 
 const TIER_ORDER: TierName[] = ['BRONZE', 'SILVER', 'GOLD', 'PLATINUM', 'BLACK'];
@@ -24,10 +25,11 @@ const TABS = ['Score', 'Cohort', 'Goals', 'Challenges', 'Achievements'] as const
 type Tab = typeof TABS[number];
 
 export default function ScoreScreen() {
+  const { plaidConnected } = usePlaid();
   const [liveScore, setLiveScore] = useState<VelocityScore | null>(null);
   const [scoreSource, setScoreSource] = useState<'plaid' | 'profile' | 'mock'>('mock');
 
-  // Try Plaid → profile → mock fallback
+  // Re-fetch score whenever Plaid connection changes (picks up real data instantly)
   useEffect(() => {
     fetchLiveScore().then(s => {
       if (s) { setLiveScore(s); setScoreSource('plaid'); return; }
@@ -35,7 +37,7 @@ export default function ScoreScreen() {
         if (ps) { setLiveScore(ps); setScoreSource('profile'); }
       });
     });
-  }, []);
+  }, [plaidConnected]);
 
   const EMPTY_SCORE = { total: 0, savings: 0, investment: 0, debt: 0, spending: 0, weeklyChange: 0, percentile: 0, tier: 'BRONZE' as TierName, tierProgress: 0 };
   const score      = liveScore ?? EMPTY_SCORE;
@@ -340,16 +342,16 @@ export default function ScoreScreen() {
       </ScrollView>
 
       {/* ── GOAL DETAIL SHEET ─────────────────────────────────── */}
-      <Modal visible={!!selectedGoal} transparent animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setSelectedGoal(null)}>
+      <Modal visible={!!selectedGoal} transparent animationType="slide" onRequestClose={() => setSelectedGoal(null)}>
         {selectedGoal && (
-          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
+          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={mStyles.backdrop}>
             <View style={mStyles.root}>
               <View style={mStyles.handle} />
               <View style={mStyles.sheetHeader}>
                 <Text style={mStyles.sheetEmoji}>{selectedGoal.emoji}</Text>
                 <View style={mStyles.sheetTitleWrap}>
                   <Text style={mStyles.sheetTitle}>{selectedGoal.title}</Text>
-                  <Text style={mStyles.sheetSub}>{Math.round(getGoalProgress(selectedGoal) * 100)}% complete · {getMonthsToGoal(selectedGoal)} months left</Text>
+                  <Text style={mStyles.sheetSub}>{Math.round(getGoalProgress(selectedGoal) * 100)}% complete{selectedGoal.monthlyContribution > 0 ? ` · ${getMonthsToGoal(selectedGoal)} months left` : ''}</Text>
                 </View>
                 <TouchableOpacity onPress={() => setSelectedGoal(null)} style={mStyles.closeBtn}>
                   <Text style={mStyles.closeTxt}>✕</Text>
@@ -412,8 +414,8 @@ export default function ScoreScreen() {
       </Modal>
 
       {/* ── ADD GOAL SHEET ────────────────────────────────────── */}
-      <Modal visible={showAddGoal} transparent animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowAddGoal(false)}>
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
+      <Modal visible={showAddGoal} transparent animationType="slide" onRequestClose={() => setShowAddGoal(false)}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={mStyles.backdrop}>
           <View style={mStyles.root}>
             <View style={mStyles.handle} />
             <View style={mStyles.sheetHeader}>
@@ -474,8 +476,9 @@ export default function ScoreScreen() {
       </Modal>
 
       {/* ── CHALLENGE DETAIL SHEET ────────────────────────────── */}
-      <Modal visible={!!selectedChallenge} transparent animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setSelectedChallenge(null)}>
+      <Modal visible={!!selectedChallenge} transparent animationType="slide" onRequestClose={() => setSelectedChallenge(null)}>
         {selectedChallenge && (
+          <View style={mStyles.backdrop}>
           <View style={mStyles.root}>
             <View style={mStyles.handle} />
             <View style={mStyles.sheetHeader}>
@@ -525,6 +528,7 @@ export default function ScoreScreen() {
             <Animated.Text style={[mStyles.xpFloat, { opacity: xpOpacity, transform: [{ translateY: xpAnim }] }]}>
               +{earnedXP} XP
             </Animated.Text>
+          </View>
           </View>
         )}
       </Modal>
@@ -674,11 +678,14 @@ const styles = StyleSheet.create({
 });
 
 const mStyles = StyleSheet.create({
-  root: {
+  backdrop: {
     flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'flex-end',
+  },
+  root: {
     backgroundColor: COLORS.surface,
     borderTopLeftRadius: 24, borderTopRightRadius: 24,
-    marginTop: 'auto',
     paddingBottom: 40,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: COLORS.border,

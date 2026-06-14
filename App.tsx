@@ -8,6 +8,7 @@ import AppNavigator from './src/navigation/AppNavigator';
 import OnboardingScreen from './src/screens/OnboardingScreen';
 import AuthScreen from './src/screens/AuthScreen';
 import { supabase } from './src/services/supabase';
+import { PlaidProvider } from './src/context/PlaidContext';
 
 // Error boundary to catch white screens and show the actual error
 class ErrorBoundary extends React.Component<
@@ -104,7 +105,9 @@ function AppContent() {
         <OnboardingScreen onComplete={handleOnboardingComplete} />
       )}
       {appState === 'main' && (
-        <AppNavigator onResetOnboarding={handleSignOut} />
+        <PlaidProvider>
+          <AppNavigator onResetOnboarding={handleSignOut} />
+        </PlaidProvider>
       )}
     </GestureHandlerRootView>
   );

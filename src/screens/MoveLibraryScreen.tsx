@@ -1,10 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, SafeAreaView,
   TouchableOpacity, Modal,
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { ALL_MOVES } from '../services/mockData';
+import { fetchPersonalizedMoves } from '../services/feed';
+import { usePlaid } from '../context/PlaidContext';
 import { WealthMove } from '../types';
 import { COLORS, FONTS, SPACING, RADIUS, CARD_SHADOW } from '../constants/theme';
 
@@ -101,21 +103,35 @@ function MoveDetail({ move, onClose }: { move: WealthMove; onClose: () => void }
 interface Props { onClose: () => void }
 
 export default function MoveLibraryScreen({ onClose }: Props) {
+  const { plaidConnected } = usePlaid();
   const [activeCategory, setActiveCategory] = useState('all');
   const [selectedMove, setSelectedMove] = useState<WealthMove | null>(null);
+  const [personalizedMoves, setPersonalizedMoves] = useState<WealthMove[]>([]);
+
+  useEffect(() => {
+    if (plaidConnected) {
+      fetchPersonalizedMoves().then(moves => {
+        if (moves) setPersonalizedMoves(moves);
+      });
+    }
+  }, [plaidConnected]);
+
+  const allMoves = plaidConnected && personalizedMoves.length > 0
+    ? [...personalizedMoves, ...ALL_MOVES.filter(m => !personalizedMoves.find(p => p.id === m.id))]
+    : ALL_MOVES;
 
   const filtered = activeCategory === 'all'
-    ? ALL_MOVES
-    : ALL_MOVES.filter(m => m.category === activeCategory);
+    ? allMoves
+    : allMoves.filter(m => m.category === activeCategory);
 
-  const totalImpact = ALL_MOVES.reduce((sum, m) => sum + m.impactValue, 0);
+  const totalImpact = allMoves.reduce((sum, m) => sum + m.impactValue, 0);
 
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <View>
           <Text style={styles.headerTitle}>Move Library</Text>
-          <Text style={styles.headerSub}>{ALL_MOVES.length} moves · ${totalImpact.toLocaleString()}+ total opportunity</Text>
+          <Text style={styles.headerSub}>{allMoves.length} moves · ${totalImpact.toLocaleString()}+ total opportunity</Text>
         </View>
         <TouchableOpacity style={styles.closeBtn} onPress={onClose}>
           <Text style={styles.closeTxt}>×</Text>
@@ -127,7 +143,7 @@ export default function MoveLibraryScreen({ onClose }: Props) {
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
         {CATEGORIES.map(cat => {
           const active = activeCategory === cat.key;
-          const count = cat.key === 'all' ? ALL_MOVES.length : ALL_MOVES.filter(m => m.category === cat.key).length;
+          const count = cat.key === 'all' ? allMoves.length : allMoves.filter(m => m.category === cat.key).length;
           return (
             <TouchableOpacity
               key={cat.key}

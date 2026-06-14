@@ -7,6 +7,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Message } from '../types';
 import { askConcierge, ConversationMessage } from '../services/concierge';
 import { useRealProfile } from '../services/userProfile';
+import { usePlaid } from '../context/PlaidContext';
 import PlaidLinkScreen from './PlaidLinkScreen';
 import UpgradeScreen from './UpgradeScreen';
 import { COLORS, FONTS, SPACING, RADIUS, CARD_SHADOW } from '../constants/theme';
@@ -40,6 +41,7 @@ interface Props { onClose?: () => void; }
 
 export default function ConciergeScreen({ onClose }: Props = {}) {
   const { isPremium } = useRealProfile();
+  const { plaidConnected, refresh: refreshPlaid } = usePlaid();
 
   const [messages, setMessages]             = useState<Message[]>([]);
   const [input, setInput]                   = useState('');
@@ -47,7 +49,6 @@ export default function ConciergeScreen({ onClose }: Props = {}) {
   const [consentGiven, setConsentGiven]     = useState<boolean | null>(null);
   const [showConsent, setShowConsent]       = useState(false);
   const [pendingMessage, setPendingMessage] = useState('');
-  const [plaidConnected, setPlaidConnected] = useState(false);
   const [showPlaid, setShowPlaid]           = useState(false);
   const [showUpgrade, setShowUpgrade]       = useState(false);
   const [dailyCount, setDailyCount]         = useState(0);
@@ -56,7 +57,6 @@ export default function ConciergeScreen({ onClose }: Props = {}) {
 
   useEffect(() => {
     AsyncStorage.getItem(AI_CONSENT_KEY).then(val => setConsentGiven(val === 'true'));
-    AsyncStorage.getItem('@vault_plaid_connected').then(val => setPlaidConnected(val === 'true'));
     getDailyCount().then(setDailyCount);
   }, []);
 
@@ -254,9 +254,8 @@ export default function ConciergeScreen({ onClose }: Props = {}) {
         visible={showPlaid}
         onClose={() => setShowPlaid(false)}
         onSuccess={() => {
-          AsyncStorage.setItem('@vault_plaid_connected', 'true');
-          setPlaidConnected(true);
           setShowPlaid(false);
+          refreshPlaid();
         }}
       />
 

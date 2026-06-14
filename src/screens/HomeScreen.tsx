@@ -27,6 +27,7 @@ import PlaidLinkScreen from './PlaidLinkScreen';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../services/supabase';
 import { updateStreak } from '../services/streak';
+import { usePlaid } from '../context/PlaidContext';
 
 import { COLORS, FONTS, SPACING, RADIUS, CARD_SHADOW } from '../constants/theme';
 
@@ -145,6 +146,7 @@ const eofStyles = StyleSheet.create({
 export default function HomeScreen() {
   const realProfile = useRealProfile();
   const userName = realProfile.name;
+  const { plaidConnected, refresh: refreshPlaid } = usePlaid();
   const [feedTab, setFeedTab] = useState<'foryou' | 'cohort'>('foryou');
   const [totalXP, setTotalXP]       = useState(0);
   const [actedCount, setActedCount] = useState(0);
@@ -155,7 +157,6 @@ export default function HomeScreen() {
   const [showConcierge, setShowConcierge] = useState(false);
   const [showPlaidNudge, setShowPlaidNudge] = useState(false);
   const [showPlaid, setShowPlaid] = useState(false);
-  const [plaidConnected, setPlaidConnected] = useState(false);
 
   const [memberCount, setMemberCount] = useState<number | null>(null);
   const [feed, setFeed] = useState<FeedItem[]>(DEFAULT_FEED);
@@ -178,12 +179,9 @@ export default function HomeScreen() {
     });
   }, []);
 
-  // Check if Plaid already connected + whether to show nudge + get member count
+  // Initial load: streak, nudge dismissed flag, member count
   useEffect(() => {
     updateStreak().then(setStreakDays);
-    AsyncStorage.getItem('@vault_plaid_connected').then(val => {
-      if (val === 'true') setPlaidConnected(true);
-    });
     AsyncStorage.getItem('@vault_plaid_nudge_dismissed').then(val => {
       if (val === 'true') setShowPlaidNudge(false);
     });
@@ -191,9 +189,12 @@ export default function HomeScreen() {
       .select('id', { count: 'exact', head: true })
       .eq('onboarding_complete', true)
       .then(({ count }) => { if (count) setMemberCount(count); });
+  }, []);
 
+  // Reload personalized feed whenever Plaid connection status changes
+  useEffect(() => {
     loadPersonalizedFeed();
-  }, [loadPersonalizedFeed]);
+  }, [plaidConnected, loadPersonalizedFeed]);
   const [notifCount, setNotifCount] = useState(0);
   const [itemHeight, setItemHeight] = useState(Dimensions.get('window').height);
 
@@ -501,9 +502,7 @@ export default function HomeScreen() {
         onClose={() => setShowPlaid(false)}
         onSuccess={() => {
           setShowPlaid(false);
-          setPlaidConnected(true);
-          AsyncStorage.setItem('@vault_plaid_connected', 'true');
-          loadPersonalizedFeed();
+          refreshPlaid();
         }}
       />
 
