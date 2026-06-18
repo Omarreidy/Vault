@@ -1,6 +1,10 @@
 {
-  "buildCommand": "npx expo export --platform web",
+  "buildCommand": "npx expo export --platform web && cp -r public/* dist/",
   "outputDirectory": "dist",
   "framework": null,
-  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
+  "rewrites": [
+    { "source": "/privacy", "destination": "/privacy/index.html" },
+    { "source": "/support", "destination": "/support/index.html" },
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
 }
