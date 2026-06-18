@@ -1,16 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity,
-  ScrollView, Animated, Linking, Modal,
+  ScrollView, Animated, Platform, Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
-import { supabase } from '../services/supabase';
 import { COLORS, FONTS, SPACING, RADIUS, CARD_SHADOW } from '../constants/theme';
-
-const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? 'https://gvdfypehwmemootjizmd.supabase.co';
-const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? 'sb_publishable_tHoiSHF-49L1_p0OLRPeKw_5mfSi0fs';
 
 const PERKS = [
   { icon: '◈', title: 'Unlimited AI Concierge', sub: 'Ask anything, any time — no limits' },
@@ -29,7 +25,9 @@ interface Props {
 
 export default function UpgradeScreen({ visible, onClose, onSuccess }: Props) {
   const [loading, setLoading] = useState(false);
+  const [restoring, setRestoring] = useState(false);
   const [error, setError] = useState('');
+  const [priceString, setPriceString] = useState('$9.99');
   const scale = useRef(new Animated.Value(0.95)).current;
   const opacity = useRef(new Animated.Value(0)).current;
 
@@ -39,56 +37,68 @@ export default function UpgradeScreen({ visible, onClose, onSuccess }: Props) {
         Animated.spring(scale,   { toValue: 1, tension: 60, friction: 9, useNativeDriver: false }),
         Animated.timing(opacity, { toValue: 1, duration: 300, useNativeDriver: false }),
       ]).start();
+      loadOffering();
     }
   }, [visible]);
 
+  const loadOffering = async () => {
+    if (Platform.OS === 'web') return;
+    try {
+      const Purchases = require('react-native-purchases').default;
+      const offerings = await Purchases.getOfferings();
+      const pkg = offerings.current?.monthly ?? offerings.current?.availablePackages?.[0];
+      if (pkg?.product?.priceString) {
+        setPriceString(pkg.product.priceString);
+      }
+    } catch {}
+  };
+
   const handleUpgrade = async () => {
+    if (Platform.OS === 'web') {
+      setError('Open the VAULT app on your iPhone to upgrade.');
+      return;
+    }
+
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => {});
     setLoading(true);
     setError('');
     try {
-      // Try to get user — gracefully fall back if session not available
-      let userId = 'guest';
-      let email = 'guest@vault.app';
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session?.user) {
-          userId = session.user.id;
-          email = session.user.email ?? email;
-        }
-      } catch {}
+      const Purchases = require('react-native-purchases').default;
+      const offerings = await Purchases.getOfferings();
+      const pkg = offerings.current?.monthly ?? offerings.current?.availablePackages?.[0];
+      if (!pkg) throw new Error('No subscription available');
 
-      const res = await fetch(`${SUPABASE_URL}/functions/v1/stripe-checkout`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-          'apikey': SUPABASE_ANON_KEY,
-        },
-        body: JSON.stringify({
-          user_id: userId,
-          email,
-          success_url: 'https://vaultreidy.netlify.app?subscribed=true',
-          cancel_url: 'https://vaultreidy.netlify.app?cancelled=true',
-        }),
-      });
-
-      const data = await res.json();
-      if (data.error) throw new Error(data.error);
-      if (data.url) {
-        // On web use window.location to avoid browser popup blocking
-        if (typeof window !== 'undefined' && window.location) {
-          window.location.href = data.url;
-        } else {
-          await Linking.openURL(data.url);
-        }
+      const { customerInfo } = await Purchases.purchasePackage(pkg);
+      if (customerInfo.entitlements.active['premium']) {
         onSuccess?.();
         onClose();
       }
     } catch (err: any) {
-      setError('Could not start checkout. Please try again.');
+      if (!err.userCancelled) {
+        setError('Purchase failed. Please try again.');
+      }
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleRestore = async () => {
+    if (Platform.OS === 'web') return;
+    setRestoring(true);
+    setError('');
+    try {
+      const Purchases = require('react-native-purchases').default;
+      const customerInfo = await Purchases.restorePurchases();
+      if (customerInfo.entitlements.active['premium']) {
+        onSuccess?.();
+        onClose();
+      } else {
+        setError('No active subscription found.');
+      }
+    } catch {
+      setError('Could not restore. Please try again.');
+    } finally {
+      setRestoring(false);
     }
   };
 
@@ -113,7 +123,7 @@ export default function UpgradeScreen({ visible, onClose, onSuccess }: Props) {
               Everything in VAULT — unlocked. The tools that actually move the needle.
             </Text>
             <View style={styles.priceRow}>
-              <Text style={styles.price}>$13</Text>
+              <Text style={styles.price}>{priceString.replace(/[^0-9.]/g, '').split('.')[0]}</Text>
               <View>
                 <Text style={styles.pricePer}>/month</Text>
                 <Text style={styles.priceSub}>Cancel anytime</Text>
@@ -151,7 +161,7 @@ export default function UpgradeScreen({ visible, onClose, onSuccess }: Props) {
           <TouchableOpacity
             style={styles.ctaWrap}
             onPress={handleUpgrade}
-            disabled={loading}
+            disabled={loading || restoring}
             activeOpacity={0.88}
           >
             <LinearGradient
@@ -160,14 +170,20 @@ export default function UpgradeScreen({ visible, onClose, onSuccess }: Props) {
               style={styles.cta}
             >
               <Text style={styles.ctaTxt}>
-                {loading ? 'Opening checkout…' : 'Start Premium — $13/mo →'}
+                {loading ? 'Processing…' : `Start Premium — ${priceString}/mo →`}
               </Text>
             </LinearGradient>
           </TouchableOpacity>
 
+          <TouchableOpacity onPress={handleRestore} disabled={loading || restoring} style={styles.restoreBtn}>
+            <Text style={styles.restoreTxt}>
+              {restoring ? 'Restoring…' : 'Restore purchases'}
+            </Text>
+          </TouchableOpacity>
+
           <Text style={styles.legal}>
-            Billed monthly. Cancel anytime from your account settings.{'\n'}
-            Secure checkout powered by Stripe.
+            {priceString}/month, billed by Apple. Cancel anytime in your iPhone Settings.{'\n'}
+            Payment processed securely by Apple.
           </Text>
 
         </ScrollView>
@@ -233,6 +249,9 @@ const styles = StyleSheet.create({
   ctaWrap: { borderRadius: RADIUS.full, overflow: 'hidden' },
   cta: { paddingVertical: 18, alignItems: 'center', justifyContent: 'center' },
   ctaTxt: { fontSize: FONTS.sizes.md, fontWeight: FONTS.weights.bold, color: '#08080C', letterSpacing: 0.3 },
+
+  restoreBtn: { alignItems: 'center', paddingVertical: SPACING.sm },
+  restoreTxt: { fontSize: FONTS.sizes.xs, color: COLORS.textMuted, textDecorationLine: 'underline' },
 
   legal: {
     fontSize: FONTS.sizes.xs, color: COLORS.textMuted,

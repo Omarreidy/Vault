@@ -3,13 +3,21 @@ import React, { useState, useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { StyleSheet, View, Text } from 'react-native';
+import { StyleSheet, View, Text, Platform } from 'react-native';
 import { Session } from '@supabase/supabase-js';
 import AppNavigator from './src/navigation/AppNavigator';
 import OnboardingScreen from './src/screens/OnboardingScreen';
 import AuthScreen from './src/screens/AuthScreen';
 import { supabase } from './src/services/supabase';
 import { PlaidProvider } from './src/context/PlaidContext';
+
+const RC_API_KEY = 'appl_iHfaWTgWajGmNhQValXNlUdqwxI';
+
+if (Platform.OS !== 'web') {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const Purchases = require('react-native-purchases').default;
+  Purchases.configure({ apiKey: RC_API_KEY });
+}
 
 // Error boundary to catch white screens and show the actual error
 class ErrorBoundary extends React.Component<
@@ -66,6 +74,13 @@ function AppContent() {
   }, []);
 
   const checkOnboarding = async (session: Session) => {
+    if (Platform.OS !== 'web') {
+      try {
+        const Purchases = require('react-native-purchases').default;
+        await Purchases.logIn(session.user.id);
+      } catch {}
+    }
+
     const { data } = await supabase
       .from('profiles')
       .select('onboarding_complete')
@@ -90,6 +105,12 @@ function AppContent() {
   };
 
   const handleSignOut = async () => {
+    if (Platform.OS !== 'web') {
+      try {
+        const Purchases = require('react-native-purchases').default;
+        await Purchases.logOut();
+      } catch {}
+    }
     await supabase.auth.signOut();
     setAppState('auth');
   };
