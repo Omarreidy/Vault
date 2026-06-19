@@ -123,7 +123,7 @@ export default function UpgradeScreen({ visible, onClose, onSuccess }: Props) {
               Everything in VAULT — unlocked. The tools that actually move the needle.
             </Text>
             <View style={styles.priceRow}>
-              <Text style={styles.price}>{priceString.replace(/[^0-9.]/g, '').split('.')[0]}</Text>
+              <Text style={styles.price}>{priceString}</Text>
               <View>
                 <Text style={styles.pricePer}>/month</Text>
                 <Text style={styles.priceSub}>Cancel anytime</Text>

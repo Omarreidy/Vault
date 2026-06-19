@@ -235,10 +235,10 @@ export default function ProfileScreen({ onResetOnboarding }: ProfileProps = {}) 
           <>
             <View style={styles.grid}>
               {[
-                { icon: '◈', label: 'Savings',    value: `${score.savings}/100`    },
-                { icon: '◉', label: 'Investment', value: `${score.investment}/100` },
-                { icon: '◇', label: 'Debt',       value: `${score.debt}/100`       },
-                { icon: '○', label: 'Spending',   value: `${score.spending}/100`   },
+                { icon: '◈', label: 'Savings',    value: `${Math.min(score.savings, 100)}/100`    },
+                { icon: '◉', label: 'Investment', value: `${Math.min(score.investment, 100)}/100` },
+                { icon: '◇', label: 'Debt',       value: `${Math.min(score.debt, 100)}/100`       },
+                { icon: '○', label: 'Spending',   value: `${Math.min(score.spending, 100)}/100`   },
               ].map(item => (
                 <View key={item.label} style={[styles.gridItem, CARD_SHADOW, { shadowOpacity: 0.07 }]}>
                   <Text style={styles.gridIcon}>{item.icon}</Text>

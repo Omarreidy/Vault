@@ -14,7 +14,7 @@ import UpgradeScreen from './UpgradeScreen';
 import { COLORS, FONTS, SPACING, RADIUS, CARD_SHADOW } from '../constants/theme';
 
 const AI_CONSENT_KEY    = '@vault_ai_consent_v1';
-const FREE_MSG_LIMIT    = 3;
+const FREE_MSG_LIMIT    = 5;
 
 function todayKey(): string {
   return `@vault_concierge_count_${new Date().toISOString().slice(0, 10)}`;

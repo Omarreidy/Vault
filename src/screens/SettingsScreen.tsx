@@ -452,7 +452,7 @@ export default function SettingsScreen({ onClose, onResetOnboarding }: Props) {
           <Divider />
           <LinkRow
             label="Upgrade to Premium"
-            sub="$13/mo · Unlimited concierge · All features"
+            sub="$9.99/mo · Unlimited concierge · All features"
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
               setShowUpgrade(true);
