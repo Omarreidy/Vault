@@ -4,6 +4,7 @@ import {
   Dimensions, Animated, Modal,
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { WealthMove } from '../types';
 import { COLORS, FONTS, SPACING, RADIUS } from '../constants/theme';
 
@@ -176,6 +177,7 @@ const sheetStyles = StyleSheet.create({
 
 export default function FeedMoveCard({ move, onAct, onSkip, onAskConcierge, index, total }: Props) {
   const meta = META[move.category] ?? META.opportunity;
+  const insets = useSafeAreaInsets();
   const [lessonOpen, setLessonOpen] = useState(false);
   const [learned, setLearned]       = useState(false);
 
@@ -200,22 +202,24 @@ export default function FeedMoveCard({ move, onAct, onSkip, onAskConcierge, inde
   return (
     <View style={styles.container}>
       <View style={[styles.topAccent, { backgroundColor: meta.accent }]} />
-      <View style={styles.inner}>
+      <View style={[styles.inner, { paddingBottom: SPACING.xl + insets.bottom }]}>
 
-        <View style={styles.topRow}>
-          <View style={[styles.tag, { backgroundColor: meta.accent + '15', borderColor: meta.accent + '35' }]}>
-            <View style={[styles.tagDot, { backgroundColor: meta.accent }]} />
-            <Text style={[styles.tagTxt, { color: meta.accent }]}>{meta.tag}</Text>
+        <View>
+          <View style={styles.topRow}>
+            <View style={[styles.tag, { backgroundColor: meta.accent + '15', borderColor: meta.accent + '35' }]}>
+              <View style={[styles.tagDot, { backgroundColor: meta.accent }]} />
+              <Text style={[styles.tagTxt, { color: meta.accent }]}>{meta.tag}</Text>
+            </View>
+            <View style={styles.topRight}>
+              <Text style={styles.effort}>{EFFORT[move.effort]}</Text>
+              <Text style={styles.counter}>{index + 1} / {total}</Text>
+            </View>
           </View>
-          <View style={styles.topRight}>
-            <Text style={styles.effort}>{EFFORT[move.effort]}</Text>
-            <Text style={styles.counter}>{index + 1} / {total}</Text>
-          </View>
-        </View>
 
-        <View style={styles.body}>
-          <Text style={styles.title} numberOfLines={3}>{move.title}</Text>
-          <Text style={styles.desc} numberOfLines={5}>{move.description}</Text>
+          <View style={styles.body}>
+            <Text style={styles.title} numberOfLines={3}>{move.title}</Text>
+            <Text style={styles.desc} numberOfLines={5}>{move.description}</Text>
+          </View>
         </View>
 
         <View style={styles.bottomSection}>
@@ -303,7 +307,7 @@ const styles = StyleSheet.create({
   inner: {
     flex: 1,
     paddingHorizontal: SPACING.lg,
-    paddingTop: 48,
+    paddingTop: SPACING.lg,
     paddingBottom: SPACING.xl,
     justifyContent: 'space-between',
   },
@@ -320,7 +324,7 @@ const styles = StyleSheet.create({
   effort: { fontSize: FONTS.sizes.xs, color: COLORS.textMuted, letterSpacing: FONTS.tracking.wide },
   counter: { fontSize: FONTS.sizes.xs, color: COLORS.textMuted, letterSpacing: FONTS.tracking.widest },
 
-  body: { flex: 1, justifyContent: 'flex-start', paddingTop: SPACING.lg, gap: 16, overflow: 'hidden' },
+  body: { justifyContent: 'flex-start', paddingTop: SPACING.lg, gap: 16, overflow: 'hidden' },
   title: {
     fontSize: 30,
     fontWeight: FONTS.weights.bold,
@@ -330,7 +334,7 @@ const styles = StyleSheet.create({
   },
   desc: { fontSize: FONTS.sizes.md, color: COLORS.textDim, lineHeight: FONTS.sizes.md * 1.75 },
 
-  bottomSection: { gap: SPACING.md, overflow: 'hidden' },
+  bottomSection: { gap: SPACING.md },
 
   impactBlock: { gap: 4 },
   impactLabel: { fontSize: FONTS.sizes.xs, color: COLORS.textMuted, letterSpacing: FONTS.tracking.widest },
