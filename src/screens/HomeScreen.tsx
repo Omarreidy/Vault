@@ -163,6 +163,7 @@ export default function HomeScreen() {
   const [completedMoveTitle, setCompletedMoveTitle] = useState('');
   const [showScanner, setShowScanner] = useState(false);
   const [showConcierge, setShowConcierge] = useState(false);
+  const [conciergePrompt, setConciergePrompt] = useState('');
   const [showPlaidNudge, setShowPlaidNudge] = useState(false);
   const [showPlaid, setShowPlaid] = useState(false);
 
@@ -327,7 +328,10 @@ export default function HomeScreen() {
           move={item.data as WealthMove}
           onAct={() => handleAct((item.data as WealthMove).title)}
           onSkip={handleSkip}
-          onAskConcierge={() => setShowConcierge(true)}
+          onAskConcierge={() => {
+            setConciergePrompt(`Tell me more about this WealthMove: "${(item.data as WealthMove).title}"`);
+            setShowConcierge(true);
+          }}
           index={index}
           total={feedLength}
         />
@@ -336,7 +340,7 @@ export default function HomeScreen() {
         <FeedPulseCard
           insight={item.data as Insight}
           onSave={() => handleSave((item.data as Insight).id)}
-          onAskConcierge={() => setShowConcierge(true)}
+          onAskConcierge={() => { setConciergePrompt(''); setShowConcierge(true); }}
           index={index}
           total={feedLength}
         />
@@ -344,7 +348,7 @@ export default function HomeScreen() {
       {item.type === 'win' && (
         <FeedWinCard
           win={item.data as WealthWin}
-          onAskConcierge={() => setShowConcierge(true)}
+          onAskConcierge={() => { setConciergePrompt(''); setShowConcierge(true); }}
           index={index}
           total={feedLength}
         />
@@ -517,7 +521,7 @@ export default function HomeScreen() {
       <FinancialScanner visible={showScanner} onClose={() => setShowScanner(false)} />
 
       <Modal visible={showConcierge} animationType="slide" presentationStyle="pageSheet">
-        <ConciergeScreen onClose={() => setShowConcierge(false)} />
+        <ConciergeScreen onClose={() => setShowConcierge(false)} initialPrompt={conciergePrompt} />
       </Modal>
 
       <CohortReactionOverlay

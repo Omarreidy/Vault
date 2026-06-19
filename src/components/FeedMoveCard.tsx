@@ -224,9 +224,9 @@ export default function FeedMoveCard({ move, onAct, onSkip, onAskConcierge, inde
             <Text style={styles.impactLabel}>POTENTIAL VALUE</Text>
             <Text
               style={[styles.impactValue, { color: meta.accent, fontFamily: FONTS.display }]}
-              numberOfLines={1}
+              numberOfLines={2}
               adjustsFontSizeToFit
-              minimumFontScale={0.42}
+              minimumFontScale={0.6}
             >
               {move.impact}
             </Text>

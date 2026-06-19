@@ -38,9 +38,9 @@ const STARTERS = [
   { q: 'How close am I to Platinum?', icon: '○' },
 ];
 
-interface Props { onClose?: () => void; }
+interface Props { onClose?: () => void; initialPrompt?: string; }
 
-export default function ConciergeScreen({ onClose }: Props = {}) {
+export default function ConciergeScreen({ onClose, initialPrompt }: Props = {}) {
   const { isPremium } = useRealProfile();
   const { plaidConnected, refresh: refreshPlaid } = usePlaid();
 
@@ -60,6 +60,10 @@ export default function ConciergeScreen({ onClose }: Props = {}) {
     AsyncStorage.getItem(AI_CONSENT_KEY).then(val => setConsentGiven(val === 'true'));
     getDailyCount().then(setDailyCount);
   }, []);
+
+  useEffect(() => {
+    if (initialPrompt) setInput(initialPrompt);
+  }, [initialPrompt]);
 
   const isAtLimit = !isPremium && dailyCount >= FREE_MSG_LIMIT;
 
