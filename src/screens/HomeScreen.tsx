@@ -3,7 +3,7 @@ import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
   Modal, Dimensions, Animated,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 
 import { buildFeed, fetchPersonalizedMoves, FeedItem } from '../services/feed';
@@ -28,6 +28,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../services/supabase';
 import { updateStreak } from '../services/streak';
 import { usePlaid } from '../context/PlaidContext';
+import { MOCK_NOTIFICATIONS } from '../services/notifications';
 
 import { COLORS, FONTS, SPACING, RADIUS, CARD_SHADOW } from '../constants/theme';
 
@@ -152,6 +153,7 @@ function getGreeting() {
 }
 
 export default function HomeScreen() {
+  const insets = useSafeAreaInsets();
   const realProfile = useRealProfile();
   const userName = realProfile.name;
   const { plaidConnected, refresh: refreshPlaid } = usePlaid();
@@ -204,7 +206,7 @@ export default function HomeScreen() {
   useEffect(() => {
     loadPersonalizedFeed();
   }, [plaidConnected, loadPersonalizedFeed]);
-  const [notifCount, setNotifCount] = useState(0);
+  const [notifCount, setNotifCount] = useState(MOCK_NOTIFICATIONS.filter(n => !n.read).length);
   const [itemHeight, setItemHeight] = useState(Dimensions.get('window').height);
 
   // Reward toast state
@@ -482,6 +484,7 @@ export default function HomeScreen() {
         style={[
           styles.toast,
           {
+            bottom: SPACING.xl + insets.bottom + 68,
             opacity: toastOpacity,
             transform: [{ scale: toastScale }, { translateY: toastY }],
           },

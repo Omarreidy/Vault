@@ -445,9 +445,8 @@ export default function CompanyResearch() {
   };
 
   const handleSearch = () => {
-    const raw = inputRef.current?.value ?? inputRef.current?._lastNativeText ?? query;
-    const ticker = String(raw).trim().toUpperCase() || query.trim().toUpperCase();
-    runSearch(ticker);
+    const ticker = query.trim().toUpperCase();
+    if (ticker) runSearch(ticker);
   };
 
   const handleQuickSearch = (ticker: string) => {

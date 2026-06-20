@@ -17,6 +17,7 @@ import { COLORS, FONTS, SPACING, TIERS, RADIUS, CARD_SHADOW, CARD_SHADOW_STRONG 
 import { WealthWin } from '../types';
 import { fetchLeaderboardStats, LeaderboardStats } from '../services/leaderboard';
 import { ACHIEVEMENTS } from '../services/achievements';
+import { getStreak } from '../services/streak';
 
 const TABS = ['Profile', 'Leaderboard', 'Wins', 'Invite', 'Card'] as const;
 type Tab = typeof TABS[number];
@@ -72,8 +73,10 @@ export default function ProfileScreen({ onResetOnboarding }: ProfileProps = {}) 
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [lbView, setLbView] = useState<'global' | 'friends'>('global');
   const [lbStats, setLbStats] = useState<LeaderboardStats>({ totalMembers: 0, userRank: null, topPercent: null });
+  const [streak, setStreak] = useState(0);
   useEffect(() => {
     fetchLeaderboardStats(tier).then(setLbStats).catch(() => {});
+    getStreak().then(setStreak).catch(() => {});
   }, [tier]);
   const friendsFlash = useRef(new Animated.Value(1)).current;
   useEffect(() => {
@@ -136,7 +139,7 @@ export default function ProfileScreen({ onResetOnboarding }: ProfileProps = {}) 
   const unlockedCount = ACHIEVEMENTS.filter(a => a.unlocked).length;
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       <WinShareModal win={shareWin} visible={!!shareWin} onClose={() => setShareWin(null)} />
       <WealthWrapped visible={showWrapped} onClose={() => setShowWrapped(false)} />
       <UpgradeScreen visible={showUpgrade} onClose={() => setShowUpgrade(false)} />
@@ -325,7 +328,9 @@ export default function ProfileScreen({ onResetOnboarding }: ProfileProps = {}) 
                   </View>
                   <View style={styles.lbStatDiv} />
                   <View style={styles.lbStat}>
-                    <Text style={styles.lbStatVal} numberOfLines={1} adjustsFontSizeToFit>—</Text>
+                    <Text style={styles.lbStatVal} numberOfLines={1} adjustsFontSizeToFit>
+                      {lbStats.userRank != null ? `#${lbStats.userRank}` : '—'}
+                    </Text>
                     <Text style={styles.lbStatLbl} numberOfLines={1}>YOUR RANK</Text>
                   </View>
                 </View>
@@ -342,7 +347,9 @@ export default function ProfileScreen({ onResetOnboarding }: ProfileProps = {}) 
 
                 <View style={styles.lbList}>
                   <View style={[styles.lbRow, styles.lbRowMe, CARD_SHADOW, { shadowOpacity: 0.06 }]}>
-                    <Text style={[styles.lbRank, { color: COLORS.gold }]}>—</Text>
+                    <Text style={[styles.lbRank, { color: COLORS.gold }]}>
+                    {lbStats.userRank != null ? `#${lbStats.userRank}` : '—'}
+                  </Text>
                     <View style={[styles.lbAvatar, { borderColor: COLORS.gold + '60' }]}>
                       <Text style={[styles.lbInitials, { color: COLORS.gold }]}>
                         {name ? name.substring(0, 2).toUpperCase() : 'ME'}
@@ -420,7 +427,7 @@ export default function ProfileScreen({ onResetOnboarding }: ProfileProps = {}) 
                   tier={tier}
                   score={score.total}
                   percentile={score.percentile}
-                  streakDays={0}
+                  streakDays={streak}
                   actionsCompleted={0}
                   memberSince={joinedAt ? joinedAt.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }).toUpperCase() : 'VAULT MEMBER'}
                 />

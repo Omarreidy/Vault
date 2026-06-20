@@ -2,6 +2,7 @@ import React from 'react';
 import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Text, StyleSheet, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import HomeScreen from '../screens/HomeScreen';
 import ScoreScreen from '../screens/ScoreScreen';
 import InsightsScreen from '../screens/InsightsScreen';
@@ -26,12 +27,13 @@ const ICONS: Record<string, { glyph: string; label: string }> = {
 interface Props { onResetOnboarding: () => void; }
 
 export default function AppNavigator({ onResetOnboarding }: Props) {
+  const insets = useSafeAreaInsets();
   return (
     <NavigationContainer theme={NAV_THEME}>
       <Tab.Navigator
         screenOptions={({ route }) => ({
           headerShown: false,
-          tabBarStyle: styles.bar,
+          tabBarStyle: [styles.bar, { height: 68 + insets.bottom, paddingBottom: insets.bottom }],
           tabBarShowLabel: false,
           tabBarIcon: ({ focused }) => {
             const { glyph, label } = ICONS[route.name];

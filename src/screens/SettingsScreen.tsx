@@ -201,14 +201,6 @@ export default function SettingsScreen({ onClose, onResetOnboarding }: Props) {
     setShowLanguage(true);
   };
 
-  const handleDarkMode = (v: boolean) => {
-    setDarkMode(v);
-    AsyncStorage.setItem(DARK_MODE_KEY, String(v)).catch(() => {});
-    if (v) {
-      Alert.alert('Dark Mode Enabled', 'Restart VAULT to apply the new theme.', [{ text: 'Got it' }]);
-    }
-  };
-
   const handlePrivacy = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
     setShowPrivacy(true);
@@ -276,13 +268,20 @@ export default function SettingsScreen({ onClose, onResetOnboarding }: Props) {
     } catch {}
   };
 
-  const handleRestorePurchase = () => {
+  const handleRestorePurchase = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-    Alert.alert(
-      'Restore Purchase',
-      'No active subscriptions found on this account.\n\nIf you believe this is an error, contact support@getvault.app',
-      [{ text: 'OK' }]
-    );
+    if (Platform.OS === 'web') return;
+    try {
+      const Purchases = require('react-native-purchases').default;
+      const customerInfo = await Purchases.restorePurchases();
+      if (customerInfo.entitlements.active['premium']) {
+        Alert.alert('Restored!', 'Your Premium subscription is active.', [{ text: 'Great' }]);
+      } else {
+        Alert.alert('No subscription found', 'No active subscription found on this account.\n\nContact support@getvault.app if you believe this is an error.', [{ text: 'OK' }]);
+      }
+    } catch {
+      Alert.alert('Error', 'Could not restore purchases. Please try again.', [{ text: 'OK' }]);
+    }
   };
 
   const handleSignOut = () => {

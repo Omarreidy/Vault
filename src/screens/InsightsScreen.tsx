@@ -3,7 +3,7 @@ import {
   View, Text, StyleSheet, Animated, PanResponder,
   Dimensions, TouchableOpacity, ScrollView,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import { INSIGHTS, Insight } from '../services/insights';
 import { COLORS, FONTS, SPACING, RADIUS, CARD_SHADOW, CARD_SHADOW_STRONG } from '../constants/theme';
@@ -110,6 +110,7 @@ function NewsCard({ insight }: { insight: Insight }) {
 }
 
 export default function InsightsScreen() {
+  const insets = useSafeAreaInsets();
   const [activeTab, setActiveTab] = useState<'pulse' | 'signal' | 'research'>('pulse');
   const [filter, setFilter]         = useState('All');
   const [insights, setInsights]     = useState<Insight[]>(INSIGHTS);
@@ -248,7 +249,7 @@ export default function InsightsScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
 
       {/* Header */}
       <View style={styles.header}>
@@ -405,7 +406,7 @@ export default function InsightsScreen() {
 
       {/* Reward toast */}
       <Animated.View
-        style={[styles.toast, { opacity: toastOpacity, transform: [{ scale: toastScale }, { translateY: toastY }] }]}
+        style={[styles.toast, { bottom: SPACING.lg + insets.bottom + 68, opacity: toastOpacity, transform: [{ scale: toastScale }, { translateY: toastY }] }]}
         pointerEvents="none"
       >
         <Text style={styles.toastGlyph}>◆</Text>

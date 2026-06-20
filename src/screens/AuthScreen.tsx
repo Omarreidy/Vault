@@ -18,6 +18,7 @@ export default function AuthScreen({ onAuth }: Props) {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [awaitingConfirm, setAwaitingConfirm] = useState(false);
 
   const handleSubmit = async () => {
     if (!email.trim() || !password.trim()) {
@@ -35,11 +36,15 @@ export default function AuthScreen({ onAuth }: Props) {
 
     try {
       if (mode === 'signup') {
-        const { error: err } = await supabase.auth.signUp({
+        const { data, error: err } = await supabase.auth.signUp({
           email: email.trim(),
           password,
         });
         if (err) throw err;
+        if (!data.session) {
+          setAwaitingConfirm(true);
+          return;
+        }
       } else {
         const { error: err } = await supabase.auth.signInWithPassword({
           email: email.trim(),
@@ -117,6 +122,19 @@ export default function AuthScreen({ onAuth }: Props) {
                 autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
               />
             </View>
+
+            {/* Email confirmation pending */}
+            {awaitingConfirm && (
+              <View style={styles.confirmBox}>
+                <Text style={styles.confirmTitle}>Check your email</Text>
+                <Text style={styles.confirmSub}>
+                  We sent a confirmation link to {email.trim()}. Click it to activate your account, then sign in here.
+                </Text>
+                <TouchableOpacity onPress={() => { setAwaitingConfirm(false); setMode('signin'); }} activeOpacity={0.8}>
+                  <Text style={styles.confirmLink}>Go to sign in →</Text>
+                </TouchableOpacity>
+              </View>
+            )}
 
             {/* Error */}
             {!!error && <Text style={styles.error}>{error}</Text>}
@@ -242,5 +260,30 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 16,
     letterSpacing: FONTS.tracking.normal,
+  },
+
+  confirmBox: {
+    backgroundColor: COLORS.goldGlow,
+    borderRadius: RADIUS.md,
+    borderWidth: 1,
+    borderColor: COLORS.gold + '40',
+    padding: SPACING.md,
+    gap: SPACING.sm,
+  },
+  confirmTitle: {
+    fontSize: FONTS.sizes.md,
+    fontWeight: FONTS.weights.semibold,
+    color: COLORS.text,
+  },
+  confirmSub: {
+    fontSize: FONTS.sizes.xs,
+    color: COLORS.textDim,
+    lineHeight: 18,
+  },
+  confirmLink: {
+    fontSize: FONTS.sizes.xs,
+    color: COLORS.gold,
+    fontWeight: FONTS.weights.semibold,
+    letterSpacing: FONTS.tracking.wide,
   },
 });

@@ -270,7 +270,7 @@ export default function TrajectoryScreen() {
   const reachedMilestones = result.milestones.filter(m => m.reached);
 
   return (
-    <SafeAreaView style={styles.root}>
+    <SafeAreaView style={styles.root} edges={['top']}>
       {/* Header + toggle always visible */}
       <View style={styles.topBar}>
         <View style={styles.header}>

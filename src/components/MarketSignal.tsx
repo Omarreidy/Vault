@@ -13,7 +13,7 @@ import {
 
 // ─── Market snapshot header ───────────────────────────────────────────────────
 
-function SnapshotCard({ snap }: { snap: MarketSnapshot }) {
+function SnapshotCard({ snap, isLive }: { snap: MarketSnapshot; isLive: boolean }) {
   const scale   = useRef(new Animated.Value(0.96)).current;
   const opacity = useRef(new Animated.Value(0)).current;
 
@@ -23,7 +23,8 @@ function SnapshotCard({ snap }: { snap: MarketSnapshot }) {
       Animated.timing(opacity, { toValue: 1, duration: 400, useNativeDriver: false }),
     ]).start();
   }, []);
-  const statusColor = snap.marketStatus === 'OPEN' ? '#7EB8A4' : COLORS.textMuted;
+  const displayStatus = isLive ? snap.marketStatus : 'DELAYED';
+  const statusColor = displayStatus === 'OPEN' ? '#7EB8A4' : COLORS.textMuted;
 
   const IndexPill = ({ label, val }: { label: string; val: number }) => (
     <View style={snapStyles.pill}>
@@ -44,8 +45,8 @@ function SnapshotCard({ snap }: { snap: MarketSnapshot }) {
             <Text style={snapStyles.updated}>As of {snap.lastUpdated}</Text>
           </View>
           <View style={[snapStyles.statusBadge, { borderColor: statusColor + '50' }]}>
-            {snap.marketStatus === 'OPEN' && <View style={snapStyles.liveDot} />}
-            <Text style={[snapStyles.statusTxt, { color: statusColor }]}>{snap.marketStatus}</Text>
+            {displayStatus === 'OPEN' && <View style={snapStyles.liveDot} />}
+            <Text style={[snapStyles.statusTxt, { color: statusColor }]}>{displayStatus}</Text>
           </View>
         </View>
         <View style={snapStyles.indices}>
@@ -441,11 +442,12 @@ export default function MarketSignal() {
   const [movers, setMovers] = useState<Mover[]>([]);
   const [news, setNews] = useState<NewsItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isLive, setIsLive] = useState(false);
 
   useEffect(() => {
     Promise.all([fetchMarketData(), fetchMarketNews()])
       .then(([market, articles]) => {
-        if (market?.snapshot) setSnapshot(market.snapshot);
+        if (market?.snapshot) { setSnapshot(market.snapshot); setIsLive(true); }
         if (Array.isArray(market?.movers)) setMovers(market.movers);
         if (Array.isArray(articles)) setNews(articles);
       })
@@ -463,7 +465,7 @@ export default function MarketSignal() {
       contentContainerStyle={styles.content}
       showsVerticalScrollIndicator={false}
     >
-      <SnapshotCard snap={snapshot} />
+      <SnapshotCard snap={snapshot} isLive={isLive} />
 
       {/* Hot Movers */}
       <View style={styles.section}>

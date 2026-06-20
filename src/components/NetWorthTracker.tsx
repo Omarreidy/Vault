@@ -1,14 +1,28 @@
 import React, { useRef, useEffect } from 'react';
-import { View, Text, StyleSheet, Animated, TouchableOpacity } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { View, Text, StyleSheet, Animated } from 'react-native';
+import { usePlaid } from '../context/PlaidContext';
 import { COLORS, FONTS, SPACING, RADIUS, CARD_SHADOW } from '../constants/theme';
+
+function fmt(n: number): string {
+  if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `$${Math.round(n / 1_000)}K`;
+  return `$${Math.round(n).toLocaleString()}`;
+}
 
 export default function NetWorthTracker() {
   const fadeIn = useRef(new Animated.Value(0)).current;
+  const { plaidConnected, plaidSummary } = usePlaid();
 
   useEffect(() => {
     Animated.timing(fadeIn, { toValue: 1, duration: 500, useNativeDriver: false }).start();
   }, []);
+
+  const netWorth = plaidSummary
+    ? plaidSummary.checking + plaidSummary.savings + plaidSummary.investments - plaidSummary.creditDebt
+    : 0;
+  const assets = plaidSummary
+    ? plaidSummary.checking + plaidSummary.savings + plaidSummary.investments
+    : 0;
 
   return (
     <Animated.View style={[styles.card, CARD_SHADOW, { opacity: fadeIn }]}>
@@ -18,14 +32,16 @@ export default function NetWorthTracker() {
         <View style={styles.headerRow}>
           <View>
             <Text style={styles.eyebrow}>NET WORTH TRACKER</Text>
-            <Text style={styles.title}>Track your wealth over time</Text>
+            <Text style={styles.title}>
+              {plaidConnected ? 'Your wealth at a glance' : 'Track your wealth over time'}
+            </Text>
           </View>
           <View style={styles.iconWrap}>
             <Text style={styles.icon}>◉</Text>
           </View>
         </View>
 
-        {/* Placeholder chart bars */}
+        {/* Chart bars */}
         <View style={styles.chartPlaceholder}>
           {[0.3, 0.5, 0.4, 0.65, 0.55, 0.8, 0.7].map((h, i) => (
             <View
@@ -42,30 +58,34 @@ export default function NetWorthTracker() {
           ))}
         </View>
 
-        <View style={styles.connectCard}>
-          <Text style={styles.connectIcon}>🏦</Text>
-          <View style={styles.connectText}>
-            <Text style={styles.connectTitle}>Connect your bank to track net worth</Text>
-            <Text style={styles.connectSub}>
-              See your checking, savings, investments, and debt in one chart — updated daily.
-            </Text>
+        {!plaidConnected && (
+          <View style={styles.connectCard}>
+            <Text style={styles.connectIcon}>🏦</Text>
+            <View style={styles.connectText}>
+              <Text style={styles.connectTitle}>Connect your bank to track net worth</Text>
+              <Text style={styles.connectSub}>
+                See your checking, savings, investments, and debt in one chart — updated daily.
+              </Text>
+            </View>
           </View>
-        </View>
+        )}
 
         <View style={styles.statRow}>
           <View style={styles.stat}>
-            <Text style={styles.statVal}>—</Text>
+            <Text style={[styles.statVal, plaidConnected && { color: netWorth >= 0 ? '#7EB8A4' : '#C97A6E' }]}>
+              {plaidConnected ? fmt(netWorth) : '—'}
+            </Text>
             <Text style={styles.statLbl}>NET WORTH</Text>
           </View>
           <View style={styles.statDiv} />
           <View style={styles.stat}>
-            <Text style={styles.statVal}>—</Text>
-            <Text style={styles.statLbl}>VAULT GROWTH</Text>
+            <Text style={styles.statVal}>{plaidConnected ? fmt(assets) : '—'}</Text>
+            <Text style={styles.statLbl}>TOTAL ASSETS</Text>
           </View>
           <View style={styles.statDiv} />
           <View style={styles.stat}>
-            <Text style={styles.statVal}>—</Text>
-            <Text style={styles.statLbl}>SINCE JOINING</Text>
+            <Text style={styles.statVal}>{plaidConnected && plaidSummary ? fmt(plaidSummary.creditDebt) : '—'}</Text>
+            <Text style={styles.statLbl}>TOTAL DEBT</Text>
           </View>
         </View>
 

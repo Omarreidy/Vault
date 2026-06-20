@@ -139,7 +139,7 @@ export default function ScoreScreen() {
   const unlockedCount = ACHIEVEMENTS.filter(a => a.unlocked).length;
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       <WealthWrapped visible={showWrapped} onClose={() => setShowWrapped(false)} />
       {/* Page header */}
       <View style={styles.pageHeader}>

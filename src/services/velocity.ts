@@ -87,12 +87,12 @@ export async function fetchProfileScore(): Promise<VelocityScore | null> {
 
     return {
       total: score,
-      savings: Math.round(score * 0.72),
-      investment: Math.round(score * 0.61),
-      debt: Math.round(score * 0.55),
-      spending: Math.round(score * 0.68),
+      savings: Math.min(Math.round(score * 0.72), 100),
+      investment: Math.min(Math.round(score * 0.61), 100),
+      debt: Math.min(Math.round(score * 0.55), 100),
+      spending: Math.min(Math.round(score * 0.68), 100),
       weeklyChange: 0,
-      percentile: data.percentile ?? Math.round(score / 10),
+      percentile: data.percentile ?? Math.min(Math.round(score / 10), 99),
       tier,
       tierProgress: getTierProgress(score),
     };

@@ -81,10 +81,14 @@ export default function ConciergeScreen({ onClose, initialPrompt }: Props = {}) 
   const sendMessage = async (text: string) => {
     if (!text.trim()) return;
 
-    // Paywall check
-    if (!isPremium && dailyCount >= FREE_MSG_LIMIT) {
-      setShowUpgrade(true);
-      return;
+    // Paywall check — read fresh count from storage to avoid stale state
+    if (!isPremium) {
+      const freshCount = await getDailyCount();
+      if (freshCount >= FREE_MSG_LIMIT) {
+        setDailyCount(freshCount);
+        setShowUpgrade(true);
+        return;
+      }
     }
 
     const userMsg: Message = { id: Date.now().toString(), role: 'user', content: text.trim(), timestamp: new Date() };
