@@ -7,7 +7,7 @@ import * as ImagePicker from 'expo-image-picker';
 import * as Haptics from 'expo-haptics';
 import { COLORS, FONTS, SPACING, RADIUS, CARD_SHADOW } from '../constants/theme';
 import {
-  scanDocument, ScanResult, ScanVerdict,
+  scanDocument, getScanErrorResult, ScanResult, ScanVerdict,
   VERDICT_COLORS, VERDICT_ICONS,
 } from '../services/financialScanner';
 
@@ -317,7 +317,7 @@ const resStyles = StyleSheet.create({
 
 // ─── Idle / camera prompt ─────────────────────────────────────────────────────
 
-function IdleScreen({ onPickImage }: { onPickImage: () => void }) {
+function IdleScreen({ onPickImage, onOpenCamera }: { onPickImage: () => void; onOpenCamera: () => void }) {
   const pulse = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
@@ -342,13 +342,16 @@ function IdleScreen({ onPickImage }: { onPickImage: () => void }) {
       <Animated.View style={[idleStyles.cameraBtn, { transform: [{ scale: pulse }] }]}>
         <TouchableOpacity
           style={idleStyles.cameraBtnInner}
-          onPress={onPickImage}
+          onPress={onOpenCamera}
           activeOpacity={0.85}
         >
-          <Text style={idleStyles.cameraIcon}>◎</Text>
-          <Text style={idleStyles.cameraTxt}>Scan an Item</Text>
+          <Text style={idleStyles.cameraIcon}>📷</Text>
+          <Text style={idleStyles.cameraTxt}>Take Photo</Text>
         </TouchableOpacity>
       </Animated.View>
+      <TouchableOpacity onPress={onPickImage} activeOpacity={0.7} style={{ alignSelf: 'center' }}>
+        <Text style={idleStyles.libraryTxt}>or choose from library</Text>
+      </TouchableOpacity>
 
       <View style={idleStyles.examples}>
         <Text style={idleStyles.examplesLabel}>SCAN ANYTHING</Text>
@@ -411,6 +414,7 @@ const idleStyles = StyleSheet.create({
     borderColor: COLORS.border,
   },
   exampleTxt: { fontSize: FONTS.sizes.xs, color: COLORS.textDim },
+  libraryTxt: { fontSize: FONTS.sizes.xs, color: COLORS.textMuted, letterSpacing: 0.3, textDecorationLine: 'underline' },
 });
 
 // ─── Root modal ───────────────────────────────────────────────────────────────
@@ -433,6 +437,33 @@ export default function FinancialScanner({ visible, onClose }: Props) {
     setScanError(false);
   };
 
+  const processImage = async (uri: string) => {
+    setImageUri(uri);
+    setStage('scanning');
+    try {
+      const liveResult = await scanDocument(uri);
+      setResult(liveResult);
+    } catch {
+      setResult(getScanErrorResult());
+    }
+    setStage('result');
+  };
+
+  const handleOpenCamera = async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+    try {
+      const perm = await ImagePicker.requestCameraPermissionsAsync();
+      if (!perm.granted) return;
+      const res = await ImagePicker.launchCameraAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.85,
+      });
+      if (!res.canceled && res.assets[0]) await processImage(res.assets[0].uri);
+    } catch {}
+  };
+
   const handlePickImage = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
     try {
@@ -442,31 +473,7 @@ export default function FinancialScanner({ visible, onClose }: Props) {
         aspect: [1, 1],
         quality: 0.8,
       });
-      if (!res.canceled && res.assets[0]) {
-        const uri = res.assets[0].uri;
-        setImageUri(uri);
-        setStage('scanning');
-        try {
-          const liveResult = await scanDocument(uri);
-          // Map live result to ScanResult shape
-          setResult({
-            id: Date.now().toString(),
-            verdict: liveResult.verdict === 'HEALTHY' ? 'ASSET'
-              : liveResult.verdict === 'CRITICAL' ? 'LIABILITY' : 'BUDGET CHECK',
-            itemName: liveResult.documentType ?? 'Financial Document',
-            emoji: liveResult.findings?.[0]?.icon ?? '📄',
-            tagline: liveResult.summary ?? '',
-            annualImpact: liveResult.findings?.[0]?.detail ?? '',
-            wealthScoreImpact: `Score: ${liveResult.score}/100`,
-            insight: liveResult.topAction ?? '',
-            tip: liveResult.findings?.map((f: any) => `${f.icon} ${f.label}: ${f.detail}`).join('\n') ?? '',
-            xp: Math.round((liveResult.score ?? 50) / 5),
-          } as ScanResult);
-        } catch {
-          setScanError(true);
-        }
-        setStage('result');
-      }
+      if (!res.canceled && res.assets[0]) await processImage(res.assets[0].uri);
     } catch {}
   };
 
@@ -499,7 +506,7 @@ export default function FinancialScanner({ visible, onClose }: Props) {
 
         <View style={rootStyles.content}>
           {stage === 'idle' && (
-            <IdleScreen onPickImage={handlePickImage} />
+            <IdleScreen onPickImage={handlePickImage} onOpenCamera={handleOpenCamera} />
           )}
           {stage === 'scanning' && imageUri && (
             <View style={rootStyles.scanningWrap}>

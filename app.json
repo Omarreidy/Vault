@@ -48,8 +48,10 @@
           "photosPermission": "VAULT accesses your photo library to scan financial documents.",
           "cameraPermission": "VAULT uses your camera to scan financial documents."
         }
-      ]
+      ],
+      "expo-font"
     ],
+    "privacyPolicyUrl": "https://vault-r4zwi63m1-vault-s-projects5.vercel.app/privacy",
     "extra": {
       "eas": {
         "projectId": "1bd77465-3a6e-4210-a447-faee867083cb"

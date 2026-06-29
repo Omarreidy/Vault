@@ -302,7 +302,7 @@ export default function TrajectoryScreen() {
       </View>
 
       {activeTab === 'timeline' ? (
-        <FinancialTimeline onConnectBank={() => setShowPlaid(true)} />
+        <FinancialTimeline onConnectBank={() => setShowPlaid(true)} plaidConnected={plaidConnected} />
       ) : (
       <ScrollView
         style={styles.scroll}
@@ -321,13 +321,24 @@ export default function TrajectoryScreen() {
           >
             <View style={styles.sampleBannerLeft}>
               <Text style={styles.sampleBannerIcon}>◇</Text>
-              <View>
+              <View style={{ flex: 1 }}>
                 <Text style={styles.sampleBannerTitle}>Sample projection</Text>
                 <Text style={styles.sampleBannerSub}>Based on a typical profile. Connect your bank to see your actual numbers.</Text>
               </View>
             </View>
             <Text style={styles.sampleBannerCta}>Connect →</Text>
           </TouchableOpacity>
+        )}
+
+        {/* Live-sync badge — shown once bank connected so it's clear the
+            projection is personalized to the user's real net worth */}
+        {plaidConnected && (
+          <View style={styles.liveBadge}>
+            <View style={styles.liveDot} />
+            <Text style={styles.liveTxt}>
+              Live · Projected from your {formatCurrencyFull(trajectoryInputs.currentNetWorth)} net worth
+            </Text>
+          </View>
         )}
 
         {/* FI Hero card */}
@@ -553,6 +564,19 @@ const styles = StyleSheet.create({
   sampleBannerTitle: { fontSize: FONTS.sizes.sm, fontWeight: FONTS.weights.semibold, color: COLORS.text },
   sampleBannerSub: { fontSize: FONTS.sizes.xs, color: COLORS.textDim, marginTop: 2, lineHeight: 17, flexShrink: 1 },
   sampleBannerCta: { fontSize: FONTS.sizes.sm, color: COLORS.gold, fontWeight: FONTS.weights.semibold, marginLeft: SPACING.sm },
+
+  liveBadge: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    alignSelf: 'flex-start',
+    paddingHorizontal: SPACING.md, paddingVertical: 7,
+    borderRadius: RADIUS.full,
+    borderWidth: StyleSheet.hairlineWidth,
+    backgroundColor: 'rgba(126,184,164,0.1)',
+    borderColor: 'rgba(126,184,164,0.3)',
+    marginBottom: SPACING.md,
+  },
+  liveDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#7EB8A4' },
+  liveTxt: { fontSize: FONTS.sizes.xs, fontWeight: FONTS.weights.medium, color: '#7EB8A4' },
 
   topBar: { paddingHorizontal: SPACING.lg, paddingTop: SPACING.md, paddingBottom: SPACING.sm, gap: SPACING.md },
   header: { marginBottom: 0 },

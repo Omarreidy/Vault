@@ -15,7 +15,7 @@ Deno.serve(async (req) => {
     const client = new Anthropic({ apiKey: Deno.env.get('ANTHROPIC_API_KEY')! });
 
     const response = await client.messages.create({
-      model: 'claude-sonnet-4-6',
+      model: 'claude-haiku-4-5-20251001',
       max_tokens: 1024,
       messages: [{
         role: 'user',
@@ -26,27 +26,32 @@ Deno.serve(async (req) => {
           },
           {
             type: 'text',
-            text: `You are VAULT's financial document scanner. Analyze this financial document, screenshot, or statement.
+            text: `You are VAULT's financial intelligence scanner. The user has scanned something — it could be food, a product, a car, clothing, a bill, a subscription, a document, or anything else.
 
-Return a JSON object with these exact fields:
+Give a brutally honest financial verdict on what you see. Return ONLY a valid JSON object with these exact fields:
+
 {
-  "verdict": "HEALTHY" | "ATTENTION" | "ACTION NEEDED" | "CRITICAL",
-  "score": number 0-100 (financial health score),
-  "summary": "one sentence summary of what you see",
-  "findings": [
-    {
-      "icon": "emoji",
-      "label": "finding title",
-      "detail": "specific detail with numbers if visible",
-      "impact": "positive" | "negative" | "neutral"
-    }
-  ],
-  "topAction": "the single most important action to take based on this document",
-  "documentType": "what type of document this is (bank statement, credit card bill, investment statement, pay stub, etc.)"
+  "verdict": "ASSET" | "LIABILITY" | "BUDGET CHECK",
+  "itemName": "short name of the item (max 4 words)",
+  "emoji": "single most relevant emoji",
+  "tagline": "one punchy sentence — the financial truth about this item",
+  "monthlyCost": "estimated monthly cost if applicable, e.g. '$120/mo' — omit field entirely if not relevant",
+  "annualImpact": "annual financial impact with a number, e.g. '+$2,400/yr' or '-$1,800/yr'",
+  "wealthScoreImpact": "score impact, e.g. '+8 pts for investing habit' or '-5 pts if financed'",
+  "insight": "2-3 sentences of sharp financial context — include real numbers, percentages, or comparisons where possible",
+  "tip": "one specific, actionable wealth-building tip related to this item",
+  "xp": number between 10 and 25
 }
 
-Be specific with numbers you can see. If you cannot read specific numbers clearly, say so. Max 4 findings.`
-          }
+Rules:
+- ASSET = generates value, appreciates, or builds wealth (investments, education, real estate, skills)
+- LIABILITY = costs money, depreciates, or drains wealth (most consumer goods, financed items, unused subscriptions)
+- BUDGET CHECK = depends entirely on behavior (food, gym, entertainment — fine if intentional, harmful if unchecked)
+- If the image is blurry, unclear, or you cannot confidently identify the object, set itemName to "Unclear Photo" and verdict to "BUDGET CHECK". Explain what you think it might be but do NOT guess a specific category with false confidence.
+- Be specific and confident when you CAN see the item clearly.
+- Keep itemName short and recognizable.
+- Return ONLY the JSON object, no other text.`,
+          },
         ],
       }],
     });
@@ -58,12 +63,15 @@ Be specific with numbers you can see. If you cannot read specific numbers clearl
       if (jsonMatch) result = JSON.parse(jsonMatch[0]);
     } catch {
       result = {
-        verdict: 'ATTENTION',
-        score: 50,
-        summary: 'Document analyzed — see findings below.',
-        findings: [{ icon: '📄', label: 'Document scanned', detail: text.slice(0, 200), impact: 'neutral' }],
-        topAction: 'Review the details above.',
-        documentType: 'Financial document',
+        verdict: 'BUDGET CHECK',
+        itemName: 'Scanned Item',
+        emoji: '📄',
+        tagline: 'Could not fully analyze — try a clearer photo.',
+        annualImpact: 'Unknown',
+        wealthScoreImpact: 'Neutral',
+        insight: text.slice(0, 300),
+        tip: 'Take a clearer, well-lit photo for a more precise verdict.',
+        xp: 10,
       };
     }
 

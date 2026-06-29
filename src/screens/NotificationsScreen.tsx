@@ -1,12 +1,16 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   Animated,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
-import { VaultNotification, timeAgo, NotifType, MOCK_NOTIFICATIONS } from '../services/notifications';
+import {
+  VaultNotification, timeAgo, NotifType,
+  loadNotifications, markNotificationRead, dismissNotification,
+} from '../services/notifications';
 import { COLORS, FONTS, SPACING, RADIUS, CARD_SHADOW } from '../constants/theme';
+import { getSavedInsights, SavedInsight, removeSavedInsight } from '../services/savedInsights';
 
 const TYPE_COLORS: Record<NotifType, string> = {
   score_up:           COLORS.green,
@@ -108,20 +112,29 @@ interface Props {
 }
 
 export default function NotificationsScreen({ onClose }: Props) {
-  const [notifs, setNotifs] = useState<VaultNotification[]>(MOCK_NOTIFICATIONS);
+  const [notifs, setNotifs] = useState<VaultNotification[]>([]);
+  const [savedInsights, setSavedInsights] = useState<SavedInsight[]>([]);
   const unreadCount = notifs.filter(n => !n.read).length;
+
+  useEffect(() => {
+    loadNotifications().then(setNotifs).catch(() => {});
+    getSavedInsights().then(setSavedInsights).catch(() => {});
+  }, []);
 
   const markRead = (id: string) => {
     setNotifs(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+    markNotificationRead(id).catch(() => {});
   };
 
   const dismiss = (id: string) => {
     setNotifs(prev => prev.filter(n => n.id !== id));
+    dismissNotification(id).catch(() => {});
   };
 
   const markAllRead = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
     setNotifs(prev => prev.map(n => ({ ...n, read: true })));
+    notifs.forEach(n => { if (!n.read) markNotificationRead(n.id).catch(() => {}); });
   };
 
   const unread  = notifs.filter(n => !n.read);
@@ -152,7 +165,38 @@ export default function NotificationsScreen({ onClose }: Props) {
       <View style={styles.divider} />
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        {notifs.length === 0 && (
+        {savedInsights.length > 0 && (
+          <>
+            <Text style={styles.sectionLabel}>SAVED INSIGHTS</Text>
+            {savedInsights.map(s => (
+              <View key={s.id} style={[styles.row, styles.rowUnread, CARD_SHADOW, { shadowOpacity: 0.08 }]}>
+                <View style={[styles.accentBar, { backgroundColor: COLORS.gold }]} />
+                <View style={[styles.iconWrap, { backgroundColor: COLORS.goldGlow }]}>
+                  <Text style={[styles.icon, { color: COLORS.gold }]}>◆</Text>
+                </View>
+                <View style={styles.content}>
+                  <Text style={styles.title} numberOfLines={2}>{s.headline}</Text>
+                  <View style={styles.bottomRow}>
+                    <Text style={styles.time}>{new Date(s.savedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</Text>
+                    <Text style={[styles.action, { color: COLORS.gold }]}>Saved insight</Text>
+                  </View>
+                </View>
+                <TouchableOpacity
+                  style={styles.dismissBtn}
+                  onPress={() => {
+                    removeSavedInsight(s.id).catch(() => {});
+                    setSavedInsights(prev => prev.filter(x => x.id !== s.id));
+                  }}
+                  hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                >
+                  <Text style={styles.dismissIcon}>×</Text>
+                </TouchableOpacity>
+              </View>
+            ))}
+          </>
+        )}
+
+        {notifs.length === 0 && savedInsights.length === 0 && (
           <View style={styles.empty}>
             <Text style={styles.emptyGlyph}>◇</Text>
             <Text style={styles.emptyTitle}>All quiet</Text>

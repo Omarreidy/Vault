@@ -88,3 +88,40 @@ export const WEEKLY_CHALLENGES: Challenge[] = [
     category: 'action',
   },
 ];
+
+export interface ChallengeContext {
+  streak: number;
+  movesToday: number;
+  movesWeek: number;
+  scoreVisitedToday: boolean;
+  conciergeUsedToday: boolean;
+  weeklyVelocityGain: number;
+}
+
+function withProgress(c: Challenge, progress: number): Challenge {
+  const p = Math.max(0, Math.min(progress, c.target));
+  return { ...c, progress: p, completed: p >= c.target };
+}
+
+// Computes real progress for every challenge from tracked behavior.
+export function evaluateChallenges(ctx: ChallengeContext): { daily: Challenge[]; weekly: Challenge[] } {
+  const daily = DAILY_CHALLENGES.map(c => {
+    switch (c.id) {
+      case 'd1': return withProgress(c, ctx.scoreVisitedToday ? 1 : 0);
+      case 'd2': return withProgress(c, ctx.movesToday);
+      case 'd3': return withProgress(c, ctx.conciergeUsedToday ? 1 : 0);
+      default:   return c;
+    }
+  });
+
+  const weekly = WEEKLY_CHALLENGES.map(c => {
+    switch (c.id) {
+      case 'w1': return withProgress(c, ctx.streak);
+      case 'w2': return withProgress(c, ctx.movesWeek);
+      case 'w3': return withProgress(c, ctx.weeklyVelocityGain);
+      default:   return c;
+    }
+  });
+
+  return { daily, weekly };
+}

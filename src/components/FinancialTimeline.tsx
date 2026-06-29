@@ -317,8 +317,8 @@ function EmptyBiography({ onViewSample }: { onViewSample: () => void }) {
 
 // ─── Root export ─────────────────────────────────────────────────────────────
 
-export default function FinancialTimeline({ onConnectBank }: { onConnectBank?: () => void }) {
-  const { months, totals, loading } = useTimeline();
+export default function FinancialTimeline({ onConnectBank, plaidConnected }: { onConnectBank?: () => void; plaidConnected?: boolean }) {
+  const { months, totals, loading } = useTimeline(plaidConnected);
   const [showSample, setShowSample] = useState(false);
 
   // Spring-in animation for the timeline reveal
@@ -349,6 +349,16 @@ export default function FinancialTimeline({ onConnectBank }: { onConnectBank?: (
       contentContainerStyle={styles.content}
       showsVerticalScrollIndicator={false}
     >
+      {/* Sync status badge — reflects whether the biography is live or in-app activity */}
+      <View style={[styles.syncBadge, plaidConnected ? styles.syncBadgeLive : styles.syncBadgeLocal]}>
+        {plaidConnected && <View style={styles.syncDot} />}
+        <Text style={[styles.syncTxt, plaidConnected ? styles.syncTxtLive : styles.syncTxtLocal]}>
+          {plaidConnected
+            ? 'Live · Synced with your accounts'
+            : 'In-app activity · Connect bank for account history'}
+        </Text>
+      </View>
+
       {/* Sample banner — shown when viewing sample (not real data) */}
       {showSample && (
         <TouchableOpacity
@@ -448,6 +458,27 @@ const styles = StyleSheet.create({
   },
   statVal: { fontSize: FONTS.sizes.md, fontWeight: FONTS.weights.bold, color: COLORS.background },
   statLbl: { fontSize: 7, color: 'rgba(242,239,233,0.4)', letterSpacing: 1.2, fontWeight: FONTS.weights.bold },
+
+  // Sync status badge
+  syncBadge: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    alignSelf: 'flex-start',
+    paddingHorizontal: SPACING.md, paddingVertical: 7,
+    borderRadius: RADIUS.full,
+    borderWidth: 1,
+  },
+  syncBadgeLive: {
+    backgroundColor: 'rgba(126,184,164,0.1)',
+    borderColor: 'rgba(126,184,164,0.3)',
+  },
+  syncBadgeLocal: {
+    backgroundColor: COLORS.goldGlow,
+    borderColor: COLORS.gold + '40',
+  },
+  syncDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#7EB8A4' },
+  syncTxt: { fontSize: FONTS.sizes.xs, fontWeight: FONTS.weights.medium },
+  syncTxtLive: { color: '#7EB8A4' },
+  syncTxtLocal: { color: COLORS.goldDark },
 
   // Sample projection banner
   sampleBanner: {

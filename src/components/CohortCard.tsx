@@ -7,11 +7,26 @@ import { supabase } from '../services/supabase';
 // Real benchmark data from Fed Survey of Consumer Finances (2023)
 // For Gold-tier users: ages 25–44, income $70–120K, "Build wealth" goal
 const BENCHMARKS = [
-  { label: 'Avg savings rate',       benchmark: '12%'       },
-  { label: 'Emergency fund',         benchmark: '2.8 months' },
-  { label: 'Investing monthly',      benchmark: '$180'       },
-  { label: 'Carry credit card debt', benchmark: '58%'        },
-];
+  { key: 'savingsRate',  label: 'Avg savings rate',       benchmark: '12%'       },
+  { key: 'emergency',    label: 'Emergency fund',         benchmark: '2.8 months' },
+  { key: 'investing',    label: 'Investing monthly',      benchmark: '$180'       },
+  { key: 'creditDebt',   label: 'Carry credit card debt', benchmark: '58%'        },
+] as const;
+
+interface Props {
+  plaidConnected: boolean;
+  plaidSummary: {
+    checking: number;
+    savings: number;
+    investments: number;
+    creditDebt: number;
+    creditLimit: number;
+    estimatedMonthlyIncome: number;
+    monthlySpend: number;
+    accountCount: number;
+  } | null;
+  onConnectBank: () => void;
+}
 
 function RelativeBar({ delta }: { delta: number }) {
   // delta: negative = behind user, 0 = user, positive = ahead
@@ -44,17 +59,31 @@ const barStyles = StyleSheet.create({
 });
 
 
-export default function CohortCard() {
+export default function CohortCard({ plaidConnected, plaidSummary, onConnectBank }: Props) {
   const headerScale = useRef(new Animated.Value(0.97)).current;
   const [memberCount, setMemberCount] = useState<number | null>(null);
 
   useEffect(() => {
     Animated.spring(headerScale, { toValue: 1, useNativeDriver: false, tension: 60, friction: 9 }).start();
-    // Get real member count from Supabase
+    // Get real member count from Supabase. The cohort always includes at least
+    // the current user, so never render a broken-looking "0" — floor to 1.
     supabase.from('profiles').select('id', { count: 'exact', head: true })
       .eq('tier', 'GOLD').eq('onboarding_complete', true)
-      .then(({ count }) => { if (count !== null) setMemberCount(count); });
+      .then(
+        ({ count }) => setMemberCount(Math.max(count ?? 0, 1)),
+        () => setMemberCount(1),
+      );
   }, []);
+
+  const hasRealData = plaidConnected && plaidSummary;
+  const yourValues: Record<string, string> = hasRealData
+    ? {
+        savingsRate: ((plaidSummary.estimatedMonthlyIncome - plaidSummary.monthlySpend) / Math.max(plaidSummary.estimatedMonthlyIncome, 1) * 100).toFixed(0) + '%',
+        emergency:   (plaidSummary.savings / Math.max(plaidSummary.monthlySpend, 1)).toFixed(1) + ' months',
+        investing:   '$' + Math.round(plaidSummary.investments / 12).toLocaleString(),
+        creditDebt:  plaidSummary.creditDebt > 0 ? 'Yes' : 'No',
+      }
+    : {};
 
   return (
     <Animated.View style={[styles.card, CARD_SHADOW, { transform: [{ scale: headerScale }] }]}>
@@ -70,7 +99,14 @@ export default function CohortCard() {
             </Text>
           </View>
           <View style={styles.rankBadge}>
-            <Text style={styles.rankBadgeTxt}>{memberCount ?? '—'}</Text>
+            <Text
+              style={[styles.rankBadgeTxt, { fontSize: memberCount != null && memberCount >= 10000 ? 20 : 26 }]}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.6}
+            >
+              {memberCount == null ? '—' : memberCount.toLocaleString()}
+            </Text>
             <Text style={styles.rankBadgeSub}>MEMBERS</Text>
           </View>
         </View>
@@ -95,17 +131,17 @@ export default function CohortCard() {
                 <Text style={styles.benchmarkLabel}>{b.label}</Text>
                 <View style={styles.benchmarkVals}>
                   <Text style={styles.benchmarkAvg}>Avg: {b.benchmark}</Text>
-                  <Text style={styles.benchmarkYours}>You: —</Text>
+                  <Text style={styles.benchmarkYours}>You: {hasRealData ? yourValues[b.key] : '—'}</Text>
                 </View>
               </View>
             ))}
           </View>
           <Text style={styles.benchmarkSource}>Source: Federal Reserve Survey of Consumer Finances 2023</Text>
-          <View style={styles.benchmarkConnectHint}>
-            <Text style={styles.benchmarkConnectTxt}>
-              🏦  Connect your bank to see how you compare to your income bracket
-            </Text>
-          </View>
+          {!hasRealData && (
+            <TouchableOpacity style={styles.connectBtn} onPress={onConnectBank} activeOpacity={0.85}>
+              <Text style={styles.connectBtnTxt}>🏦  Connect Bank for Real Data →</Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* Invite CTA */}
@@ -157,27 +193,32 @@ const styles = StyleSheet.create({
     letterSpacing: FONTS.tracking.wide,
   },
   rankBadge: {
+    minWidth: 76,
     alignItems: 'center',
+    justifyContent: 'center',
     paddingHorizontal: 14,
-    paddingVertical: 8,
+    paddingVertical: 10,
     borderRadius: RADIUS.lg,
     backgroundColor: COLORS.goldGlow,
     borderWidth: 1,
     borderColor: COLORS.gold + '40',
-    gap: 2,
+    gap: 3,
   },
   rankBadgeTxt: {
     fontFamily: FONTS.display,
-    fontSize: 22,
-    fontWeight: FONTS.weights.light,
-    color: COLORS.gold,
+    fontSize: 26,
+    lineHeight: 30,
+    fontWeight: FONTS.weights.medium,
+    color: COLORS.goldDark,
     letterSpacing: -0.5,
+    textAlign: 'center',
   },
   rankBadgeSub: {
-    fontSize: 7,
+    fontSize: 8,
     color: COLORS.goldDark,
     fontWeight: FONTS.weights.bold,
     letterSpacing: FONTS.tracking.widest,
+    textAlign: 'center',
   },
 
   statsRow: {
@@ -338,6 +379,8 @@ const styles = StyleSheet.create({
     padding: SPACING.sm,
   },
   benchmarkConnectTxt: { fontSize: FONTS.sizes.xs, color: COLORS.textDim, lineHeight: 18 },
+  connectBtn: { backgroundColor: COLORS.gold, borderRadius: RADIUS.full, paddingVertical: 12, paddingHorizontal: SPACING.lg, alignItems: 'center', marginTop: SPACING.sm },
+  connectBtnTxt: { fontSize: FONTS.sizes.sm, fontWeight: FONTS.weights.bold, color: '#08080C', letterSpacing: 0.3 },
 
   inviteBtn: {
     flexDirection: 'row',

@@ -10,6 +10,7 @@ import { COLORS, FONTS, SPACING, RADIUS, CARD_SHADOW, CARD_SHADOW_STRONG } from 
 import MarketSignal from '../components/MarketSignal';
 import CompanyResearch from '../components/CompanyResearch';
 import { fetchMarketData, fetchMarketNews, NewsItem, timeAgoNews } from '../services/marketSignal';
+import { saveInsight } from '../services/savedInsights';
 
 // Map news categories to Pulse tags
 const NEWS_TO_TAG: Record<string, string> = {
@@ -210,6 +211,12 @@ export default function InsightsScreen() {
     if (isAnimating.current || !currentCard) return;
     isAnimating.current = true;
     setSavedIds(prev => new Set([...prev, currentCard.id]));
+    saveInsight({
+      id: currentCard.id,
+      headline: currentCard.headline,
+      tag: currentCard.tag,
+      savedAt: new Date().toISOString(),
+    }).catch(() => {});
     // Two-hit haptic — medium + success
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
     setTimeout(() => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {}), 80);
@@ -475,7 +482,7 @@ const styles = StyleSheet.create({
 
   divider: { height: StyleSheet.hairlineWidth, backgroundColor: COLORS.border },
 
-  cardArea: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: SPACING.xxl, paddingBottom: SPACING.md },
+  cardArea: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: SPACING.lg, paddingBottom: SPACING.md },
 
   labelWrap: { position: 'absolute', zIndex: 10, top: '10%' },
   labelLeft: { left: SPACING.lg },

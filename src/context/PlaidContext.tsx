@@ -1,5 +1,13 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import { AppState, AppStateStatus } from 'react-native';
 import { supabase } from '../services/supabase';
+
+const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? 'https://gvdfypehwmemootjizmd.supabase.co';
+const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? 'sb_publishable_tHoiSHF-49L1_p0OLRPeKw_5mfSi0fs';
+
+// Don't re-pull from Plaid more often than this — protects the backend + Plaid
+// rate limits when many users foreground the app repeatedly.
+const MIN_REFRESH_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
 
 export interface PlaidSummary {
   checking: number;
@@ -15,18 +23,22 @@ export interface PlaidSummary {
 interface PlaidContextType {
   plaidConnected: boolean;
   plaidSummary: PlaidSummary | null;
-  refresh: () => void;
+  refresh: () => Promise<void>;       // read stored snapshot
+  hardRefresh: () => Promise<void>;   // re-pull from Plaid, then read
 }
 
 const PlaidContext = createContext<PlaidContextType>({
   plaidConnected: false,
   plaidSummary: null,
-  refresh: () => {},
+  refresh: async () => {},
+  hardRefresh: async () => {},
 });
 
 export function PlaidProvider({ children }: { children: React.ReactNode }) {
   const [plaidConnected, setPlaidConnected] = useState(false);
   const [plaidSummary, setPlaidSummary] = useState<PlaidSummary | null>(null);
+  const lastHardRefresh = useRef(0);
+  const refreshing = useRef(false);
 
   const load = useCallback(async () => {
     try {
@@ -84,10 +96,56 @@ export function PlaidProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  // Re-pull fresh data from Plaid (server-side), recompute the score, then reload
+  // the local snapshot. Guarded so concurrent/rapid calls collapse into one.
+  const hardRefresh = useCallback(async () => {
+    if (refreshing.current) return;
+    refreshing.current = true;
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const headers = {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+        'apikey': SUPABASE_ANON_KEY,
+      };
+
+      // 1) Pull fresh balances/transactions into our store.
+      await fetch(`${SUPABASE_URL}/functions/v1/plaid-refresh`, {
+        method: 'POST', headers, body: JSON.stringify({ user_id: user.id }),
+      }).catch(() => {});
+
+      // 2) Recompute the score from the fresh data (fire-and-forget; non-fatal).
+      fetch(`${SUPABASE_URL}/functions/v1/calculate-score`, {
+        method: 'POST', headers, body: JSON.stringify({ user_id: user.id }),
+      }).catch(() => {});
+
+      lastHardRefresh.current = Date.now();
+    } catch {
+      // silent
+    } finally {
+      refreshing.current = false;
+      await load();
+    }
+  }, [load]);
+
+  // Initial load.
   useEffect(() => { load(); }, [load]);
 
+  // Auto-refresh when the app returns to the foreground (time-guarded).
+  useEffect(() => {
+    const onChange = (state: AppStateStatus) => {
+      if (state === 'active' && Date.now() - lastHardRefresh.current > MIN_REFRESH_INTERVAL_MS) {
+        hardRefresh();
+      }
+    };
+    const sub = AppState.addEventListener('change', onChange);
+    return () => sub.remove();
+  }, [hardRefresh]);
+
   return (
-    <PlaidContext.Provider value={{ plaidConnected, plaidSummary, refresh: load }}>
+    <PlaidContext.Provider value={{ plaidConnected, plaidSummary, refresh: load, hardRefresh }}>
       {children}
     </PlaidContext.Provider>
   );

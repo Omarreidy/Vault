@@ -286,6 +286,7 @@ export default function FeedMoveCard({ move, onAct, onSkip, onAskConcierge, inde
 
         </View>
       </View>
+      <View style={[styles.bottomAccent, { backgroundColor: meta.accent }]} />
 
       {/* Lesson sheet — rendered outside card layout, zero interference */}
       {move.lesson && (
@@ -304,6 +305,7 @@ export default function FeedMoveCard({ move, onAct, onSkip, onAskConcierge, inde
 const styles = StyleSheet.create({
   container: { flex: 1, width, backgroundColor: COLORS.background },
   topAccent: { height: 3 },
+  bottomAccent: { height: 3 },
   inner: {
     flex: 1,
     paddingHorizontal: SPACING.lg,
@@ -384,9 +386,9 @@ const styles = StyleSheet.create({
   },
   conciergeTxt: { fontSize: FONTS.sizes.xs, color: COLORS.gold, fontWeight: FONTS.weights.semibold, letterSpacing: FONTS.tracking.wide },
 
-  actions: { flexDirection: 'row', gap: SPACING.sm },
-  skipBtn: { flex: 1, paddingVertical: 12, alignItems: 'center', justifyContent: 'center' },
-  skipTxt: { fontSize: FONTS.sizes.sm, color: COLORS.textMuted, letterSpacing: FONTS.tracking.wide },
-  actBtn: { flex: 2.5, paddingVertical: 12, borderRadius: RADIUS.md, alignItems: 'center', justifyContent: 'center' },
-  actTxt: { fontSize: FONTS.sizes.sm, fontWeight: FONTS.weights.bold, color: '#FFFFFF', letterSpacing: FONTS.tracking.wide },
+  actions: { flexDirection: 'row', gap: SPACING.sm, alignItems: 'stretch' },
+  skipBtn: { paddingVertical: 14, paddingHorizontal: SPACING.md, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: COLORS.border, borderRadius: RADIUS.md },
+  skipTxt: { fontSize: FONTS.sizes.sm, fontWeight: FONTS.weights.semibold, color: COLORS.text, letterSpacing: FONTS.tracking.wide },
+  actBtn: { paddingVertical: 14, paddingHorizontal: SPACING.md, borderRadius: RADIUS.md, alignItems: 'center', justifyContent: 'center' },
+  actTxt: { fontSize: FONTS.sizes.sm, fontWeight: FONTS.weights.bold, color: '#08080C', letterSpacing: FONTS.tracking.wide },
 });

@@ -16,14 +16,35 @@ export interface LeaderboardStats {
 }
 
 export async function fetchLeaderboardStats(userTier: string): Promise<LeaderboardStats> {
-  const { count } = await supabase
+  const [{ count: totalCount }, { data: { user } }] = await Promise.all([
+    supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('onboarding_complete', true),
+    supabase.auth.getUser(),
+  ]);
+
+  const totalMembers = totalCount ?? 0;
+
+  if (!user || totalMembers === 0) {
+    return { totalMembers, userRank: null, topPercent: null };
+  }
+
+  const { data: myProfile } = await supabase
+    .from('profiles')
+    .select('score')
+    .eq('id', user.id)
+    .single();
+
+  if (!myProfile?.score) {
+    return { totalMembers, userRank: null, topPercent: null };
+  }
+
+  const { count: aheadCount } = await supabase
     .from('profiles')
     .select('id', { count: 'exact', head: true })
-    .eq('onboarding_complete', true);
+    .eq('onboarding_complete', true)
+    .gt('score', myProfile.score);
 
-  return {
-    totalMembers: count ?? 0,
-    userRank: null,
-    topPercent: null,
-  };
+  const userRank = (aheadCount ?? 0) + 1;
+  const topPercent = totalMembers > 0 ? Math.round((userRank / totalMembers) * 100) : null;
+
+  return { totalMembers, userRank, topPercent };
 }

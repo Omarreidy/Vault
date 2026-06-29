@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  TextInput, Animated, Dimensions,
+  TextInput, Animated, Dimensions, ActivityIndicator,
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { COLORS, FONTS, SPACING, RADIUS, CARD_SHADOW } from '../constants/theme';
@@ -464,6 +464,7 @@ export default function CompanyResearch() {
   }
 
   return (
+   <View style={{ flex: 1, backgroundColor: COLORS.background }}>
     <ScrollView style={styles.root} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
 
       {/* Search bar */}
@@ -497,18 +498,6 @@ export default function CompanyResearch() {
         </Text>
       )}
 
-      {loading && (
-        <View style={styles.loadingCard}>
-          <Text style={styles.loadingTitle}>Analyzing {query.trim().toUpperCase()}...</Text>
-          <Text style={styles.loadingSub}>Running deep research on this investment</Text>
-          <View style={styles.loadingDots}>
-            <View style={[styles.loadingDot, { opacity: 1 }]} />
-            <View style={[styles.loadingDot, { opacity: 0.6 }]} />
-            <View style={[styles.loadingDot, { opacity: 0.3 }]} />
-          </View>
-        </View>
-      )}
-
       {/* Quick research prompts */}
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionTitle}>Popular Research</Text>
@@ -531,6 +520,18 @@ export default function CompanyResearch() {
 
       <View style={{ height: SPACING.xl }} />
     </ScrollView>
+
+    {/* Full-screen loading overlay — visible no matter where the user tapped */}
+    {loading && (
+      <View style={styles.loadingOverlay} pointerEvents="auto">
+        <View style={[styles.loadingCard, CARD_SHADOW]}>
+          <ActivityIndicator size="large" color={COLORS.gold} />
+          <Text style={styles.loadingTitle}>Analyzing {query.trim().toUpperCase()}…</Text>
+          <Text style={styles.loadingSub}>Running deep AI research — this can take a few seconds</Text>
+        </View>
+      </View>
+    )}
+   </View>
   );
 }
 
@@ -767,6 +768,13 @@ const styles = StyleSheet.create({
   },
   quickTxt: { fontSize: FONTS.sizes.xs, fontWeight: FONTS.weights.bold, color: COLORS.gold, letterSpacing: 1 },
 
+  loadingOverlay: {
+    position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+    backgroundColor: 'rgba(250,250,247,0.93)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: SPACING.xl,
+  },
   loadingCard: {
     padding: SPACING.xl,
     backgroundColor: COLORS.card,
@@ -775,11 +783,10 @@ const styles = StyleSheet.create({
     borderColor: COLORS.gold + '40',
     alignItems: 'center',
     gap: SPACING.sm,
+    minWidth: 240,
   },
-  loadingTitle: { fontSize: FONTS.sizes.lg, fontWeight: FONTS.weights.bold, color: COLORS.text },
-  loadingSub: { fontSize: FONTS.sizes.sm, color: COLORS.textMuted },
-  loadingDots: { flexDirection: 'row', gap: 6, marginTop: SPACING.sm },
-  loadingDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: COLORS.gold },
+  loadingTitle: { fontSize: FONTS.sizes.lg, fontWeight: FONTS.weights.bold, color: COLORS.text, marginTop: SPACING.sm, textAlign: 'center' },
+  loadingSub: { fontSize: FONTS.sizes.sm, color: COLORS.textMuted, textAlign: 'center' },
 
   sectionHeader: { gap: 3 },
   sectionTitle: { fontSize: FONTS.sizes.lg, fontWeight: FONTS.weights.bold, color: COLORS.text, letterSpacing: -0.3 },

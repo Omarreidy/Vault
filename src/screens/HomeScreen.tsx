@@ -27,8 +27,9 @@ import PlaidLinkScreen from './PlaidLinkScreen';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../services/supabase';
 import { updateStreak } from '../services/streak';
+import { recordMove } from '../services/progressStats';
 import { usePlaid } from '../context/PlaidContext';
-import { MOCK_NOTIFICATIONS } from '../services/notifications';
+import { getUnreadCount } from '../services/notifications';
 
 import { COLORS, FONTS, SPACING, RADIUS, CARD_SHADOW } from '../constants/theme';
 
@@ -193,6 +194,7 @@ export default function HomeScreen() {
   // Initial load: streak, nudge dismissed flag, member count
   useEffect(() => {
     updateStreak().then(setStreakDays);
+    getUnreadCount().then(setNotifCount).catch(() => {});
     AsyncStorage.getItem('@vault_plaid_nudge_dismissed').then(val => {
       if (val === 'true') setShowPlaidNudge(false);
     });
@@ -206,7 +208,7 @@ export default function HomeScreen() {
   useEffect(() => {
     loadPersonalizedFeed();
   }, [plaidConnected, loadPersonalizedFeed]);
-  const [notifCount, setNotifCount] = useState(MOCK_NOTIFICATIONS.filter(n => !n.read).length);
+  const [notifCount, setNotifCount] = useState(0);
   const [itemHeight, setItemHeight] = useState(Dimensions.get('window').height);
 
   // Reward toast state
@@ -280,6 +282,8 @@ export default function HomeScreen() {
     const newCount = actedCount + 1;
     setActedCount(newCount);
     setTotalXP(prev => prev + xp);
+    // Durably record the move so Challenges + Achievements reflect real activity.
+    recordMove(xp).catch(() => {});
     // Show Plaid nudge after 3rd move if not connected and not dismissed
     if (newCount === 3 && !plaidConnected) {
       AsyncStorage.getItem('@vault_plaid_nudge_dismissed').then(val => {
@@ -537,7 +541,7 @@ export default function HomeScreen() {
       />
 
       <Modal visible={showNotifs} animationType="slide" presentationStyle="pageSheet">
-        <NotificationsScreen onClose={() => { setShowNotifs(false); setNotifCount(0); }} />
+        <NotificationsScreen onClose={() => { setShowNotifs(false); getUnreadCount().then(setNotifCount).catch(() => {}); }} />
       </Modal>
     </View>
   );
@@ -633,13 +637,13 @@ const styles = StyleSheet.create({
 
   bellBtn: {
     width: 36, height: 36, borderRadius: 18,
-    backgroundColor: COLORS.surface,
+    backgroundColor: COLORS.goldGlow,
     alignItems: 'center', justifyContent: 'center',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: COLORS.border,
+    borderWidth: 1,
+    borderColor: COLORS.gold + '55',
     position: 'relative',
   },
-  bellIcon: { fontSize: 15, color: COLORS.textDim },
+  bellIcon: { fontSize: 16, color: COLORS.goldDark },
   badge: {
     position: 'absolute', top: -3, right: -3,
     minWidth: 16, height: 16, borderRadius: 8,

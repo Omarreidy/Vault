@@ -7,52 +7,32 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
 
   try {
-    const av = Deno.env.get('ALPHA_VANTAGE_KEY')!;
     const fh = Deno.env.get('FINNHUB_KEY')!;
 
-    // Fetch indices + VIX from Alpha Vantage quotes
-    const symbols = ['SPY', 'QQQ', 'DIA', 'VXX'];
-    const quotePromises = symbols.map(s =>
-      fetch(`https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${s}&apikey=${av}`)
-        .then(r => r.json())
-    );
-
-    // Fetch top movers from Finnhub
-    const moversPromise = fetch(
-      `https://finnhub.io/api/v1/stock/market-status?exchange=US&token=${fh}`
-    ).then(r => r.json());
-
-    // Fetch stock quotes for hot tickers from Finnhub
+    // Everything from Finnhub (60 req/min free tier — reliable).
+    // Indices via ETF proxies, VIX via VXX ETF, movers via hot tickers.
+    const indexSymbols = ['SPY', 'QQQ', 'DIA', 'VXX'];
     const hotTickers = ['NVDA', 'AAPL', 'META', 'TSLA', 'AMZN', 'MSFT', 'GOOGL'];
-    const stockPromises = hotTickers.map(t =>
+
+    const quote = (t: string) =>
       fetch(`https://finnhub.io/api/v1/quote?symbol=${t}&token=${fh}`)
         .then(r => r.json())
         .then(d => ({ ticker: t, ...d }))
-    );
+        .catch(() => ({ ticker: t }));
 
-    const [quotes, marketStatus, ...stocks] = await Promise.all([
-      Promise.all(quotePromises),
-      moversPromise,
-      ...stockPromises,
+    const [indexQuotes, marketStatus, stocks] = await Promise.all([
+      Promise.all(indexSymbols.map(quote)),
+      fetch(`https://finnhub.io/api/v1/stock/market-status?exchange=US&token=${fh}`)
+        .then(r => r.json()).catch(() => ({})),
+      Promise.all(hotTickers.map(quote)),
     ]);
 
-    // Parse index quotes
-    const parseQuote = (data: any) => {
-      const q = data['Global Quote'] ?? {};
-      return {
-        price: parseFloat(q['05. price'] ?? '0'),
-        change: parseFloat(q['09. change'] ?? '0'),
-        changePct: parseFloat((q['10. change percent'] ?? '0%').replace('%', '')),
-        volume: parseInt(q['06. volume'] ?? '0'),
-      };
-    };
+    // Finnhub /quote returns: c=current, dp=percent change, o/h/l/pc
+    const [spy, qqq, dia, vxx] = indexQuotes as any[];
 
-    const [spy, qqq, dia, vxx] = quotes.map(parseQuote);
-
-    // Build movers from Finnhub quotes
-    const movers = stocks
-      .filter((s: any) => s.c && s.dp !== undefined)
-      .map((s: any) => ({
+    const movers = (stocks as any[])
+      .filter(s => s.c && s.dp !== undefined)
+      .map(s => ({
         ticker: s.ticker,
         price: `$${s.c?.toFixed(2)}`,
         change: parseFloat((s.dp ?? 0).toFixed(2)),
@@ -62,17 +42,18 @@ Deno.serve(async (req) => {
         low: s.l,
         prevClose: s.pc,
       }))
-      .sort((a: any, b: any) => Math.abs(b.change) - Math.abs(a.change));
+      .sort((a, b) => Math.abs(b.change) - Math.abs(a.change));
 
-    const isOpen = marketStatus?.isOpen ?? false;
+    const vixPrice = vxx?.c > 0 ? vxx.c : 18.5;
+    const isOpen = (marketStatus as any)?.isOpen ?? false;
 
     return new Response(JSON.stringify({
       snapshot: {
-        sp500Change: spy.changePct,
-        nasdaqChange: qqq.changePct,
-        dowChange: dia.changePct,
-        vix: vxx.price > 0 ? vxx.price : 18.5,
-        vixLabel: vxx.price > 30 ? 'Extreme Fear' : vxx.price > 20 ? 'Elevated' : vxx.price > 12 ? 'Normal' : 'Greed',
+        sp500Change: spy?.dp ?? 0,
+        nasdaqChange: qqq?.dp ?? 0,
+        dowChange: dia?.dp ?? 0,
+        vix: vixPrice,
+        vixLabel: vixPrice > 30 ? 'Extreme Fear' : vixPrice > 20 ? 'Elevated' : vixPrice > 12 ? 'Normal' : 'Greed',
         marketStatus: isOpen ? 'OPEN' : 'CLOSED',
         lastUpdated: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZone: 'America/New_York' }) + ' ET',
       },

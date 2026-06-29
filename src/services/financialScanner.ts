@@ -161,24 +161,26 @@ export const MOCK_SCAN_RESULTS: ScanResult[] = [
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? 'https://gvdfypehwmemootjizmd.supabase.co';
 const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? 'sb_publishable_tHoiSHF-49L1_p0OLRPeKw_5mfSi0fs';
 
-export interface LiveScanResult {
-  verdict: 'HEALTHY' | 'ATTENTION' | 'ACTION NEEDED' | 'CRITICAL';
-  score: number;
-  summary: string;
-  documentType: string;
-  findings: { icon: string; label: string; detail: string; impact: 'positive' | 'negative' | 'neutral' }[];
-  topAction: string;
-}
+export async function scanDocument(imageUri: string): Promise<ScanResult> {
+  // Lazy-require the native image module so it loads only when a scan actually
+  // runs — never at app launch. A top-level import would pull the native module
+  // into the startup path, and any issue there crashes the app before it opens.
+  const { ImageManipulator, SaveFormat } = require('expo-image-manipulator');
 
-export async function scanDocument(imageUri: string): Promise<LiveScanResult> {
-  // Convert image URI to base64
-  const response = await fetch(imageUri);
-  const blob = await response.blob();
-  const reader = new FileReader();
-  const base64 = await new Promise<string>((resolve) => {
-    reader.onloadend = () => resolve((reader.result as string).split(',')[1]);
-    reader.readAsDataURL(blob);
+  // Compress + downscale before upload. Full-res phone photos produce multi-MB
+  // base64 payloads that exceed the model's image limit and cause 500s — which
+  // is what was silently triggering the fake mock fallback.
+  const context = ImageManipulator.manipulate(imageUri);
+  context.resize({ width: 1024 });
+  const rendered = await context.renderAsync();
+  const image = await rendered.saveAsync({
+    compress: 0.7,
+    format: SaveFormat.JPEG,
+    base64: true,
   });
+
+  const base64 = image.base64;
+  if (!base64) throw new Error('Could not read image');
 
   const res = await fetch(`${SUPABASE_URL}/functions/v1/financial-scanner`, {
     method: 'POST',
@@ -187,13 +189,29 @@ export async function scanDocument(imageUri: string): Promise<LiveScanResult> {
       'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
       'apikey': SUPABASE_ANON_KEY,
     },
-    body: JSON.stringify({ imageBase64: base64, mimeType: blob.type || 'image/jpeg' }),
+    body: JSON.stringify({ imageBase64: base64, mimeType: 'image/jpeg' }),
   });
 
   if (!res.ok) throw new Error('Scanner unavailable');
   const data = await res.json();
   if (data.error) throw new Error(data.error);
-  return data;
+  return { ...data, id: Date.now().toString() } as ScanResult;
+}
+
+// Honest fallback when the live scan fails — never fake a verdict.
+export function getScanErrorResult(): ScanResult {
+  return {
+    id: Date.now().toString(),
+    verdict: 'BUDGET CHECK',
+    itemName: "Couldn't analyze",
+    emoji: '🔄',
+    tagline: 'The scan didn\'t go through. Try again with a clearer, well-lit photo.',
+    annualImpact: '—',
+    wealthScoreImpact: 'No change',
+    insight: 'VAULT couldn\'t reach the analysis engine or read this image. This can happen with very dark, blurry, or close-up shots.',
+    tip: 'Hold steady, fill the frame with the item, and make sure there\'s good lighting.',
+    xp: 0,
+  };
 }
 
 // Kept for fallback only

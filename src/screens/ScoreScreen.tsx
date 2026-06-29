@@ -1,11 +1,13 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, Animated, TouchableOpacity, Modal, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Animated, TouchableOpacity, Modal, TextInput, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import { getStreak } from '../services/streak';
 import * as Haptics from 'expo-haptics';
 import { GOALS, Goal, getGoalProgress, getMonthsToGoal } from '../services/goals';
-import { ACHIEVEMENTS } from '../services/achievements';
-import { WEEKLY_CHALLENGES, Challenge } from '../services/challenges';
+import { ACHIEVEMENTS, getAchievements, buildAchievementContext, Achievement } from '../services/achievements';
+import { WEEKLY_CHALLENGES, DAILY_CHALLENGES, Challenge, evaluateChallenges } from '../services/challenges';
+import { loadStats, recordScoreVisit, weeklyVelocityGain } from '../services/progressStats';
 import ScoreMeter from '../components/ScoreMeter';
 import TierBadge from '../components/TierBadge';
 import GoalCard from '../components/GoalCard';
@@ -16,6 +18,7 @@ import ProgressionLadder from '../components/ProgressionLadder';
 import NetWorthTracker from '../components/NetWorthTracker';
 import WealthWrapped from '../components/WealthWrapped';
 import CohortCard from '../components/CohortCard';
+import PlaidLinkScreen from './PlaidLinkScreen';
 import { COLORS, FONTS, SPACING, TIERS, RADIUS, CARD_SHADOW } from '../constants/theme';
 import { getNextTier, getPointsToNextTier, fetchLiveScore, fetchProfileScore } from '../services/velocity';
 import { usePlaid } from '../context/PlaidContext';
@@ -26,19 +29,61 @@ const TABS = ['Score', 'Cohort', 'Goals', 'Challenges', 'Achievements'] as const
 type Tab = typeof TABS[number];
 
 export default function ScoreScreen() {
-  const { plaidConnected } = usePlaid();
+  const { plaidConnected, plaidSummary, refresh: refreshPlaid } = usePlaid();
   const [liveScore, setLiveScore] = useState<VelocityScore | null>(null);
   const [scoreSource, setScoreSource] = useState<'plaid' | 'profile' | 'mock'>('mock');
+  const [scoreLoading, setScoreLoading] = useState(true);
+  const [showPlaid, setShowPlaid] = useState(false);
 
-  // Re-fetch score whenever Plaid connection changes (picks up real data instantly)
-  useEffect(() => {
-    fetchLiveScore().then(s => {
-      if (s) { setLiveScore(s); setScoreSource('plaid'); return; }
-      fetchProfileScore().then(ps => {
-        if (ps) { setLiveScore(ps); setScoreSource('profile'); }
-      });
-    });
-  }, [plaidConnected]);
+  // Re-fetch score on focus + whenever Plaid connection changes (picks up real data instantly)
+  useFocusEffect(
+    React.useCallback(() => {
+      (async () => {
+        let scoreTotal = 0;
+        try {
+          const s = await fetchLiveScore();
+          if (s) { setLiveScore(s); setScoreSource('plaid'); scoreTotal = s.total; }
+          else {
+            const ps = await fetchProfileScore();
+            if (ps) { setLiveScore(ps); setScoreSource('profile'); scoreTotal = ps.total; }
+          }
+        } catch {
+          // silent — keep last known score
+        } finally {
+          setScoreLoading(false);
+        }
+
+        // Record the score visit + refresh real challenges and achievements.
+        try {
+          const streak = await getStreak().catch(() => 0);
+          await recordScoreVisit(scoreTotal);
+          const stats = await loadStats();
+
+          const { daily, weekly } = evaluateChallenges({
+            streak,
+            movesToday: stats.movesActedToday,
+            movesWeek: stats.movesActedWeek,
+            scoreVisitedToday: stats.scoreVisitedToday,
+            conciergeUsedToday: stats.conciergeUsedToday,
+            weeklyVelocityGain: weeklyVelocityGain(stats, scoreTotal),
+          });
+          setDailyChallenges(daily);
+          setChallenges(weekly);
+
+          const ach = await getAchievements(buildAchievementContext({
+            streak,
+            score: scoreTotal,
+            movesActed: stats.movesActedTotal,
+            plaidConnected,
+            plaid: plaidSummary,
+          }));
+          setAchievements(ach);
+        } catch {
+          // non-fatal — keep last known challenge/achievement state
+        }
+      })();
+    }, [plaidConnected, plaidSummary])
+  );
 
   const EMPTY_SCORE = { total: 0, savings: 0, investment: 0, debt: 0, spending: 0, weeklyChange: 0, percentile: 0, tier: 'BRONZE' as TierName, tierProgress: 0 };
   const score      = liveScore ?? EMPTY_SCORE;
@@ -61,8 +106,10 @@ export default function ScoreScreen() {
   const [addProgressAmt, setAddProgressAmt] = useState('');
   const [goalComplete, setGoalComplete] = useState(false);
 
-  // Challenges state
+  // Challenges + achievements state (auto-tracked from real behavior)
   const [challenges, setChallenges] = useState<Challenge[]>(WEEKLY_CHALLENGES);
+  const [dailyChallenges, setDailyChallenges] = useState<Challenge[]>(DAILY_CHALLENGES);
+  const [achievements, setAchievements] = useState<Achievement[]>(ACHIEVEMENTS);
   const [selectedChallenge, setSelectedChallenge] = useState<Challenge | null>(null);
   const [challengeComplete, setChallengeComplete] = useState(false);
   const [earnedXP, setEarnedXP] = useState(0);
@@ -136,7 +183,7 @@ export default function ScoreScreen() {
     setShowAddGoal(false);
   };
 
-  const unlockedCount = ACHIEVEMENTS.filter(a => a.unlocked).length;
+  const unlockedCount = achievements.filter(a => a.unlocked).length;
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -156,6 +203,8 @@ export default function ScoreScreen() {
         showsHorizontalScrollIndicator={false}
         style={styles.tabScroll}
         contentContainerStyle={styles.tabRow}
+        bounces={false}
+        alwaysBounceHorizontal={false}
       >
         {TABS.map(tab => (
           <TouchableOpacity
@@ -214,7 +263,10 @@ export default function ScoreScreen() {
                 <Text style={styles.tierTapHint}>TAP TO PREVIEW UNLOCK</Text>
               </TouchableOpacity>
               <View style={styles.divider} />
-              <ScoreMeter score={score} />
+              {scoreLoading && !liveScore && (
+                <ActivityIndicator color={COLORS.gold} size="large" style={{ paddingVertical: SPACING.xl }} />
+              )}
+              {(!scoreLoading || liveScore) && <ScoreMeter score={score} />}
             </View>
 
             {nextTier && (
@@ -276,7 +328,18 @@ export default function ScoreScreen() {
               <Text style={styles.tabIntroTitle}>Your Cohort</Text>
               <Text style={styles.tabIntroSub}>Gold tier · $70–120K income · ages 25–44</Text>
             </View>
-            <CohortCard />
+            <CohortCard
+              plaidConnected={plaidConnected}
+              plaidSummary={plaidSummary}
+              onConnectBank={() => setShowPlaid(true)}
+            />
+            {showPlaid && (
+              <PlaidLinkScreen
+                visible={showPlaid}
+                onClose={() => setShowPlaid(false)}
+                onSuccess={() => { setShowPlaid(false); refreshPlaid(); }}
+              />
+            )}
           </>
         )}
 
@@ -303,29 +366,48 @@ export default function ScoreScreen() {
         {activeTab === 'Challenges' && (
           <>
             <View style={styles.tabIntro}>
-              <Text style={styles.tabIntroTitle}>Weekly Challenges</Text>
-              <Text style={styles.tabIntroSub}>Tap any challenge to log progress.</Text>
+              <Text style={styles.tabIntroTitle}>Challenges</Text>
+              <Text style={styles.tabIntroSub}>Auto-tracked as you use VAULT. Resets daily & weekly.</Text>
             </View>
-            {challenges.map(c => (
-              <TouchableOpacity key={c.id} onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {}); setSelectedChallenge(c); setChallengeComplete(c.completed); }} activeOpacity={0.85}>
-                <View style={[styles.weeklyChallenge, CARD_SHADOW, { shadowOpacity: 0.07 }, c.completed && styles.weeklyChallengeDone]}>
-                  <View style={styles.wTop}>
-                    <Text style={styles.wIcon}>{c.icon}</Text>
-                    <View style={[styles.wReward, c.completed && styles.wRewardDone]}>
-                      <Text style={[styles.wRewardTxt, c.completed && styles.wRewardTxtDone]}>{c.completed ? '✓ Earned' : `+${c.reward} pts`}</Text>
-                    </View>
+
+            <Text style={[styles.sectionLabel, { marginTop: SPACING.sm }]}>TODAY</Text>
+            {dailyChallenges.map(c => (
+              <View key={c.id} style={[styles.weeklyChallenge, CARD_SHADOW, { shadowOpacity: 0.07 }, c.completed && styles.weeklyChallengeDone]}>
+                <View style={styles.wTop}>
+                  <Text style={styles.wIcon}>{c.icon}</Text>
+                  <View style={[styles.wReward, c.completed && styles.wRewardDone]}>
+                    <Text style={[styles.wRewardTxt, c.completed && styles.wRewardTxtDone]}>{c.completed ? '✓ Earned' : `+${c.reward} pts`}</Text>
                   </View>
-                  <Text style={styles.wTitle}>{c.title}</Text>
-                  <Text style={styles.wDesc}>{c.description}</Text>
-                  <View style={styles.wBarRow}>
-                    <View style={styles.wTrack}>
-                      <View style={[styles.wFill, { width: `${Math.round((c.progress / c.target) * 100)}%` as any }, c.completed && { backgroundColor: '#7EB8A4' }]} />
-                    </View>
-                    <Text style={styles.wProgress}>{c.progress} / {c.target}</Text>
-                  </View>
-                  <Text style={styles.tapHint}>{c.completed ? 'Completed ✓' : 'Tap to log progress →'}</Text>
                 </View>
-              </TouchableOpacity>
+                <Text style={styles.wTitle}>{c.title}</Text>
+                <Text style={styles.wDesc}>{c.description}</Text>
+                <View style={styles.wBarRow}>
+                  <View style={styles.wTrack}>
+                    <View style={[styles.wFill, { width: `${Math.round((c.progress / c.target) * 100)}%` as any }, c.completed && { backgroundColor: '#7EB8A4' }]} />
+                  </View>
+                  <Text style={styles.wProgress}>{c.progress} / {c.target}</Text>
+                </View>
+              </View>
+            ))}
+
+            <Text style={[styles.sectionLabel, { marginTop: SPACING.lg }]}>THIS WEEK</Text>
+            {challenges.map(c => (
+              <View key={c.id} style={[styles.weeklyChallenge, CARD_SHADOW, { shadowOpacity: 0.07 }, c.completed && styles.weeklyChallengeDone]}>
+                <View style={styles.wTop}>
+                  <Text style={styles.wIcon}>{c.icon}</Text>
+                  <View style={[styles.wReward, c.completed && styles.wRewardDone]}>
+                    <Text style={[styles.wRewardTxt, c.completed && styles.wRewardTxtDone]}>{c.completed ? '✓ Earned' : `+${c.reward} pts`}</Text>
+                  </View>
+                </View>
+                <Text style={styles.wTitle}>{c.title}</Text>
+                <Text style={styles.wDesc}>{c.description}</Text>
+                <View style={styles.wBarRow}>
+                  <View style={styles.wTrack}>
+                    <View style={[styles.wFill, { width: `${Math.round((c.progress / c.target) * 100)}%` as any }, c.completed && { backgroundColor: '#7EB8A4' }]} />
+                  </View>
+                  <Text style={styles.wProgress}>{c.progress} / {c.target}</Text>
+                </View>
+              </View>
             ))}
           </>
         )}
@@ -335,10 +417,10 @@ export default function ScoreScreen() {
           <>
             <View style={styles.tabIntro}>
               <Text style={styles.tabIntroTitle}>Achievements</Text>
-              <Text style={styles.tabIntroSub}>{unlockedCount} of {ACHIEVEMENTS.length} unlocked</Text>
+              <Text style={styles.tabIntroSub}>{unlockedCount} of {achievements.length} unlocked</Text>
             </View>
             <View style={styles.achieveGrid}>
-              {ACHIEVEMENTS.map(a => (
+              {achievements.map(a => (
                 <AchievementBadge key={a.id} achievement={a} />
               ))}
             </View>
@@ -561,9 +643,10 @@ const styles = StyleSheet.create({
   dot: { width: 5, height: 5, borderRadius: 2.5, backgroundColor: COLORS.gold },
   streakTxt: { fontSize: FONTS.sizes.xs, color: COLORS.textDim, letterSpacing: FONTS.tracking.wide },
 
-  tabScroll: { flexGrow: 0 },
+  tabScroll: { flexGrow: 0, flexShrink: 0 },
   tabRow: {
     flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: SPACING.lg,
     paddingBottom: SPACING.sm,
     gap: SPACING.sm,

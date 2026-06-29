@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
 import * as Haptics from 'expo-haptics';
 import { supabase } from '../services/supabase';
+import BankConnectedScreen from './BankConnectedScreen';
 import { COLORS, FONTS, SPACING, RADIUS, CARD_SHADOW } from '../constants/theme';
 
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? 'https://gvdfypehwmemootjizmd.supabase.co';
@@ -31,6 +32,8 @@ export default function PlaidLinkScreen({ visible, onClose, onSuccess }: Props) 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showWebView, setShowWebView] = useState(false);
+  const [showCelebration, setShowCelebration] = useState(false);
+  const [connectedAccounts, setConnectedAccounts] = useState<PlaidAccount[]>([]);
 
   useEffect(() => {
     if (visible) fetchLinkToken();
@@ -70,6 +73,7 @@ export default function PlaidLinkScreen({ visible, onClose, onSuccess }: Props) 
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
 
         const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error('Please sign in before connecting a bank.');
         const res = await fetch(`${SUPABASE_URL}/functions/v1/plaid-exchange`, {
           method: 'POST',
           headers: {
@@ -77,11 +81,17 @@ export default function PlaidLinkScreen({ visible, onClose, onSuccess }: Props) 
             'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
             'apikey': SUPABASE_ANON_KEY,
           },
-          body: JSON.stringify({ public_token: msg.public_token, user_id: user?.id }),
+          body: JSON.stringify({ public_token: msg.public_token, user_id: user.id }),
         });
         const data = await res.json();
         if (data.error) throw new Error(data.error);
-        onSuccess(data.accounts ?? []);
+        // Show the cinematic celebration; the parent's onSuccess fires when the
+        // user taps through it (see BankConnectedScreen onDone below).
+        setConnectedAccounts(data.accounts ?? []);
+        setShowCelebration(true);
+      } else if (msg.action === 'plaidError') {
+        setError(msg.error || 'Could not open bank connection. Please try again.');
+        setShowWebView(false);
       } else if (msg.action === 'plaidExit') {
         setShowWebView(false);
       }
@@ -93,37 +103,63 @@ export default function PlaidLinkScreen({ visible, onClose, onSuccess }: Props) 
     }
   };
 
-  // Plaid Link hosted page with postMessage bridge
+  // Plaid Link hosted page with postMessage bridge.
+  // NOTE: this HTML is rendered with baseUrl https://cdn.plaid.com so the WebView
+  // has a real https origin — Plaid's Link script silently refuses to initialize
+  // (blank screen) when the document origin is null/about:blank.
   const plaidHtml = linkToken ? `
 <!DOCTYPE html>
 <html>
-<head><meta name="viewport" content="width=device-width, initial-scale=1"></head>
-<body style="margin:0;padding:0;background:#000">
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  html,body{margin:0;padding:0;height:100%;background:#FAFAF7;font-family:-apple-system,system-ui,sans-serif;}
+  .loading{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:#8a8a85;}
+  .spinner{width:32px;height:32px;border:3px solid #e5e5e0;border-top-color:#C9A24B;border-radius:50%;animation:spin .8s linear infinite;margin-bottom:14px;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+</style>
+</head>
+<body>
+<div class="loading"><div class="spinner"></div><div>Opening secure connection…</div></div>
 <script src="https://cdn.plaid.com/link/v2/stable/link-initialize.js"></script>
 <script>
-  var handler = Plaid.create({
-    token: '${linkToken}',
-    onSuccess: function(public_token, metadata) {
-      window.ReactNativeWebView.postMessage(JSON.stringify({
-        action: 'plaidSuccess',
-        public_token: public_token,
-        metadata: metadata
-      }));
-    },
-    onExit: function(err, metadata) {
-      window.ReactNativeWebView.postMessage(JSON.stringify({
-        action: 'plaidExit',
-        error: err
-      }));
-    },
-  });
-  handler.open();
+  function post(o){ try { window.ReactNativeWebView.postMessage(JSON.stringify(o)); } catch(e){} }
+  function start(){
+    if (typeof Plaid === 'undefined') {
+      post({ action: 'plaidError', error: 'Could not load Plaid. Check your connection and try again.' });
+      return;
+    }
+    try {
+      var handler = Plaid.create({
+        token: '${linkToken}',
+        onSuccess: function(public_token, metadata) {
+          post({ action: 'plaidSuccess', public_token: public_token, metadata: metadata });
+        },
+        onExit: function(err, metadata) {
+          post({ action: 'plaidExit', error: err });
+        },
+      });
+      handler.open();
+    } catch (e) {
+      post({ action: 'plaidError', error: String(e && e.message ? e.message : e) });
+    }
+  }
+  if (document.readyState === 'complete') start();
+  else window.addEventListener('load', start);
 </script>
 </body>
 </html>` : '';
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
+      {showCelebration ? (
+        <BankConnectedScreen onDone={() => {
+          const acc = connectedAccounts;
+          setShowCelebration(false);
+          onSuccess(acc);
+          onClose();
+        }} />
+      ) : (
       <SafeAreaView style={styles.root}>
 
         {/* Header */}
@@ -137,11 +173,21 @@ export default function PlaidLinkScreen({ visible, onClose, onSuccess }: Props) 
 
         {showWebView && linkToken ? (
           <WebView
-            source={{ html: plaidHtml }}
+            source={{ html: plaidHtml, baseUrl: 'https://cdn.plaid.com' }}
             onMessage={handleWebViewMessage}
             style={styles.webview}
             javaScriptEnabled
             domStorageEnabled
+            originWhitelist={['*']}
+            // Keep OAuth bank logins inside this WebView instead of trying to open
+            // a (blocked) popup window — this is what lets OAuth banks work embedded.
+            setSupportMultipleWindows={false}
+            javaScriptCanOpenWindowsAutomatically
+            startInLoadingState
+            onError={(e) => {
+              setError('Connection error: ' + (e.nativeEvent?.description ?? 'unknown'));
+              setShowWebView(false);
+            }}
           />
         ) : (
           <View style={styles.content}>
@@ -188,6 +234,7 @@ export default function PlaidLinkScreen({ visible, onClose, onSuccess }: Props) 
           </View>
         )}
       </SafeAreaView>
+      )}
     </Modal>
   );
 }

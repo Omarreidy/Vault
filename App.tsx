@@ -14,9 +14,15 @@ import { PlaidProvider } from './src/context/PlaidContext';
 const RC_API_KEY = 'appl_iHfaWTgWajGmNhQValXNlUdqwxI';
 
 if (Platform.OS !== 'web') {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const Purchases = require('react-native-purchases').default;
-  Purchases.configure({ apiKey: RC_API_KEY });
+  // This runs at module load, before React (and the ErrorBoundary) mount. Any
+  // throw here is an uncatchable launch crash, so guard it defensively.
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const Purchases = require('react-native-purchases').default;
+    Purchases.configure({ apiKey: RC_API_KEY });
+  } catch (e) {
+    console.warn('RevenueCat init failed:', e);
+  }
 }
 
 // Error boundary to catch white screens and show the actual error

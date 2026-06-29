@@ -16,8 +16,10 @@ import UpgradeScreen from './UpgradeScreen';
 import { COLORS, FONTS, SPACING, TIERS, RADIUS, CARD_SHADOW, CARD_SHADOW_STRONG } from '../constants/theme';
 import { WealthWin } from '../types';
 import { fetchLeaderboardStats, LeaderboardStats } from '../services/leaderboard';
-import { ACHIEVEMENTS } from '../services/achievements';
+import { ACHIEVEMENTS, getAchievements, buildAchievementContext, Achievement } from '../services/achievements';
 import { getStreak } from '../services/streak';
+import { loadStats } from '../services/progressStats';
+import { usePlaid } from '../context/PlaidContext';
 
 const TABS = ['Profile', 'Leaderboard', 'Wins', 'Invite', 'Card'] as const;
 type Tab = typeof TABS[number];
@@ -63,7 +65,6 @@ export default function ProfileScreen({ onResetOnboarding }: ProfileProps = {}) 
   const realProfile = useRealProfile();
   const { name, tier, score: realScore, joinedAt } = realProfile;
   const score = realScore ?? { total: 0, savings: 0, investment: 0, debt: 0, spending: 0, weeklyChange: 0, percentile: 0, tier: 'BRONZE' as const, tierProgress: 0 };
-  const wins: WealthWin[] = [];
   const info = TIERS[tier];
   const months = joinedAt ? Math.max(1, Math.floor((Date.now() - joinedAt.getTime()) / (1000 * 60 * 60 * 24 * 30))) : 1;
   const [activeTab, setActiveTab] = useState<Tab>('Profile');
@@ -74,10 +75,29 @@ export default function ProfileScreen({ onResetOnboarding }: ProfileProps = {}) 
   const [lbView, setLbView] = useState<'global' | 'friends'>('global');
   const [lbStats, setLbStats] = useState<LeaderboardStats>({ totalMembers: 0, userRank: null, topPercent: null });
   const [streak, setStreak] = useState(0);
+  const { plaidConnected, plaidSummary } = usePlaid();
+  const [achievements, setAchievements] = useState<Achievement[]>(ACHIEVEMENTS);
   useEffect(() => {
     fetchLeaderboardStats(tier).then(setLbStats).catch(() => {});
     getStreak().then(setStreak).catch(() => {});
   }, [tier]);
+
+  // Load real achievements from streak + score + bank data.
+  useEffect(() => {
+    (async () => {
+      try {
+        const [s, stats] = await Promise.all([getStreak().catch(() => 0), loadStats()]);
+        const ach = await getAchievements(buildAchievementContext({
+          streak: s,
+          score: score.total,
+          movesActed: stats.movesActedTotal,
+          plaidConnected,
+          plaid: plaidSummary,
+        }));
+        setAchievements(ach);
+      } catch {}
+    })();
+  }, [score.total, plaidConnected, plaidSummary]);
   const friendsFlash = useRef(new Animated.Value(1)).current;
   useEffect(() => {
     if (lbView === 'friends') return;
@@ -136,7 +156,7 @@ export default function ProfileScreen({ onResetOnboarding }: ProfileProps = {}) 
       ]).start();
     }, 180);
   };
-  const unlockedCount = ACHIEVEMENTS.filter(a => a.unlocked).length;
+  const unlockedCount = achievements.filter(a => a.unlocked).length;
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -197,6 +217,8 @@ export default function ProfileScreen({ onResetOnboarding }: ProfileProps = {}) 
         showsHorizontalScrollIndicator={false}
         style={styles.tabScroll}
         contentContainerStyle={styles.tabRow}
+        bounces={false}
+        alwaysBounceHorizontal={false}
       >
         {TABS.map(tab => {
           const isCard = tab === 'Card';
@@ -254,9 +276,12 @@ export default function ProfileScreen({ onResetOnboarding }: ProfileProps = {}) 
               <>
                 <Text style={styles.sectionLabel}>RECENT ACHIEVEMENTS</Text>
                 <View style={styles.recentAchieve}>
-                  {ACHIEVEMENTS.filter(a => a.unlocked).slice(0, 4).map(a => (
-                    <AchievementBadge key={a.id} achievement={a} size="sm" />
-                  ))}
+                  {achievements.filter(a => a.unlocked)
+                    .sort((a, b) => (b.unlockedAt?.getTime() ?? 0) - (a.unlockedAt?.getTime() ?? 0))
+                    .slice(0, 4)
+                    .map(a => (
+                      <AchievementBadge key={a.id} achievement={a} size="sm" />
+                    ))}
                 </View>
               </>
             )}
@@ -445,14 +470,14 @@ export default function ProfileScreen({ onResetOnboarding }: ProfileProps = {}) 
           </View>
         )}
 
-        {/* WINS TAB */}
+        {/* WINS TAB — mirrors the achievements ("wins") earned on the Vault tab */}
         {activeTab === 'Wins' && (
-          wins.length === 0 ? (
+          unlockedCount === 0 ? (
             <View style={[styles.noWins, CARD_SHADOW, { shadowOpacity: 0.06 }]}>
               <Text style={styles.noWinsGlyph}>◈</Text>
               <Text style={styles.noWinsTitle}>No wins yet</Text>
               <Text style={styles.noWinsTxt}>
-                Wins are earned when you act on wealth moves — paying down debt, investing, or opening a high-yield account.
+                Wins are earned as you build your streak, take wealth moves, and grow your score.
               </Text>
               <View style={styles.noWinsHint}>
                 <Text style={styles.noWinsHintIcon}>🏦</Text>
@@ -460,9 +485,24 @@ export default function ProfileScreen({ onResetOnboarding }: ProfileProps = {}) 
               </View>
             </View>
           ) : (
-            <View style={styles.wins}>
-              {wins.map(w => <WinCard key={w.id} win={w} onSharePress={setShareWin} />)}
-            </View>
+            <>
+              <View style={styles.tabIntro}>
+                <Text style={styles.tabIntroTitle}>Your Wins</Text>
+                <Text style={styles.tabIntroSub}>{unlockedCount} of {achievements.length} unlocked</Text>
+              </View>
+              <View style={styles.achieveGrid}>
+                {achievements
+                  .filter(a => a.unlocked)
+                  .sort((a, b) => (b.unlockedAt?.getTime() ?? 0) - (a.unlockedAt?.getTime() ?? 0))
+                  .map(a => <AchievementBadge key={a.id} achievement={a} />)}
+              </View>
+              {!plaidConnected && (
+                <View style={[styles.noWinsHint, { marginTop: SPACING.md }]}>
+                  <Text style={styles.noWinsHintIcon}>🏦</Text>
+                  <Text style={styles.noWinsHintTxt}>Connect your bank to unlock personalized moves based on your real accounts.</Text>
+                </View>
+              )}
+            </>
           )
         )}
 
@@ -502,8 +542,8 @@ const styles = StyleSheet.create({
   cardName: { fontSize: FONTS.sizes.xs, color: COLORS.textMuted, letterSpacing: FONTS.tracking.widest * 2 },
   cardDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: COLORS.gold },
 
-  tabScroll: { flexGrow: 0 },
-  tabRow: { flexDirection: 'row', paddingHorizontal: SPACING.lg, paddingVertical: SPACING.md, gap: SPACING.sm },
+  tabScroll: { flexGrow: 0, flexShrink: 0 },
+  tabRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: SPACING.lg, paddingVertical: SPACING.md, gap: SPACING.sm },
   tab: { paddingHorizontal: 14, paddingVertical: 6, borderRadius: RADIUS.full, borderWidth: StyleSheet.hairlineWidth, borderColor: COLORS.border, backgroundColor: COLORS.surface },
   tabActive: { backgroundColor: COLORS.text, borderColor: COLORS.text },
   tabTxt: { fontSize: FONTS.sizes.xs, color: COLORS.textDim, fontWeight: FONTS.weights.medium, letterSpacing: FONTS.tracking.wide },
@@ -517,6 +557,7 @@ const styles = StyleSheet.create({
 
   sectionLabel: { fontSize: FONTS.sizes.xs, color: COLORS.textMuted, letterSpacing: FONTS.tracking.widest, fontWeight: FONTS.weights.medium },
   recentAchieve: { flexDirection: 'row', gap: SPACING.sm },
+  achieveGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: SPACING.sm },
   viewAllBtn: { backgroundColor: COLORS.card, borderRadius: RADIUS.md, borderWidth: StyleSheet.hairlineWidth, borderColor: COLORS.border, padding: SPACING.md, alignItems: 'center' },
   viewAllTxt: { fontSize: FONTS.sizes.sm, color: COLORS.textDim, letterSpacing: FONTS.tracking.wide },
 

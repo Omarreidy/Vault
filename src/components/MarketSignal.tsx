@@ -29,9 +29,13 @@ function SnapshotCard({ snap, isLive }: { snap: MarketSnapshot; isLive: boolean 
   const IndexPill = ({ label, val }: { label: string; val: number }) => (
     <View style={snapStyles.pill}>
       <Text style={snapStyles.pillLabel}>{label}</Text>
-      <Text style={[snapStyles.pillVal, { color: val >= 0 ? '#7EB8A4' : '#C97A6E' }]}>
-        {val >= 0 ? '+' : ''}{val.toFixed(2)}%
-      </Text>
+      {isLive ? (
+        <Text style={[snapStyles.pillVal, { color: val >= 0 ? '#7EB8A4' : '#C97A6E' }]}>
+          {val >= 0 ? '+' : ''}{val.toFixed(2)}%
+        </Text>
+      ) : (
+        <Text style={[snapStyles.pillVal, { color: COLORS.textMuted }]}>—</Text>
+      )}
     </View>
   );
 
@@ -42,7 +46,7 @@ function SnapshotCard({ snap, isLive }: { snap: MarketSnapshot; isLive: boolean 
         <View style={snapStyles.row}>
           <View>
             <Text style={snapStyles.eyebrow}>MARKET SNAPSHOT</Text>
-            <Text style={snapStyles.updated}>As of {snap.lastUpdated}</Text>
+            <Text style={snapStyles.updated}>{isLive ? `As of ${snap.lastUpdated}` : 'Connecting to market data…'}</Text>
           </View>
           <View style={[snapStyles.statusBadge, { borderColor: statusColor + '50' }]}>
             {displayStatus === 'OPEN' && <View style={snapStyles.liveDot} />}
@@ -55,8 +59,8 @@ function SnapshotCard({ snap, isLive }: { snap: MarketSnapshot; isLive: boolean 
           <IndexPill label="DOW" val={snap.dowChange} />
           <View style={snapStyles.pill}>
             <Text style={snapStyles.pillLabel}>VIX</Text>
-            <Text style={[snapStyles.pillVal, { color: snap.vix > 20 ? '#C97A6E' : '#7EB8A4' }]}>
-              {snap.vix} · {snap.vixLabel}
+            <Text style={[snapStyles.pillVal, { color: !isLive ? COLORS.textMuted : snap.vix > 20 ? '#C97A6E' : '#7EB8A4' }]}>
+              {isLive ? `${snap.vix} · ${snap.vixLabel}` : '—'}
             </Text>
           </View>
         </View>
@@ -85,15 +89,17 @@ const snapStyles = StyleSheet.create({
   statusTxt: { fontSize: FONTS.sizes.xs, fontWeight: FONTS.weights.bold, letterSpacing: 1 },
   indices: { flexDirection: 'row', gap: SPACING.sm, flexWrap: 'wrap' },
   pill: {
-    flex: 1, minWidth: 80,
+    flex: 1, minWidth: 72,
     backgroundColor: 'rgba(255,255,255,0.06)',
     borderRadius: RADIUS.md,
-    paddingVertical: 8,
+    paddingVertical: 11,
     paddingHorizontal: SPACING.sm,
-    gap: 3,
+    gap: 5,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  pillLabel: { fontSize: 8, color: 'rgba(242,239,233,0.4)', fontWeight: FONTS.weights.bold, letterSpacing: 0.8 },
-  pillVal: { fontSize: FONTS.sizes.sm, fontWeight: FONTS.weights.bold },
+  pillLabel: { fontSize: 9, color: 'rgba(242,239,233,0.5)', fontWeight: FONTS.weights.bold, letterSpacing: 1, textAlign: 'center' },
+  pillVal: { fontSize: FONTS.sizes.md, fontWeight: FONTS.weights.bold, textAlign: 'center' },
 });
 
 // Static name lookup for common tickers

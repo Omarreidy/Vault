@@ -12,37 +12,61 @@ Deno.serve(async (req) => {
     const { ticker } = await req.json();
     if (!ticker) throw new Error('ticker required');
 
-    const av = Deno.env.get('ALPHA_VANTAGE_KEY')!;
+    const fmp = Deno.env.get('FMP_KEY')!;
     const fh = Deno.env.get('FINNHUB_KEY')!;
     const anthropicKey = Deno.env.get('ANTHROPIC_API_KEY')!;
 
-    const [overviewRes, quoteRes, incomeRes, newsRes, profileRes] = await Promise.all([
-      fetch(`https://www.alphavantage.co/query?function=OVERVIEW&symbol=${ticker}&apikey=${av}`).then(r => r.json()),
-      fetch(`https://finnhub.io/api/v1/quote?symbol=${ticker}&token=${fh}`).then(r => r.json()),
-      fetch(`https://www.alphavantage.co/query?function=INCOME_STATEMENT&symbol=${ticker}&apikey=${av}`).then(r => r.json()),
-      fetch(`https://finnhub.io/api/v1/company-news?symbol=${ticker}&from=${new Date(Date.now()-7*86400000).toISOString().split('T')[0]}&to=${new Date().toISOString().split('T')[0]}&token=${fh}`).then(r => r.json()),
-      fetch(`https://finnhub.io/api/v1/stock/profile2?symbol=${ticker}&token=${fh}`).then(r => r.json()),
+    const fmpUrl = (path: string) =>
+      `https://financialmodelingprep.com/stable/${path}${path.includes('?') ? '&' : '?'}apikey=${fmp}`;
+    const first = (v: any) => (Array.isArray(v) ? v[0] ?? {} : v ?? {});
+
+    const [profileArr, incomeArr, ratiosArr, metricsArr, newsRes] = await Promise.all([
+      fetch(fmpUrl(`profile?symbol=${ticker}`)).then(r => r.json()).catch(() => []),
+      fetch(fmpUrl(`income-statement?symbol=${ticker}&limit=2`)).then(r => r.json()).catch(() => []),
+      fetch(fmpUrl(`ratios?symbol=${ticker}&limit=1`)).then(r => r.json()).catch(() => []),
+      fetch(fmpUrl(`key-metrics?symbol=${ticker}&limit=1`)).then(r => r.json()).catch(() => []),
+      fetch(`https://finnhub.io/api/v1/company-news?symbol=${ticker}&from=${new Date(Date.now()-7*86400000).toISOString().split('T')[0]}&to=${new Date().toISOString().split('T')[0]}&token=${fh}`).then(r => r.json()).catch(() => []),
     ]);
 
-    const annual = incomeRes?.annualReports?.[0] ?? {};
+    const profile = first(profileArr);
+    const income = first(incomeArr);
+    const incomePrev = Array.isArray(incomeArr) ? incomeArr[1] ?? {} : {};
+    const ratios = first(ratiosArr);
+    const metrics = first(metricsArr);
+
     const recentNews = Array.isArray(newsRes) ? newsRes.slice(0, 5).map((n: any) => n.headline).join('\n') : '';
-    const companyName = overviewRes.Name ?? profileRes.name ?? ticker;
-    const sector = overviewRes.Sector ?? profileRes.finnhubIndustry ?? 'Technology';
+    const companyName = profile.companyName ?? ticker;
+    const sector = profile.sector ?? profile.industry ?? 'Technology';
+
+    // Derived fundamentals from FMP
+    const fmtB = (n: any) => (n ? '$' + (Number(n) / 1e9).toFixed(1) + 'B' : 'N/A');
+    const revenueTTM = income.revenue ? fmtB(income.revenue) : 'N/A';
+    const netIncomeVal = income.netIncome ? fmtB(income.netIncome) : 'N/A';
+    const revGrowth = income.revenue && incomePrev.revenue
+      ? (((income.revenue - incomePrev.revenue) / incomePrev.revenue) * 100).toFixed(1)
+      : null;
+    const netMarginPct = ratios.netProfitMargin != null
+      ? (ratios.netProfitMargin * 100).toFixed(1)
+      : null;
+    const peRatio = metrics.priceToEarningsRatio ?? ratios.priceToEarningsRatio ?? profile.pe ?? 'N/A';
+    const marketCapStr = profile.marketCap ? fmtB(profile.marketCap) : 'N/A';
+    const currentPrice = profile.price ?? 0;
+    const changePct = profile.changePercentage ?? 0;
 
     const client = new Anthropic({ apiKey: anthropicKey });
 
     const prompt = `You are VAULT's research engine. Generate a complete investment research report for ${ticker} (${companyName}) using this real financial data:
 
 Sector: ${sector}
-Market Cap: ${overviewRes.MarketCapitalization ? '$' + (parseInt(overviewRes.MarketCapitalization) / 1e9).toFixed(1) + 'B' : 'N/A'}
-P/E Ratio: ${overviewRes.PERatio ?? 'N/A'}
-EPS: ${overviewRes.EPS ?? 'N/A'}
-52-Week High/Low: ${overviewRes['52WeekHigh'] ?? 'N/A'} / ${overviewRes['52WeekLow'] ?? 'N/A'}
-Revenue (TTM): ${overviewRes.RevenueTTM ? '$' + (parseInt(overviewRes.RevenueTTM) / 1e9).toFixed(1) + 'B' : 'N/A'}
-Net Income: ${annual.netIncome ? '$' + (parseInt(annual.netIncome) / 1e9).toFixed(1) + 'B' : 'N/A'}
-Profit Margin: ${overviewRes.ProfitMargin ?? 'N/A'}
-Analyst Target: ${overviewRes.AnalystTargetPrice ? '$' + parseFloat(overviewRes.AnalystTargetPrice).toFixed(2) : 'N/A'}
-Description: ${(overviewRes.Description ?? profileRes.description ?? '').slice(0, 500)}
+Market Cap: ${marketCapStr}
+P/E Ratio: ${peRatio}
+Current Price: $${currentPrice}
+52-Week Range: ${profile.range ?? 'N/A'}
+Revenue (latest FY): ${revenueTTM}
+Revenue Growth YoY: ${revGrowth != null ? revGrowth + '%' : 'N/A'}
+Net Income: ${netIncomeVal}
+Net Profit Margin: ${netMarginPct != null ? netMarginPct + '%' : 'N/A'}
+Description: ${(profile.description ?? '').slice(0, 500)}
 Recent news: ${recentNews || 'None'}
 
 Return ONLY a valid JSON object with these exact fields (no markdown, no explanation):
@@ -90,7 +114,7 @@ Return ONLY a valid JSON object with these exact fields (no markdown, no explana
 
     const response = await client.messages.create({
       model: 'claude-haiku-4-5-20251001',
-      max_tokens: 1500,
+      max_tokens: 4096,
       messages: [{ role: 'user', content: prompt }],
     });
 
@@ -101,35 +125,25 @@ Return ONLY a valid JSON object with these exact fields (no markdown, no explana
       if (jsonMatch) analysis = JSON.parse(jsonMatch[0]);
     } catch { analysis = {}; }
 
-    const currentPrice = quoteRes.c ?? 0;
-    const prevClose = quoteRes.pc ?? 0;
-    const changePct = prevClose > 0 ? ((currentPrice - prevClose) / prevClose) * 100 : 0;
+    const [week52Low, week52High] = (profile.range ?? '').split('-').map((s: string) => s.trim());
 
     return new Response(JSON.stringify({
       ticker: ticker.toUpperCase(),
       name: companyName,
       sector,
-      price: `$${currentPrice.toFixed(2)}`,
-      change: parseFloat(changePct.toFixed(2)),
-      marketCap: overviewRes.MarketCapitalization
-        ? '$' + (parseInt(overviewRes.MarketCapitalization) / 1e9).toFixed(1) + 'B'
-        : analysis.marketCap ?? 'N/A',
-      peRatio: overviewRes.PERatio ?? 'N/A',
-      eps: overviewRes.EPS ?? 'N/A',
-      revenue: overviewRes.RevenueTTM
-        ? '$' + (parseInt(overviewRes.RevenueTTM) / 1e9).toFixed(1) + 'B'
+      price: `$${Number(currentPrice).toFixed(2)}`,
+      change: parseFloat(Number(changePct).toFixed(2)),
+      marketCap: marketCapStr !== 'N/A' ? marketCapStr : (analysis.marketCap ?? 'N/A'),
+      peRatio: peRatio !== 'N/A' && peRatio != null ? (typeof peRatio === 'number' ? peRatio.toFixed(1) : peRatio) : 'N/A',
+      eps: income.eps ?? income.epsDiluted ?? 'N/A',
+      revenue: revenueTTM,
+      profitMargin: netMarginPct != null ? netMarginPct + '%' : 'N/A',
+      analystTarget: analysis.analystTarget ?? 'N/A',
+      week52High: week52High ?? 'N/A',
+      week52Low: week52Low ?? 'N/A',
+      employees: profile.fullTimeEmployees
+        ? Number(profile.fullTimeEmployees).toLocaleString()
         : 'N/A',
-      profitMargin: overviewRes.ProfitMargin
-        ? (parseFloat(overviewRes.ProfitMargin) * 100).toFixed(1) + '%'
-        : 'N/A',
-      analystTarget: overviewRes.AnalystTargetPrice
-        ? '$' + parseFloat(overviewRes.AnalystTargetPrice).toFixed(2)
-        : 'N/A',
-      week52High: overviewRes['52WeekHigh'] ?? 'N/A',
-      week52Low: overviewRes['52WeekLow'] ?? 'N/A',
-      employees: overviewRes.FullTimeEmployees
-        ? parseInt(overviewRes.FullTimeEmployees).toLocaleString()
-        : profileRes.employeeTotal?.toLocaleString() ?? 'N/A',
       recentNews: Array.isArray(newsRes) ? newsRes.slice(0, 3).map((n: any) => ({
         headline: n.headline,
         source: n.source,
@@ -141,9 +155,9 @@ Return ONLY a valid JSON object with these exact fields (no markdown, no explana
       moatScore: analysis.moatScore ?? 5,
       businessModel: analysis.businessModel ?? 'Business model data loading...',
       revenueStreams: analysis.revenueStreams ?? [],
-      revenueGrowth: analysis.revenueGrowth ?? 0,
-      netIncome: analysis.netIncome ?? 'N/A',
-      netMargin: analysis.netMargin ?? 0,
+      revenueGrowth: revGrowth != null ? parseFloat(revGrowth) : (analysis.revenueGrowth ?? 0),
+      netIncome: netIncomeVal !== 'N/A' ? netIncomeVal : (analysis.netIncome ?? 'N/A'),
+      netMargin: netMarginPct != null ? parseFloat(netMarginPct) : (analysis.netMargin ?? 0),
       operatingExpenses: analysis.operatingExpenses ?? 'N/A',
       cashOnHand: analysis.cashOnHand ?? 'N/A',
       tam: analysis.tam ?? 'N/A',

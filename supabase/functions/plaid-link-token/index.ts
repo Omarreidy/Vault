@@ -28,7 +28,7 @@ Deno.serve(async (req) => {
         secret,
         client_name: 'VAULT',
         user: { client_user_id: userId },
-        products: ['transactions', 'accounts'],
+        products: ['transactions'],
         country_codes: ['US'],
         language: 'en',
       }),

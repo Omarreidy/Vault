@@ -7,6 +7,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { COLORS, FONTS, SPACING, RADIUS, CARD_SHADOW } from '../constants/theme';
+import PolicyModal from '../components/PolicyModal';
+import { PRIVACY_POLICY, TERMS_OF_SERVICE } from '../constants/legal';
 
 const PERKS = [
   { icon: '◈', title: 'Unlimited AI Concierge', sub: 'Ask anything, any time — no limits' },
@@ -28,6 +30,8 @@ export default function UpgradeScreen({ visible, onClose, onSuccess }: Props) {
   const [restoring, setRestoring] = useState(false);
   const [error, setError] = useState('');
   const [priceString, setPriceString] = useState('$9.99');
+  const [showPrivacy, setShowPrivacy] = useState(false);
+  const [showTerms, setShowTerms] = useState(false);
   const scale = useRef(new Animated.Value(0.95)).current;
   const opacity = useRef(new Animated.Value(0)).current;
 
@@ -183,10 +187,34 @@ export default function UpgradeScreen({ visible, onClose, onSuccess }: Props) {
 
           <Text style={styles.legal}>
             {priceString}/month, billed by Apple. Cancel anytime in your iPhone Settings.{'\n'}
-            Payment processed securely by Apple.
+            Payment processed securely by Apple. Subscription auto-renews unless canceled at least 24 hours before the end of the period.
           </Text>
 
+          {/* Terms + Privacy — required by App Store guideline 3.1.2 */}
+          <View style={styles.policyRow}>
+            <TouchableOpacity onPress={() => setShowTerms(true)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <Text style={styles.policyLink}>Terms of Use</Text>
+            </TouchableOpacity>
+            <Text style={styles.policyDot}>·</Text>
+            <TouchableOpacity onPress={() => setShowPrivacy(true)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <Text style={styles.policyLink}>Privacy Policy</Text>
+            </TouchableOpacity>
+          </View>
+
         </ScrollView>
+
+        <PolicyModal
+          visible={showTerms}
+          title="Terms of Service"
+          content={TERMS_OF_SERVICE}
+          onClose={() => setShowTerms(false)}
+        />
+        <PolicyModal
+          visible={showPrivacy}
+          title="Privacy Policy"
+          content={PRIVACY_POLICY}
+          onClose={() => setShowPrivacy(false)}
+        />
       </SafeAreaView>
     </Modal>
   );
@@ -257,4 +285,13 @@ const styles = StyleSheet.create({
     fontSize: FONTS.sizes.xs, color: COLORS.textMuted,
     textAlign: 'center', lineHeight: 18, letterSpacing: FONTS.tracking.normal,
   },
+  policyRow: {
+    flexDirection: 'row', justifyContent: 'center', alignItems: 'center',
+    gap: SPACING.sm, marginTop: SPACING.xs,
+  },
+  policyLink: {
+    fontSize: FONTS.sizes.xs, color: COLORS.textDim,
+    textDecorationLine: 'underline', letterSpacing: FONTS.tracking.normal,
+  },
+  policyDot: { fontSize: FONTS.sizes.xs, color: COLORS.textMuted },
 });

@@ -110,7 +110,7 @@ export default function WealthWrapped({ visible, onClose }: Props) {
             {/* Header */}
             <View style={styles.header}>
               <Text style={styles.eyebrow}>VAULT · WEALTH RECAP</Text>
-              <Text style={styles.month}>COMING SOON</Text>
+              <Text style={styles.month}>YOUR 2026 RECAP</Text>
               <Text style={styles.headline}>Your story is just beginning.</Text>
             </View>
 

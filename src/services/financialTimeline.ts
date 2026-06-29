@@ -258,10 +258,172 @@ export interface TimelineState {
   hasRealData: boolean;
 }
 
-// Returns real user activity from Supabase.
-// Falls back to an empty biography for new users — the TIMELINE constant
-// is kept for reference but never shown unless the user has real activity.
-export function useTimeline(): TimelineState {
+// ─── Plaid → timeline builders ────────────────────────────────────────────────
+
+const NW_MILESTONES = [1_000_000, 500_000, 250_000, 100_000, 50_000, 25_000, 10_000];
+
+function safeNum(n: any): number {
+  return typeof n === 'number' && isFinite(n) ? n : 0;
+}
+
+function daysAgoFromDate(dateStr?: string): number {
+  if (!dateStr) return 0;
+  const t = new Date(dateStr).getTime();
+  if (!isFinite(t)) return 0;
+  return Math.max(0, Math.floor((Date.now() - t) / 86_400_000));
+}
+
+// Turn raw Plaid accounts + transactions into real biography entries.
+function buildPlaidEntries(accounts: any[], transactions: any[]): TimelineEntry[] {
+  const entries: TimelineEntry[] = [];
+
+  const sum = (arr: any[]) =>
+    Math.round(arr.reduce((s, a) => s + safeNum(a?.balances?.current), 0));
+
+  const checking   = accounts.filter(a => a?.subtype === 'checking');
+  const savings    = accounts.filter(a => ['savings', 'money market', 'cd'].includes(a?.subtype));
+  const investment = accounts.filter(a => ['brokerage', '401k', 'ira', 'roth', '403b', '529'].includes(a?.subtype));
+  const credit     = accounts.filter(a => a?.type === 'credit');
+
+  const liquid     = sum(checking) + sum(savings);
+  const invested   = sum(investment);
+  const debt       = sum(credit);
+  const assets     = liquid + invested;
+  const netWorth   = assets - debt;
+
+  // 1) Net worth — the headline entry, live as of now.
+  entries.push({
+    id: 'plaid-networth',
+    type: 'net_worth',
+    category: 'milestone',
+    title: `Net worth: $${netWorth.toLocaleString()}`,
+    sub: 'Live, synced from your connected accounts.',
+    impact: `$${assets.toLocaleString()} in assets${debt > 0 ? ` · $${debt.toLocaleString()} in debt` : ''}. This updates automatically every time you open VAULT.`,
+    isPinned: true,
+    icon: '◉',
+    daysAgo: 0,
+  });
+
+  // 2) Highest net-worth milestone crossed.
+  const crossed = NW_MILESTONES.find(m => netWorth >= m);
+  if (crossed) {
+    entries.push({
+      id: 'plaid-milestone',
+      type: 'milestone',
+      category: 'milestone',
+      title: `Crossed $${crossed.toLocaleString()} net worth`,
+      sub: 'A threshold most people your age never reach.',
+      impact: 'Each milestone compounds faster than the last — the hardest dollars are the first ones.',
+      icon: '✦',
+      daysAgo: 0,
+    });
+  }
+
+  // 3) Liquid cash position (powers the "10K Club" achievement).
+  if (liquid > 0) {
+    entries.push({
+      id: 'plaid-liquid',
+      type: 'move',
+      category: 'savings',
+      title: `$${liquid.toLocaleString()} in liquid cash`,
+      sub: `${checking.length + savings.length} cash account${checking.length + savings.length === 1 ? '' : 's'} tracked.`,
+      impact: liquid >= 10000
+        ? "You're in the 10K Club — enough runway to absorb most emergencies without debt."
+        : 'Building toward the 10K Club — your first major safety milestone.',
+      icon: '◈',
+      daysAgo: 0,
+    });
+  }
+
+  // 4) Investments, if any.
+  if (invested > 0) {
+    entries.push({
+      id: 'plaid-invested',
+      type: 'move',
+      category: 'investing',
+      title: `$${invested.toLocaleString()} invested`,
+      sub: `${investment.length} investment account${investment.length === 1 ? '' : 's'} working for you.`,
+      impact: 'Invested dollars compound while you sleep — this is the engine of long-term wealth.',
+      icon: '◆',
+      daysAgo: 0,
+    });
+  }
+
+  // 5) Account connection record.
+  entries.push({
+    id: 'plaid-connected',
+    type: 'move',
+    category: 'milestone',
+    title: `Connected ${accounts.length} account${accounts.length === 1 ? '' : 's'}`,
+    sub: 'Your biography is now backed by real data.',
+    impact: 'Everything in VAULT — your score, trajectory, and cohort ranking — is now personalized to your actual finances.',
+    icon: '◈',
+    daysAgo: 0,
+  });
+
+  // 6) Recent income deposits (Plaid: money in = negative amount).
+  const income = (transactions || [])
+    .filter(t =>
+      safeNum(t?.amount) < 0 &&
+      ['Payroll', 'Deposit', 'Income', 'Transfer'].some(c =>
+        (t?.category ?? []).some((tc: string) => typeof tc === 'string' && tc.includes(c))
+      )
+    )
+    .sort((a, b) => Math.abs(safeNum(b.amount)) - Math.abs(safeNum(a.amount)))
+    .slice(0, 3);
+
+  income.forEach((t, i) => {
+    const amt = Math.abs(Math.round(safeNum(t.amount)));
+    entries.push({
+      id: `plaid-income-${i}`,
+      type: 'move',
+      category: 'income',
+      title: `Income: +$${amt.toLocaleString()}`,
+      sub: t?.name ? String(t.name).slice(0, 48) : 'Deposit received',
+      impact: 'Income detected automatically — VAULT uses this to estimate your savings rate and FI timeline.',
+      icon: '◇',
+      daysAgo: daysAgoFromDate(t?.date),
+    });
+  });
+
+  return entries;
+}
+
+// Group a flat list of entries into month blocks, newest first.
+function groupIntoMonths(entries: TimelineEntry[]): TimelineMonth[] {
+  const buckets = new Map<number, { label: string; entries: TimelineEntry[] }>();
+
+  for (const e of entries) {
+    const d = new Date(Date.now() - e.daysAgo * 86_400_000);
+    const key = d.getFullYear() * 12 + d.getMonth();
+    const label = d.toLocaleString('default', { month: 'short', year: 'numeric' }).toUpperCase();
+    if (!buckets.has(key)) buckets.set(key, { label, entries: [] });
+    buckets.get(key)!.entries.push(e);
+  }
+
+  const keys = [...buckets.keys()].sort((a, b) => b - a); // newest month first
+  let bestKey = -1;
+  let bestScore = -1;
+
+  const months: TimelineMonth[] = keys.map(key => {
+    const { label, entries: monthEntries } = buckets.get(key)!;
+    monthEntries.sort((a, b) => a.daysAgo - b.daysAgo); // newest event first
+    const movesCount = monthEntries.filter(e => e.type === 'move').length;
+    const xpEarned = monthEntries.reduce((s, e) => s + (e.xp ?? 0), 0);
+    const netWorthGain = monthEntries.reduce((s, e) => s + (e.netWorthDelta ?? 0), 0);
+    const count = monthEntries.length;
+    const grade: TimelineMonth['grade'] = count >= 5 ? 'S' : count >= 4 ? 'A' : count >= 2 ? 'B' : 'C';
+    if (count > bestScore) { bestScore = count; bestKey = key; }
+    return { id: `m-${key}`, label, movesCount, xpEarned, netWorthGain, grade, entries: monthEntries };
+  });
+
+  return months.map(m => (m.id === `m-${bestKey}` ? { ...m, isBest: true } : m));
+}
+
+// Returns the user's real financial biography. When a bank is connected, it is
+// built from live Plaid accounts + transactions; otherwise it's just the
+// "Joined VAULT" entry (which keeps FinancialTimeline in its sample/empty state).
+export function useTimeline(plaidConnected?: boolean): TimelineState {
   const [state, setState] = useState<TimelineState>({
     months: [],
     totals: { totalMoves: 0, totalXp: 0, totalNetWorthGain: 0, monthsActive: 0 },
@@ -280,12 +442,9 @@ export function useTimeline(): TimelineState {
           return;
         }
 
-        // Build a "joined" entry from real auth timestamp
+        // Build a "joined" entry from real auth timestamp.
         const joinedAt = user.created_at ? new Date(user.created_at) : new Date();
-        const daysAgo = Math.floor((Date.now() - joinedAt.getTime()) / 86_400_000);
-        const monthLabel = joinedAt
-          .toLocaleString('default', { month: 'short', year: 'numeric' })
-          .toUpperCase();
+        const joinedDaysAgo = Math.floor((Date.now() - joinedAt.getTime()) / 86_400_000);
 
         const joinedEntry: TimelineEntry = {
           id: 'real-join',
@@ -295,27 +454,45 @@ export function useTimeline(): TimelineState {
           sub: 'Your financial biography starts here.',
           impact: 'The master begins with nothing but attention. Every move from here builds your record.',
           icon: '✦',
-          daysAgo,
+          daysAgo: joinedDaysAgo,
         };
 
-        const joinedMonth: TimelineMonth = {
-          id: 'real-joined',
-          label: monthLabel,
-          movesCount: 0,
-          xpEarned: 0,
-          netWorthGain: 0,
-          grade: 'C',
-          entries: [joinedEntry],
-        };
+        // Pull live Plaid data (never throws — bad/empty data just yields no entries).
+        let plaidEntries: TimelineEntry[] = [];
+        try {
+          const { data: items } = await supabase
+            .from('plaid_items')
+            .select('accounts, transactions')
+            .eq('user_id', user.id);
 
-        if (!cancelled) {
-          setState({
-            months: [joinedMonth],
-            totals: { totalMoves: 0, totalXp: 0, totalNetWorthGain: 0, monthsActive: 1 },
-            loading: false,
-            hasRealData: true,
-          });
+          const accounts = (items ?? []).flatMap((it: any) => it.accounts ?? []);
+          const transactions = (items ?? []).flatMap((it: any) => it.transactions ?? []);
+          if (accounts.length > 0) {
+            plaidEntries = buildPlaidEntries(accounts, transactions);
+          }
+        } catch {
+          // ignore — fall back to joined-only timeline
         }
+
+        if (cancelled) return;
+
+        const allEntries = [...plaidEntries, joinedEntry];
+        const months = groupIntoMonths(allEntries);
+
+        // Net worth display: pull the live figure from the net_worth entry.
+        const nwEntry = plaidEntries.find(e => e.type === 'net_worth');
+        const netWorthTotal = nwEntry
+          ? safeNum(parseInt(String(nwEntry.title).replace(/[^0-9-]/g, ''), 10))
+          : 0;
+
+        const totals = {
+          totalMoves: allEntries.filter(e => e.type === 'move').length,
+          totalXp: allEntries.reduce((s, e) => s + (e.xp ?? 0), 0),
+          totalNetWorthGain: netWorthTotal,
+          monthsActive: months.length,
+        };
+
+        setState({ months, totals, loading: false, hasRealData: true });
       } catch {
         if (!cancelled) setState(s => ({ ...s, loading: false }));
       }
@@ -323,7 +500,7 @@ export function useTimeline(): TimelineState {
 
     load();
     return () => { cancelled = true; };
-  }, []);
+  }, [plaidConnected]);
 
   return state;
 }

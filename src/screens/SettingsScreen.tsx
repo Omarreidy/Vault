@@ -12,6 +12,7 @@ import { COLORS, FONTS, SPACING, RADIUS, TIERS, CARD_SHADOW } from '../constants
 import { PRIVACY_POLICY, TERMS_OF_SERVICE } from '../constants/legal';
 import { resetOnboarding } from '../services/onboarding';
 import { useRealProfile } from '../services/userProfile';
+import { usePlaid } from '../context/PlaidContext';
 import { supabase } from '../services/supabase';
 import PlaidLinkScreen from './PlaidLinkScreen';
 import UpgradeScreen from './UpgradeScreen';
@@ -59,18 +60,25 @@ function ToggleRow({ label, sub, value, onChange }: ToggleRowProps) {
 }
 
 function LinkRow({ label, sub, value, onPress, danger }: {
-  label: string; sub?: string; value?: string; onPress: () => void; danger?: boolean;
+  label: string; sub?: string; value?: string; onPress?: () => void; danger?: boolean;
 }) {
-  return (
-    <TouchableOpacity style={styles.row} onPress={onPress} activeOpacity={0.7}>
+  const content = (
+    <>
       <View style={styles.rowLeft}>
         <Text style={[styles.rowLabel, danger && { color: COLORS.red }]}>{label}</Text>
         {sub && <Text style={styles.rowSub}>{sub}</Text>}
       </View>
       <View style={styles.rowRight}>
         {value && <Text style={styles.rowValue}>{value}</Text>}
-        <Text style={[styles.chevron, danger && { color: COLORS.red }]}>›</Text>
+        {onPress && <Text style={[styles.chevron, danger && { color: COLORS.red }]}>›</Text>}
       </View>
+    </>
+  );
+  // Display-only rows (no onPress) render as a plain row — no chevron, not tappable.
+  if (!onPress) return <View style={styles.row}>{content}</View>;
+  return (
+    <TouchableOpacity style={styles.row} onPress={onPress} activeOpacity={0.7}>
+      {content}
     </TouchableOpacity>
   );
 }
@@ -136,6 +144,7 @@ interface Props {
 
 export default function SettingsScreen({ onClose, onResetOnboarding }: Props) {
   const { tier, name } = useRealProfile();
+  const { refresh: refreshPlaid } = usePlaid();
   const info = TIERS[tier];
 
   // Notification toggles
@@ -146,7 +155,6 @@ export default function SettingsScreen({ onClose, onResetOnboarding }: Props) {
   const [notifInsight, setNotifInsight] = useState(false);
 
   // Preferences
-  const [darkMode,  setDarkMode]  = useState(false);
   const [currency,  setCurrency]  = useState('USD');
   const [language,  setLanguage]  = useState('English');
 
@@ -161,7 +169,7 @@ export default function SettingsScreen({ onClose, onResetOnboarding }: Props) {
 
   // ── Load persisted prefs on mount ─────────────────────────────────────────
   useEffect(() => {
-    AsyncStorage.multiGet([NOTIF_PREFS_KEY, CURRENCY_KEY, LANGUAGE_KEY, DARK_MODE_KEY])
+    AsyncStorage.multiGet([NOTIF_PREFS_KEY, CURRENCY_KEY, LANGUAGE_KEY])
       .then(pairs => {
         for (const [key, val] of pairs) {
           if (!val) continue;
@@ -175,7 +183,6 @@ export default function SettingsScreen({ onClose, onResetOnboarding }: Props) {
           }
           if (key === CURRENCY_KEY)  setCurrency(val);
           if (key === LANGUAGE_KEY)  setLanguage(val);
-          if (key === DARK_MODE_KEY) setDarkMode(val === 'true');
         }
       })
       .catch(() => {});
@@ -324,13 +331,21 @@ export default function SettingsScreen({ onClose, onResetOnboarding }: Props) {
           style: 'destructive',
           onPress: async () => {
             try {
-              const { data: { user } } = await supabase.auth.getUser();
-              if (user) {
-                try { await supabase.from('profiles').delete().eq('id', user.id); } catch {}
-              }
-              await supabase.auth.signOut().catch(() => {});
-              await AsyncStorage.clear().catch(() => {});
-            } catch {}
+              // Fully delete the account server-side: bank data, profile, AND the
+              // auth user itself (App Store guideline 5.1.1(v)).
+              const { error } = await supabase.functions.invoke('delete-account');
+              if (error) throw error;
+            } catch (e) {
+              Alert.alert(
+                'Could not delete account',
+                'Something went wrong. Please check your connection and try again, or email support@getvault.app.',
+                [{ text: 'OK' }]
+              );
+              return;
+            }
+            // Clear the local session/state only after the server confirms deletion.
+            await supabase.auth.signOut().catch(() => {});
+            await AsyncStorage.clear().catch(() => {});
             onResetOnboarding?.();
             onClose();
           },
@@ -400,6 +415,7 @@ export default function SettingsScreen({ onClose, onResetOnboarding }: Props) {
         onSuccess={(accounts) => {
           setConnectedBanks(accounts.length);
           setShowPlaid(false);
+          refreshPlaid();
           Alert.alert('Connected!', `${accounts.length} account${accounts.length !== 1 ? 's' : ''} linked successfully.`);
         }}
       />
@@ -479,8 +495,6 @@ export default function SettingsScreen({ onClose, onResetOnboarding }: Props) {
           <LinkRow label="Currency" value={currency} onPress={handleCurrency} />
           <Divider />
           <LinkRow label="Language" value={language} onPress={handleLanguage} />
-          <Divider />
-          <ToggleRow label="Dark mode" sub="Coming soon" value={darkMode} onChange={() => {}} />
         </Section>
 
         {/* Connected accounts */}
@@ -496,8 +510,6 @@ export default function SettingsScreen({ onClose, onResetOnboarding }: Props) {
               setShowPlaid(true);
             }}
           />
-          <Divider />
-          <LinkRow label="Investment accounts" sub="Brokerage sync — coming soon" onPress={() => {}} />
         </Section>
 
         {/* Privacy & Data */}
@@ -511,7 +523,7 @@ export default function SettingsScreen({ onClose, onResetOnboarding }: Props) {
 
         {/* About */}
         <Section title="ABOUT">
-          <LinkRow label="Version" value="1.0.0 (1)" onPress={() => {}} />
+          <LinkRow label="Version" value="1.0.0" />
           <Divider />
           <LinkRow label="Rate VAULT"  sub="Help us grow"       onPress={handleRate} />
           <Divider />
@@ -520,7 +532,7 @@ export default function SettingsScreen({ onClose, onResetOnboarding }: Props) {
 
         {/* Account */}
         <Section title="ACCOUNT">
-          <LinkRow label="Replay onboarding" sub="For testing" onPress={handleResetOnboarding} />
+          <LinkRow label="Replay onboarding" sub="Restart the intro experience" onPress={handleResetOnboarding} />
           <Divider />
           <LinkRow label="Sign out"      onPress={handleSignOut} />
           <Divider />

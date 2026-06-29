@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Message } from '../types';
 import { askConcierge, ConversationMessage } from '../services/concierge';
+import { recordConcierge } from '../services/progressStats';
 import { useRealProfile } from '../services/userProfile';
 import { usePlaid } from '../context/PlaidContext';
 import PlaidLinkScreen from './PlaidLinkScreen';
@@ -80,6 +81,9 @@ export default function ConciergeScreen({ onClose, initialPrompt }: Props = {}) 
 
   const sendMessage = async (text: string) => {
     if (!text.trim()) return;
+
+    // Record concierge use for the daily challenge.
+    recordConcierge().catch(() => {});
 
     // Paywall check — read fresh count from storage to avoid stale state
     if (!isPremium) {
