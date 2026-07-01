@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { getStreak } from '../services/streak';
 import * as Haptics from 'expo-haptics';
-import { GOALS, Goal, getGoalProgress, getMonthsToGoal } from '../services/goals';
+import { GOALS, Goal, getGoalProgress, getMonthsToGoal, loadGoals, saveGoals } from '../services/goals';
 import { ACHIEVEMENTS, getAchievements, buildAchievementContext, Achievement } from '../services/achievements';
 import { WEEKLY_CHALLENGES, DAILY_CHALLENGES, Challenge, evaluateChallenges } from '../services/challenges';
 import { loadStats, recordScoreVisit, weeklyVelocityGain } from '../services/progressStats';
@@ -106,6 +106,9 @@ export default function ScoreScreen() {
   const [addProgressAmt, setAddProgressAmt] = useState('');
   const [goalComplete, setGoalComplete] = useState(false);
 
+  // Load goals the user previously created so they persist across app restarts.
+  useEffect(() => { loadGoals().then(stored => { if (stored.length) setGoals(stored); }); }, []);
+
   // Challenges + achievements state (auto-tracked from real behavior)
   const [challenges, setChallenges] = useState<Challenge[]>(WEEKLY_CHALLENGES);
   const [dailyChallenges, setDailyChallenges] = useState<Challenge[]>(DAILY_CHALLENGES);
@@ -147,7 +150,9 @@ export default function ScoreScreen() {
     if (isNaN(amt) || amt <= 0) return;
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
     const updated = { ...selectedGoal, current: Math.min(selectedGoal.current + amt, selectedGoal.target) };
-    setGoals(prev => prev.map(g => g.id === selectedGoal.id ? updated : g));
+    const next = goals.map(g => g.id === selectedGoal.id ? updated : g);
+    setGoals(next);
+    saveGoals(next);
     setSelectedGoal(updated);
     setAddProgressAmt('');
     showXP(Math.round(amt / 10));
@@ -178,7 +183,9 @@ export default function ScoreScreen() {
       id: `g${Date.now()}`, title: newGoalName.trim(), emoji: newGoalEmoji,
       target, current: 0, monthlyContribution: 0, color: COLORS.gold, category: 'savings',
     };
-    setGoals(prev => [...prev, newGoal]);
+    const next = [...goals, newGoal];
+    setGoals(next);
+    saveGoals(next);
     setNewGoalName(''); setNewGoalTarget(''); setNewGoalEmoji('🎯');
     setShowAddGoal(false);
   };

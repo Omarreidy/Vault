@@ -1,7 +1,7 @@
 import React, { useRef, useEffect, useState } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, Animated,
-  Modal, ScrollView, Platform, Image, Dimensions,
+  Modal, ScrollView, Platform, Image, Dimensions, Alert, Linking,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as Haptics from 'expo-haptics';
@@ -453,7 +453,17 @@ export default function FinancialScanner({ visible, onClose }: Props) {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
     try {
       const perm = await ImagePicker.requestCameraPermissionsAsync();
-      if (!perm.granted) return;
+      if (!perm.granted) {
+        Alert.alert(
+          'Camera access needed',
+          'To scan an item, allow camera access for VAULT in Settings. You can also choose a photo from your library instead.',
+          [
+            { text: 'Not now', style: 'cancel' },
+            { text: 'Open Settings', onPress: () => Linking.openSettings().catch(() => {}) },
+          ],
+        );
+        return;
+      }
       const res = await ImagePicker.launchCameraAsync({
         mediaTypes: ['images'],
         allowsEditing: true,
