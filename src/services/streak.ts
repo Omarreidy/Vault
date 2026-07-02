@@ -1,7 +1,11 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { postActivity } from './cohort';
 
 const STREAK_KEY      = '@vault_streak_days';
 const LAST_OPEN_KEY   = '@vault_last_open_date';
+
+// Streak lengths worth announcing to the cohort.
+const STREAK_MILESTONES = [3, 7, 14, 30, 60, 100];
 
 function toDateString(d: Date): string {
   return d.toISOString().slice(0, 10); // 'YYYY-MM-DD'
@@ -31,6 +35,16 @@ export async function updateStreak(): Promise<number> {
     AsyncStorage.setItem(LAST_OPEN_KEY, today),
     AsyncStorage.setItem(STREAK_KEY, String(newStreak)),
   ]);
+
+  // First open of the day that lands on a milestone — share it with the
+  // cohort (best-effort; never blocks the streak update).
+  if (STREAK_MILESTONES.includes(newStreak)) {
+    postActivity(
+      'streak_milestone',
+      `Hit a ${newStreak}-day streak${newStreak >= 7 ? ' 🔥' : ''}`,
+      `${newStreak} consecutive days of showing up.`,
+    ).catch(() => {});
+  }
 
   return newStreak;
 }

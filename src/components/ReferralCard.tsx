@@ -1,10 +1,15 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useCallback } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity, Animated, Share, Platform,
+  View, Text, StyleSheet, TouchableOpacity, Animated, Platform,
+  TextInput, ActivityIndicator,
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { COLORS, FONTS, SPACING, RADIUS, CARD_SHADOW } from '../constants/theme';
-import { REFERRAL, ReferralInvite } from '../services/referral';
+import {
+  ReferralInfo, ReferralInvite, fetchReferralInfo, redeemReferralCode,
+  shareInvite, XP_PER_REFERRAL, COHORT_SPOTS, REDEEM_ERROR_MESSAGES,
+} from '../services/referral';
+import { addXP } from '../services/progressStats';
 
 function SpotDot({ filled, index }: { filled: boolean; index: number }) {
   const scale = useRef(new Animated.Value(0)).current;
@@ -41,22 +46,27 @@ function InviteRow({ invite, index }: { invite: ReferralInvite; index: number })
     ]).start();
   }, []);
 
+  const initials = invite.name
+    .split(' ')
+    .map(part => part.charAt(0))
+    .join('')
+    .toUpperCase()
+    .slice(0, 2);
+
   return (
     <Animated.View style={[styles.inviteRow, { opacity, transform: [{ translateY: slideY }] }]}>
-      <View style={[styles.inviteAvatar, invite.status === 'accepted' && styles.inviteAvatarAccepted]}>
-        <Text style={[styles.inviteInitials, invite.status === 'accepted' && { color: COLORS.gold }]}>
-          {invite.initials}
-        </Text>
+      <View style={[styles.inviteAvatar, styles.inviteAvatarAccepted]}>
+        <Text style={[styles.inviteInitials, { color: COLORS.gold }]}>{initials}</Text>
       </View>
       <View style={styles.inviteInfo}>
         <Text style={styles.inviteName}>{invite.name}</Text>
         <Text style={styles.inviteTime}>
-          {invite.status === 'accepted' ? `Joined ${invite.daysAgo}d ago` : 'Invite sent · Pending'}
+          {invite.daysAgo === 0 ? 'Joined today' : `Joined ${invite.daysAgo}d ago`}
         </Text>
       </View>
-      <View style={[styles.inviteStatusBadge, invite.status === 'accepted' ? styles.badgeAccepted : styles.badgePending]}>
-        <Text style={[styles.inviteStatusTxt, invite.status === 'accepted' ? styles.badgeAcceptedTxt : styles.badgePendingTxt]}>
-          {invite.status === 'accepted' ? `+${invite.xpEarned} XP` : 'Pending'}
+      <View style={[styles.inviteStatusBadge, styles.badgeAccepted]}>
+        <Text style={[styles.inviteStatusTxt, styles.badgeAcceptedTxt]}>
+          +{XP_PER_REFERRAL} XP
         </Text>
       </View>
     </Animated.View>
@@ -64,9 +74,24 @@ function InviteRow({ invite, index }: { invite: ReferralInvite; index: number })
 }
 
 export default function ReferralCard() {
+  const [info, setInfo] = useState<ReferralInfo | null>(null);
+  const [loaded, setLoaded] = useState(false);
   const [copied, setCopied] = useState(false);
+
+  const [codeInput, setCodeInput] = useState('');
+  const [redeeming, setRedeeming] = useState(false);
+  const [redeemMsg, setRedeemMsg] = useState<{ ok: boolean; text: string } | null>(null);
+
   const xpScale   = useRef(new Animated.Value(0.88)).current;
   const xpOpacity = useRef(new Animated.Value(0)).current;
+
+  const load = useCallback(async () => {
+    const data = await fetchReferralInfo();
+    setInfo(data);
+    setLoaded(true);
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
 
   useEffect(() => {
     Animated.parallel([
@@ -76,28 +101,63 @@ export default function ReferralCard() {
   }, []);
 
   const handleCopy = () => {
+    if (!info?.code) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
     if (Platform.OS === 'web') {
-      try { (navigator as any).clipboard?.writeText(`https://${REFERRAL.inviteLink}`); } catch {}
+      try { (navigator as any).clipboard?.writeText(info.code); } catch {}
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } else {
+      // No clipboard module in this build — the share sheet covers native.
+      shareInvite(info.code);
     }
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleShare = async () => {
+  const handleShare = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-    try {
-      await Share.share({
-        message:
-          `Join my VAULT cohort — we're building wealth together.\n\n` +
-          `Use my link: https://${REFERRAL.inviteLink}\n` +
-          `Code: ${REFERRAL.inviteCode}\n\n` +
-          `You'll be matched with people at your exact financial stage. We both get +${REFERRAL.xpPerReferral} XP when you join.`,
-      });
-    } catch {}
+    shareInvite(info?.code);
   };
 
-  const spotsLeft = REFERRAL.cohortSpotsTotal - REFERRAL.cohortSpotsFilled;
+  const handleRedeem = async () => {
+    const code = codeInput.trim();
+    if (!code || redeeming) return;
+    setRedeeming(true);
+    setRedeemMsg(null);
+    const result = await redeemReferralCode(code);
+    if (result.ok) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+      await addXP(result.xp ?? XP_PER_REFERRAL);
+      setRedeemMsg({ ok: true, text: `Code accepted — +${result.xp ?? XP_PER_REFERRAL} XP added ✓` });
+      setCodeInput('');
+      load();
+    } else {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
+      setRedeemMsg({ ok: false, text: REDEEM_ERROR_MESSAGES[result.error ?? 'network'] });
+    }
+    setRedeeming(false);
+  };
+
+  if (!loaded) {
+    return (
+      <View style={[styles.loadingCard, CARD_SHADOW, { shadowOpacity: 0.07 }]}>
+        <ActivityIndicator color={COLORS.gold} />
+      </View>
+    );
+  }
+
+  if (!info) {
+    return (
+      <View style={[styles.loadingCard, CARD_SHADOW, { shadowOpacity: 0.07 }]}>
+        <Text style={styles.errorTxt}>Couldn't load your referral info.</Text>
+        <TouchableOpacity style={styles.retryBtn} onPress={() => { setLoaded(false); load(); }} activeOpacity={0.85}>
+          <Text style={styles.retryTxt}>Retry</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  const filled = Math.min(info.invites.length, COHORT_SPOTS);
+  const spotsLeft = COHORT_SPOTS - filled;
 
   return (
     <View style={styles.wrap}>
@@ -108,11 +168,11 @@ export default function ReferralCard() {
         <View style={styles.xpInner}>
           <View>
             <Text style={styles.xpEyebrow}>XP EARNED FROM REFERRALS</Text>
-            <Text style={styles.xpVal}>{REFERRAL.totalXpEarned} XP</Text>
+            <Text style={styles.xpVal}>{info.xpEarned} XP</Text>
           </View>
           <View style={styles.xpRight}>
             <Text style={styles.xpPerLabel}>per referral</Text>
-            <Text style={styles.xpPerVal}>+{REFERRAL.xpPerReferral}</Text>
+            <Text style={styles.xpPerVal}>+{XP_PER_REFERRAL}</Text>
           </View>
         </View>
       </Animated.View>
@@ -121,12 +181,12 @@ export default function ReferralCard() {
       <View style={[styles.spotsCard, CARD_SHADOW, { shadowOpacity: 0.07 }]}>
         <Text style={styles.sectionEye}>COHORT SPOTS</Text>
         <Text style={styles.spotsTitle}>
-          {REFERRAL.cohortSpotsFilled} of {REFERRAL.cohortSpotsTotal} filled
+          {filled} of {COHORT_SPOTS} filled
           {'  '}<Text style={styles.spotsLeft}>{spotsLeft} open</Text>
         </Text>
         <View style={styles.spotsRow}>
-          {Array.from({ length: REFERRAL.cohortSpotsTotal }).map((_, i) => (
-            <SpotDot key={i} filled={i < REFERRAL.cohortSpotsFilled} index={i} />
+          {Array.from({ length: COHORT_SPOTS }).map((_, i) => (
+            <SpotDot key={i} filled={i < filled} index={i} />
           ))}
         </View>
         <Text style={styles.spotsSub}>
@@ -134,13 +194,15 @@ export default function ReferralCard() {
         </Text>
       </View>
 
-      {/* Invite link */}
+      {/* Invite code */}
       <View style={[styles.linkCard, CARD_SHADOW, { shadowOpacity: 0.07 }]}>
-        <Text style={styles.sectionEye}>YOUR INVITE LINK</Text>
+        <Text style={styles.sectionEye}>YOUR INVITE CODE</Text>
         <View style={styles.linkRow}>
-          <Text style={styles.linkTxt} numberOfLines={1}>{REFERRAL.inviteLink}</Text>
+          <Text style={styles.codeTxt} numberOfLines={1}>{info.code}</Text>
           <TouchableOpacity style={styles.copyBtn} onPress={handleCopy} activeOpacity={0.8}>
-            <Text style={styles.copyTxt}>{copied ? '✓ Copied' : 'Copy'}</Text>
+            <Text style={styles.copyTxt}>
+              {copied ? '✓ Copied' : Platform.OS === 'web' ? 'Copy' : 'Share'}
+            </Text>
           </TouchableOpacity>
         </View>
         <TouchableOpacity style={styles.shareBtn} onPress={handleShare} activeOpacity={0.85}>
@@ -148,14 +210,63 @@ export default function ReferralCard() {
         </TouchableOpacity>
       </View>
 
+      {/* Redeem a code */}
+      {!info.redeemed && (
+        <View style={[styles.linkCard, CARD_SHADOW, { shadowOpacity: 0.07 }]}>
+          <Text style={styles.sectionEye}>HAVE AN INVITE CODE?</Text>
+          <View style={styles.linkRow}>
+            <TextInput
+              style={styles.codeInput}
+              value={codeInput}
+              onChangeText={text => { setCodeInput(text.toUpperCase()); setRedeemMsg(null); }}
+              placeholder="Enter code"
+              placeholderTextColor={COLORS.textMuted}
+              autoCapitalize="characters"
+              autoCorrect={false}
+              maxLength={12}
+              returnKeyType="done"
+              onSubmitEditing={handleRedeem}
+            />
+            <TouchableOpacity
+              style={[styles.copyBtn, (!codeInput.trim() || redeeming) && { opacity: 0.5 }]}
+              onPress={handleRedeem}
+              activeOpacity={0.8}
+              disabled={!codeInput.trim() || redeeming}
+            >
+              {redeeming
+                ? <ActivityIndicator size="small" color={COLORS.background} />
+                : <Text style={styles.copyTxt}>Apply</Text>}
+            </TouchableOpacity>
+          </View>
+          {redeemMsg && (
+            <Text style={[styles.redeemMsg, { color: redeemMsg.ok ? COLORS.gold : COLORS.textDim }]}>
+              {redeemMsg.text}
+            </Text>
+          )}
+          <Text style={styles.spotsSub}>
+            Joined through a friend? Enter their code — you both earn +{XP_PER_REFERRAL} XP.
+          </Text>
+        </View>
+      )}
+      {info.redeemed && redeemMsg?.ok && (
+        <Text style={[styles.redeemMsg, { color: COLORS.gold }]}>{redeemMsg.text}</Text>
+      )}
+
       {/* Invite history */}
       <View style={[styles.historyCard, CARD_SHADOW, { shadowOpacity: 0.07 }]}>
-        <Text style={styles.sectionEye}>INVITES SENT · {REFERRAL.invites.length}</Text>
-        <View style={styles.historyList}>
-          {REFERRAL.invites.map((inv, i) => (
-            <InviteRow key={inv.id} invite={inv} index={i} />
-          ))}
-        </View>
+        <Text style={styles.sectionEye}>INVITES ACCEPTED · {info.invites.length}</Text>
+        {info.invites.length === 0 ? (
+          <Text style={styles.emptyTxt}>
+            No invites accepted yet. Share your code — you'll see everyone who joins
+            through it here.
+          </Text>
+        ) : (
+          <View style={styles.historyList}>
+            {info.invites.map((inv, i) => (
+              <InviteRow key={`${inv.name}-${i}`} invite={inv} index={i} />
+            ))}
+          </View>
+        )}
       </View>
 
     </View>
@@ -164,6 +275,33 @@ export default function ReferralCard() {
 
 const styles = StyleSheet.create({
   wrap: { gap: SPACING.lg },
+
+  loadingCard: {
+    backgroundColor: COLORS.card,
+    borderRadius: RADIUS.xl,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: COLORS.border,
+    padding: SPACING.xl,
+    alignItems: 'center',
+    gap: SPACING.md,
+  },
+  errorTxt: {
+    fontSize: FONTS.sizes.sm,
+    color: COLORS.textDim,
+    textAlign: 'center',
+  },
+  retryBtn: {
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.sm,
+    backgroundColor: COLORS.text,
+    borderRadius: RADIUS.full,
+  },
+  retryTxt: {
+    fontSize: FONTS.sizes.xs,
+    fontWeight: FONTS.weights.bold,
+    color: COLORS.background,
+    letterSpacing: FONTS.tracking.wide,
+  },
 
   xpCard: {
     backgroundColor: COLORS.text,
@@ -262,11 +400,20 @@ const styles = StyleSheet.create({
     paddingLeft: SPACING.md,
     overflow: 'hidden',
   },
-  linkTxt: {
+  codeTxt: {
     flex: 1,
-    fontSize: FONTS.sizes.sm,
-    color: COLORS.textDim,
-    letterSpacing: FONTS.tracking.wide,
+    fontSize: FONTS.sizes.lg,
+    fontWeight: FONTS.weights.bold,
+    color: COLORS.text,
+    letterSpacing: 3,
+    paddingVertical: SPACING.md,
+  },
+  codeInput: {
+    flex: 1,
+    fontSize: FONTS.sizes.md,
+    fontWeight: FONTS.weights.semibold,
+    color: COLORS.text,
+    letterSpacing: 2,
     paddingVertical: SPACING.md,
   },
   copyBtn: {
@@ -275,6 +422,8 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.text,
     minWidth: 72,
     alignItems: 'center',
+    alignSelf: 'stretch',
+    justifyContent: 'center',
   },
   copyTxt: {
     fontSize: FONTS.sizes.xs,
@@ -294,6 +443,11 @@ const styles = StyleSheet.create({
     color: COLORS.background,
     letterSpacing: FONTS.tracking.wide,
   },
+  redeemMsg: {
+    fontSize: FONTS.sizes.xs,
+    fontWeight: FONTS.weights.semibold,
+    letterSpacing: FONTS.tracking.wide,
+  },
 
   historyCard: {
     backgroundColor: COLORS.card,
@@ -304,6 +458,11 @@ const styles = StyleSheet.create({
     gap: SPACING.md,
   },
   historyList: { gap: SPACING.md },
+  emptyTxt: {
+    fontSize: FONTS.sizes.sm,
+    color: COLORS.textDim,
+    lineHeight: 20,
+  },
 
   inviteRow: {
     flexDirection: 'row',
@@ -347,15 +506,10 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.goldGlow,
     borderColor: COLORS.gold + '40',
   },
-  badgePending: {
-    backgroundColor: COLORS.background,
-    borderColor: COLORS.border,
-  },
   inviteStatusTxt: {
     fontSize: FONTS.sizes.xs,
     fontWeight: FONTS.weights.bold,
     letterSpacing: FONTS.tracking.wide,
   },
   badgeAcceptedTxt: { color: COLORS.goldDark },
-  badgePendingTxt: { color: COLORS.textMuted },
 });

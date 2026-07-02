@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { TierName } from '../types';
 import { getTierFromScore, getTierProgress } from './velocity';
 import { supabase } from './supabase';
+import { postActivity } from './cohort';
 
 export interface OnboardingAnswers {
   name: string;
@@ -185,6 +186,8 @@ export async function markOnboardingComplete(result: OnboardingResult): Promise<
       percentile: result.percentile,
       onboarding_complete: true,
     }).eq('id', user.id);
+    // Announce the new member to the cohort feed; best-effort.
+    postActivity('joined', 'Joined VAULT', 'New member in the cohort. First move unlocked.').catch(() => {});
   }
 }
 

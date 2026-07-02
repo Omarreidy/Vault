@@ -25,7 +25,7 @@ import NotificationsScreen from './NotificationsScreen';
 import PlaidNudge from '../components/PlaidNudge';
 import PlaidLinkScreen from './PlaidLinkScreen';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { supabase } from '../services/supabase';
+import { postActivity, fetchMemberCount } from '../services/cohort';
 import { updateStreak } from '../services/streak';
 import { recordMove } from '../services/progressStats';
 import { usePlaid } from '../context/PlaidContext';
@@ -164,6 +164,7 @@ export default function HomeScreen() {
   const [showNotifs, setShowNotifs] = useState(false);
   const [showCohortReaction, setShowCohortReaction] = useState(false);
   const [completedMoveTitle, setCompletedMoveTitle] = useState('');
+  const [cohortActivityId, setCohortActivityId] = useState<string | null>(null);
   const [showScanner, setShowScanner] = useState(false);
   const [showConcierge, setShowConcierge] = useState(false);
   const [conciergePrompt, setConciergePrompt] = useState('');
@@ -198,10 +199,9 @@ export default function HomeScreen() {
     AsyncStorage.getItem('@vault_plaid_nudge_dismissed').then(val => {
       if (val === 'true') setShowPlaidNudge(false);
     });
-    supabase.from('profiles')
-      .select('id', { count: 'exact', head: true })
-      .eq('onboarding_complete', true)
-      .then(({ count }) => { if (count) setMemberCount(count); });
+    // profiles RLS only exposes the caller's own row — the total member
+    // count comes from the member_count security-definer RPC instead.
+    fetchMemberCount().then(count => { if (count) setMemberCount(count); });
   }, []);
 
   // Reload personalized feed whenever Plaid connection status changes
@@ -284,6 +284,12 @@ export default function HomeScreen() {
     setTotalXP(prev => prev + xp);
     // Durably record the move so Challenges + Achievements reflect real activity.
     recordMove(xp).catch(() => {});
+    // Share it with the cohort so other members can see and react; the id
+    // lets the reaction overlay persist the user's own reaction.
+    setCohortActivityId(null);
+    postActivity('move_complete', `Completed "${moveTitle}"`, undefined, xp)
+      .then(setCohortActivityId)
+      .catch(() => {});
     // Show Plaid nudge after 3rd move if not connected and not dismissed
     if (newCount === 3 && !plaidConnected) {
       AsyncStorage.getItem('@vault_plaid_nudge_dismissed').then(val => {
@@ -534,6 +540,8 @@ export default function HomeScreen() {
       <CohortReactionOverlay
         visible={showCohortReaction}
         moveTitle={completedMoveTitle}
+        activityId={cohortActivityId}
+        memberCount={memberCount}
         onDismiss={() => {
           setShowCohortReaction(false);
           scrollToNext();

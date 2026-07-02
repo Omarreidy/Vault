@@ -1,11 +1,13 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Animated } from 'react-native';
 import * as Haptics from 'expo-haptics';
-import { COLORS, FONTS, SPACING, RADIUS, CARD_SHADOW } from '../constants/theme';
-import { supabase } from '../services/supabase';
+import { COLORS, FONTS, SPACING, RADIUS, CARD_SHADOW, TIERS } from '../constants/theme';
+import { TierName } from '../types';
+import { fetchTierMemberCount, fetchMemberCount } from '../services/cohort';
+import { shareInvite, XP_PER_REFERRAL } from '../services/referral';
 
 // Real benchmark data from Fed Survey of Consumer Finances (2023)
-// For Gold-tier users: ages 25–44, income $70–120K, "Build wealth" goal
+// Segment: ages 25–44, income $70–120K, "Build wealth" goal
 const BENCHMARKS = [
   { key: 'savingsRate',  label: 'Avg savings rate',       benchmark: '12%'       },
   { key: 'emergency',    label: 'Emergency fund',         benchmark: '2.8 months' },
@@ -14,6 +16,7 @@ const BENCHMARKS = [
 ] as const;
 
 interface Props {
+  tier: TierName;
   plaidConnected: boolean;
   plaidSummary: {
     checking: number;
@@ -59,21 +62,25 @@ const barStyles = StyleSheet.create({
 });
 
 
-export default function CohortCard({ plaidConnected, plaidSummary, onConnectBank }: Props) {
+export default function CohortCard({ tier, plaidConnected, plaidSummary, onConnectBank }: Props) {
   const headerScale = useRef(new Animated.Value(0.97)).current;
   const [memberCount, setMemberCount] = useState<number | null>(null);
 
   useEffect(() => {
     Animated.spring(headerScale, { toValue: 1, useNativeDriver: false, tension: 60, friction: 9 }).start();
-    // Get real member count from Supabase. The cohort always includes at least
-    // the current user, so never render a broken-looking "0" — floor to 1.
-    supabase.from('profiles').select('id', { count: 'exact', head: true })
-      .eq('tier', 'GOLD').eq('onboarding_complete', true)
-      .then(
-        ({ count }) => setMemberCount(Math.max(count ?? 0, 1)),
-        () => setMemberCount(1),
-      );
-  }, []);
+    // Real member count in the user's tier, via security-definer RPC
+    // (direct profile reads are RLS-blocked). The cohort always includes
+    // at least the current user, so never render a broken-looking "0".
+    fetchTierMemberCount(tier)
+      .then(count => count ?? fetchMemberCount())
+      .then(count => setMemberCount(Math.max(count ?? 0, 1)))
+      .catch(() => setMemberCount(1));
+  }, [tier]);
+
+  const handleInvite = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    shareInvite();
+  };
 
   const hasRealData = plaidConnected && plaidSummary;
   const yourValues: Record<string, string> = hasRealData
@@ -95,7 +102,7 @@ export default function CohortCard({ plaidConnected, plaidSummary, onConnectBank
           <View>
             <Text style={styles.eyebrow}>YOUR WEALTH COHORT</Text>
             <Text style={styles.subtitle}>
-              Gold tier · $70–120K income · Ages 25–44
+              {TIERS[tier].name} tier · matched to your financial stage
             </Text>
           </View>
           <View style={styles.rankBadge}>
@@ -124,7 +131,7 @@ export default function CohortCard({ plaidConnected, plaidSummary, onConnectBank
 
         {/* Real benchmarks — Fed Survey of Consumer Finances data */}
         <View>
-          <Text style={styles.benchmarkEye}>YOUR INCOME BRACKET · NATIONAL AVERAGES</Text>
+          <Text style={styles.benchmarkEye}>NATIONAL AVERAGES · AGES 25–44 · $70–120K INCOME</Text>
           <View style={styles.benchmarkList}>
             {BENCHMARKS.map((b, i) => (
               <View key={i} style={styles.benchmarkRow}>
@@ -147,13 +154,13 @@ export default function CohortCard({ plaidConnected, plaidSummary, onConnectBank
         {/* Invite CTA */}
         <TouchableOpacity
           style={styles.inviteBtn}
-          onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {})}
+          onPress={handleInvite}
           activeOpacity={0.85}
         >
           <Text style={styles.inviteIcon}>+</Text>
           <View>
             <Text style={styles.inviteTitle}>Invite someone to your cohort</Text>
-            <Text style={styles.inviteSub}>You both earn +75 XP when they join</Text>
+            <Text style={styles.inviteSub}>You both earn +{XP_PER_REFERRAL} XP when they join</Text>
           </View>
           <Text style={styles.inviteArrow}>→</Text>
         </TouchableOpacity>

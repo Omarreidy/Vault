@@ -4,52 +4,37 @@ import {
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { COLORS, FONTS, SPACING, RADIUS } from '../constants/theme';
-const MEMBERS = [
-  { id: 'a1', initials: '◆', label: 'Member' },
-  { id: 'a2', initials: '◆', label: 'Member' },
-  { id: 'a3', initials: '◆', label: 'Member' },
-  { id: 'a4', initials: '◆', label: 'Member' },
-  { id: 'a5', initials: '◆', label: 'Member' },
-];
-
-interface Reaction {
-  label: string;
-  emoji: string;
-  count: number;
-  reacted: boolean;
-}
-
-const BASE_REACTIONS: Reaction[] = [
-  { label: 'Locked In', emoji: '🔒', count: 0, reacted: false },
-  { label: 'Building',  emoji: '📈', count: 0, reacted: false },
-  { label: 'Witnessed', emoji: '👁',  count: 0, reacted: false },
-];
+import { Reaction, ReactionKey, REACTION_META, setReaction } from '../services/cohort';
 
 interface Props {
   visible: boolean;
   moveTitle: string;
+  /** The cohort_activity row created for this move; null when posting failed (offline). */
+  activityId: string | null;
+  /** Real onboarded member count, used for the "visible to" line. */
+  memberCount: number | null;
   onDismiss: () => void;
 }
 
-export default function CohortReactionOverlay({ visible, moveTitle, onDismiss }: Props) {
-  const [reactions, setReactions] = useState<Reaction[]>(BASE_REACTIONS.map(r => ({ ...r })));
-  const [reacted, setReacted]     = useState(false);
-  const [membersVisible, setMembersVisible] = useState<boolean[]>(MEMBERS.map(() => false));
+export default function CohortReactionOverlay({
+  visible, moveTitle, activityId, memberCount, onDismiss,
+}: Props) {
+  const [reactions, setReactions] = useState<Reaction[]>(
+    REACTION_META.map(m => ({ ...m, count: 0, reacted: false })),
+  );
+  const [reacted, setReacted] = useState(false);
 
   const slideY      = useRef(new Animated.Value(300)).current;
   const bgOpacity   = useRef(new Animated.Value(0)).current;
   const progressBar = useRef(new Animated.Value(1)).current;
-  const memberAnims = useRef(MEMBERS.map(() => new Animated.Value(0))).current;
   const dismissTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const reset = () => {
-    setReactions(BASE_REACTIONS.map(r => ({ ...r })));
+    setReactions(REACTION_META.map(m => ({ ...m, count: 0, reacted: false })));
     setReacted(false);
-    setMembersVisible(MEMBERS.map(() => false));
     slideY.setValue(300);
     bgOpacity.setValue(0);
     progressBar.setValue(1);
-    memberAnims.forEach(a => a.setValue(0));
   };
 
   useEffect(() => {
@@ -64,45 +49,17 @@ export default function CohortReactionOverlay({ visible, moveTitle, onDismiss }:
       Animated.spring(slideY,    { toValue: 0, tension: 70, friction: 10, useNativeDriver: false }),
     ]).start();
 
-    // Stagger member circles in
-    MEMBERS.forEach((_, i) => {
-      setTimeout(() => {
-        setMembersVisible(prev => {
-          const next = [...prev];
-          next[i] = true;
-          return next;
-        });
-        Animated.spring(memberAnims[i], {
-          toValue: 1,
-          tension: 120,
-          friction: 8,
-          useNativeDriver: false,
-        }).start();
-      }, 200 + i * 100);
-    });
-
-    // Simulate cohort members reacting live
-    setTimeout(() => {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-      setReactions(prev => prev.map((r, i) => i === 2 ? { ...r, count: r.count + 1 } : r)); // Witnessed +1
-    }, 800);
-    setTimeout(() => {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-      setReactions(prev => prev.map((r, i) => i === 0 ? { ...r, count: r.count + 1 } : r)); // Locked In +1
-    }, 1600);
-
     // Auto-dismiss progress bar
     progressBar.setValue(1);
     Animated.timing(progressBar, {
       toValue: 0,
-      duration: 4000,
+      duration: 5000,
       useNativeDriver: false,
     }).start();
 
-    // Auto-dismiss after 4s
     dismissTimer.current = setTimeout(() => {
       handleDismiss();
-    }, 4000);
+    }, 5000);
 
     return () => {
       if (dismissTimer.current) clearTimeout(dismissTimer.current);
@@ -120,17 +77,23 @@ export default function CohortReactionOverlay({ visible, moveTitle, onDismiss }:
     });
   };
 
-  const handleReaction = (index: number) => {
+  const handleReaction = (index: number, key: ReactionKey) => {
     if (reacted) return;
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
     setReacted(true);
     setReactions(prev => prev.map((r, i) =>
       i === index ? { ...r, count: r.count + 1, reacted: true } : r
     ));
+    // Persist the self-reaction on the real activity row; best-effort.
+    if (activityId) setReaction(activityId, key, true).catch(() => {});
     setTimeout(handleDismiss, 900);
   };
 
   const barWidth = progressBar.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] });
+
+  const audienceLine = memberCount != null && memberCount > 1
+    ? `Visible to ${memberCount.toLocaleString()} members in your cohort — they can react to it in the feed.`
+    : 'Posted to your cohort feed — members will see and react to it as they join.';
 
   if (!visible) return null;
 
@@ -153,32 +116,12 @@ export default function CohortReactionOverlay({ visible, moveTitle, onDismiss }:
 
           {/* Header */}
           <View style={styles.header}>
-            <Text style={styles.eyebrow}>WITNESSED BY YOUR COHORT</Text>
+            <Text style={styles.eyebrow}>SHARED WITH YOUR COHORT</Text>
             <View style={styles.moveRow}>
               <Text style={styles.moveMark}>◆</Text>
               <Text style={styles.moveTitle} numberOfLines={2}>{moveTitle}</Text>
             </View>
-          </View>
-
-          {/* Member avatars */}
-          <View style={styles.membersRow}>
-            {MEMBERS.map((member, i) => (
-              <Animated.View
-                key={member.id}
-                style={[
-                  styles.memberWrap,
-                  {
-                    opacity: memberAnims[i],
-                    transform: [{ scale: memberAnims[i] }],
-                  },
-                ]}
-              >
-                <View style={styles.memberCircle}>
-                  <Text style={styles.memberInitials}>{member.initials}</Text>
-                </View>
-                <Text style={styles.memberName} numberOfLines={1}>{member.label}</Text>
-              </Animated.View>
-            ))}
+            <Text style={styles.audience}>{audienceLine}</Text>
           </View>
 
           {/* Divider */}
@@ -193,9 +136,9 @@ export default function CohortReactionOverlay({ visible, moveTitle, onDismiss }:
           <View style={styles.reactionsRow}>
             {reactions.map((r, i) => (
               <ReactionButton
-                key={r.label}
+                key={r.key}
                 reaction={r}
-                onPress={() => handleReaction(i)}
+                onPress={() => handleReaction(i, r.key)}
                 disabled={reacted}
               />
             ))}
@@ -296,31 +239,10 @@ const styles = StyleSheet.create({
     lineHeight: 24,
     letterSpacing: FONTS.tracking.tight,
   },
-
-  membersRow: {
-    flexDirection: 'row',
-    paddingHorizontal: SPACING.lg,
-    gap: SPACING.lg,
-    paddingBottom: SPACING.lg,
-  },
-  memberWrap: { alignItems: 'center', gap: 5 },
-  memberCircle: {
-    width: 46, height: 46, borderRadius: 23,
-    backgroundColor: COLORS.goldGlow,
-    borderWidth: 1.5,
-    borderColor: COLORS.gold + '60',
-    alignItems: 'center', justifyContent: 'center',
-  },
-  memberInitials: {
+  audience: {
     fontSize: FONTS.sizes.xs,
-    fontWeight: FONTS.weights.bold,
-    color: COLORS.gold,
-    letterSpacing: 0.5,
-  },
-  memberName: {
-    fontSize: 9,
-    color: COLORS.textMuted,
-    fontWeight: FONTS.weights.medium,
+    color: COLORS.textDim,
+    lineHeight: 18,
   },
 
   divider: { height: StyleSheet.hairlineWidth, backgroundColor: COLORS.border, marginHorizontal: SPACING.lg },

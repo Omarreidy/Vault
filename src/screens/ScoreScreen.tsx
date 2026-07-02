@@ -18,6 +18,7 @@ import ProgressionLadder from '../components/ProgressionLadder';
 import NetWorthTracker from '../components/NetWorthTracker';
 import WealthWrapped from '../components/WealthWrapped';
 import CohortCard from '../components/CohortCard';
+import { postActivity } from '../services/cohort';
 import PlaidLinkScreen from './PlaidLinkScreen';
 import { COLORS, FONTS, SPACING, TIERS, RADIUS, CARD_SHADOW } from '../constants/theme';
 import { getNextTier, getPointsToNextTier, fetchLiveScore, fetchProfileScore } from '../services/velocity';
@@ -300,7 +301,11 @@ export default function ScoreScreen() {
             <Text style={styles.sectionLabel}>YOUR PATH TO {nextTier ?? 'BLACK'}</Text>
             <ProgressionLadder
               tier={tier}
-              onTierUnlock={() => setCelebrationTier(tier)}
+              onTierUnlock={() => {
+                setCelebrationTier(tier);
+                // Share the tier-up with the cohort; best-effort.
+                postActivity('tier_progress', `Climbed to ${TIERS[tier].name} tier`, 'Velocity score crossed the threshold.');
+              }}
             />
 
             <Text style={styles.sectionLabel}>MEMBER LADDER</Text>
@@ -333,9 +338,10 @@ export default function ScoreScreen() {
           <>
             <View style={styles.tabIntro}>
               <Text style={styles.tabIntroTitle}>Your Cohort</Text>
-              <Text style={styles.tabIntroSub}>Gold tier · $70–120K income · ages 25–44</Text>
+              <Text style={styles.tabIntroSub}>{TIERS[tier].name} tier · matched to your financial stage</Text>
             </View>
             <CohortCard
+              tier={tier}
               plaidConnected={plaidConnected}
               plaidSummary={plaidSummary}
               onConnectBank={() => setShowPlaid(true)}

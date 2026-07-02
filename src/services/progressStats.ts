@@ -95,6 +95,14 @@ export async function recordMove(xp = 0): Promise<VaultStats> {
   return save(s);
 }
 
+/** Adds XP (e.g. a referral bonus) without counting a move. */
+export async function addXP(xp: number): Promise<VaultStats> {
+  const s = await loadStats();
+  s.xpTotal += xp;
+  s.xpWeek += xp;
+  return save(s);
+}
+
 export async function recordScoreVisit(currentScore?: number): Promise<VaultStats> {
   const s = await loadStats();
   s.scoreVisitedToday = true;

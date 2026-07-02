@@ -1,16 +1,25 @@
-import React, { useRef, useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Animated } from 'react-native';
+import React, { useRef, useEffect, useState, useCallback } from 'react';
+import {
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, Animated,
+  ActivityIndicator, RefreshControl,
+} from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { COLORS, FONTS, SPACING, RADIUS, CARD_SHADOW } from '../constants/theme';
 import {
-  COHORT_ACTIVITY, CohortActivity, Reaction,
-  timeAgoShort, ACTIVITY_ICONS,
-} from '../services/progressFeed';
+  CohortActivityItem, Reaction, fetchCohortFeed, setReaction,
+  timeAgoShort, ACTIVITY_ICONS, REACTION_META,
+} from '../services/cohort';
+import { COHORT_PREVIEW, PreviewActivity } from '../services/progressFeed';
 
-function ReactionBtn({ reaction, onPress }: { reaction: Reaction; onPress: () => void }) {
+function ReactionBtn({ reaction, onPress, disabled }: {
+  reaction: Reaction;
+  onPress?: () => void;
+  disabled?: boolean;
+}) {
   const scale = useRef(new Animated.Value(1)).current;
 
   const handlePress = () => {
+    if (disabled || !onPress) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
     Animated.sequence([
       Animated.timing(scale, { toValue: 0.88, duration: 60, useNativeDriver: false }),
@@ -21,9 +30,14 @@ function ReactionBtn({ reaction, onPress }: { reaction: Reaction; onPress: () =>
   return (
     <Animated.View style={{ transform: [{ scale }] }}>
       <TouchableOpacity
-        style={[styles.reactionBtn, reaction.reacted && styles.reactionBtnActive]}
+        style={[
+          styles.reactionBtn,
+          reaction.reacted && styles.reactionBtnActive,
+          disabled && styles.reactionBtnDisabled,
+        ]}
         onPress={handlePress}
         activeOpacity={1}
+        disabled={disabled}
       >
         <Text style={styles.reactionEmoji}>{reaction.emoji}</Text>
         <Text style={[styles.reactionLabel, reaction.reacted && styles.reactionLabelActive]}>
@@ -39,11 +53,11 @@ function ReactionBtn({ reaction, onPress }: { reaction: Reaction; onPress: () =>
   );
 }
 
-function ActivityCard({ activity, index }: { activity: CohortActivity; index: number }) {
+function ActivityCard({ activity, index }: { activity: CohortActivityItem; index: number }) {
   const [reactions, setReactions] = useState(activity.reactions);
   const opacity = useRef(new Animated.Value(0)).current;
   const slideY  = useRef(new Animated.Value(16)).current;
-  const isMe = activity.memberName === 'You';
+  const isMe = activity.isMe;
 
   useEffect(() => {
     const delay = Math.min(index * 40, 400);
@@ -54,14 +68,19 @@ function ActivityCard({ activity, index }: { activity: CohortActivity; index: nu
   }, []);
 
   const handleReaction = (i: number) => {
-    setReactions(prev => prev.map((r, idx) => {
-      if (idx !== i) return r;
-      return {
-        ...r,
-        reacted: !r.reacted,
-        count: r.reacted ? r.count - 1 : r.count + 1,
-      };
-    }));
+    const target = reactions[i];
+    const nowOn = !target.reacted;
+    // Optimistic toggle; revert if the write doesn't persist.
+    setReactions(prev => prev.map((r, idx) => idx !== i ? r : ({
+      ...r, reacted: nowOn, count: Math.max(0, r.count + (nowOn ? 1 : -1)),
+    })));
+    setReaction(activity.id, target.key, nowOn).then(ok => {
+      if (!ok) {
+        setReactions(prev => prev.map((r, idx) => idx !== i ? r : ({
+          ...r, reacted: !nowOn, count: Math.max(0, r.count + (nowOn ? -1 : 1)),
+        })));
+      }
+    });
   };
 
   return (
@@ -76,7 +95,7 @@ function ActivityCard({ activity, index }: { activity: CohortActivity; index: nu
       <View style={styles.cardTop}>
         <View style={[styles.avatar, isMe && styles.avatarMe]}>
           <Text style={[styles.initials, isMe && styles.initialsMe]}>
-            {activity.memberInitials}
+            {isMe ? '◆' : activity.memberName.charAt(0).toUpperCase()}
           </Text>
         </View>
         <View style={styles.cardMeta}>
@@ -84,7 +103,7 @@ function ActivityCard({ activity, index }: { activity: CohortActivity; index: nu
             <Text style={[styles.memberName, isMe && { color: COLORS.gold }]}>
               {activity.memberName}
             </Text>
-            {activity.xp && (
+            {activity.xp != null && (
               <View style={styles.xpBadge}>
                 <Text style={styles.xpTxt}>+{activity.xp} XP</Text>
               </View>
@@ -105,7 +124,58 @@ function ActivityCard({ activity, index }: { activity: CohortActivity; index: nu
       {/* Reactions */}
       <View style={styles.reactionsRow}>
         {reactions.map((r, i) => (
-          <ReactionBtn key={r.label} reaction={r} onPress={() => handleReaction(i)} />
+          <ReactionBtn key={r.key} reaction={r} onPress={() => handleReaction(i)} />
+        ))}
+      </View>
+    </Animated.View>
+  );
+}
+
+function PreviewCard({ activity, index }: { activity: PreviewActivity; index: number }) {
+  const opacity = useRef(new Animated.Value(0)).current;
+  const slideY  = useRef(new Animated.Value(16)).current;
+
+  useEffect(() => {
+    const delay = Math.min(index * 40, 400);
+    Animated.parallel([
+      Animated.timing(opacity, { toValue: 1, duration: 320, delay, useNativeDriver: false }),
+      Animated.timing(slideY,  { toValue: 0, duration: 320, delay, useNativeDriver: false }),
+    ]).start();
+  }, []);
+
+  return (
+    <Animated.View style={[
+      styles.card,
+      CARD_SHADOW,
+      { shadowOpacity: 0.07, opacity, transform: [{ translateY: slideY }] },
+    ]}>
+      <View style={styles.cardTop}>
+        <View style={styles.avatar}>
+          <Text style={styles.initials}>◆</Text>
+        </View>
+        <View style={styles.cardMeta}>
+          <View style={styles.cardMetaTop}>
+            <Text style={styles.memberName}>Cohort member</Text>
+            <View style={styles.previewBadge}>
+              <Text style={styles.previewTxt}>PREVIEW</Text>
+            </View>
+          </View>
+          <Text style={styles.timeAgo}>{ACTIVITY_ICONS[activity.type]}</Text>
+        </View>
+      </View>
+
+      <View style={styles.cardBody}>
+        <Text style={styles.headline}>{activity.headline}</Text>
+        {activity.sub && <Text style={styles.sub}>{activity.sub}</Text>}
+      </View>
+
+      <View style={styles.reactionsRow}>
+        {REACTION_META.map(m => (
+          <ReactionBtn
+            key={m.key}
+            reaction={{ ...m, count: 0, reacted: false }}
+            disabled
+          />
         ))}
       </View>
     </Animated.View>
@@ -113,28 +183,65 @@ function ActivityCard({ activity, index }: { activity: CohortActivity; index: nu
 }
 
 export default function CohortActivityFeed() {
+  const [items, setItems] = useState<CohortActivityItem[] | null>(null);
+  const [loaded, setLoaded] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const load = useCallback(async () => {
+    const feed = await fetchCohortFeed();
+    setItems(feed);
+    setLoaded(true);
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await load();
+    setRefreshing(false);
+  }, [load]);
+
+  const hasLive = !!items && items.length > 0;
+
   return (
     <ScrollView
       style={styles.root}
       contentContainerStyle={styles.list}
       showsVerticalScrollIndicator={false}
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.gold} />
+      }
     >
-      {/* Forming notice */}
-      <View style={styles.formingNotice}>
-        <Text style={styles.formingNoticeTxt}>
-          ◈  Your cohort is forming. This is what your activity feed will look like as members join and take moves.
-        </Text>
-      </View>
-
-      {/* Cohort pulse strip */}
-      <View style={styles.pulseStrip}>
-        <View style={styles.liveDot} />
-        <Text style={styles.pulseText}>Cohort activity · forming as members join</Text>
-      </View>
-
-      {COHORT_ACTIVITY.map((item, i) => (
-        <ActivityCard key={item.id} activity={item} index={i} />
-      ))}
+      {!loaded ? (
+        <View style={styles.loading}>
+          <ActivityIndicator color={COLORS.gold} />
+          <Text style={styles.loadingTxt}>Loading cohort activity…</Text>
+        </View>
+      ) : hasLive ? (
+        <>
+          {/* Cohort pulse strip */}
+          <View style={styles.pulseStrip}>
+            <View style={styles.liveDot} />
+            <Text style={styles.pulseText}>Cohort activity · live</Text>
+          </View>
+          {items!.map((item, i) => (
+            <ActivityCard key={item.id} activity={item} index={i} />
+          ))}
+        </>
+      ) : (
+        <>
+          {/* Forming notice */}
+          <View style={styles.formingNotice}>
+            <Text style={styles.formingNoticeTxt}>
+              ◈  Your cohort is forming. Below is a preview of what the feed looks like —
+              real member activity appears here as people join and take moves.
+            </Text>
+          </View>
+          {COHORT_PREVIEW.map((item, i) => (
+            <PreviewCard key={item.id} activity={item} index={i} />
+          ))}
+        </>
+      )}
     </ScrollView>
   );
 }
@@ -143,13 +250,24 @@ const styles = StyleSheet.create({
   root: { flex: 1 },
   list: { padding: SPACING.lg, paddingBottom: 0 },
 
+  loading: {
+    alignItems: 'center',
+    gap: SPACING.md,
+    paddingVertical: SPACING.xl * 2,
+  },
+  loadingTxt: {
+    fontSize: FONTS.sizes.xs,
+    color: COLORS.textMuted,
+    letterSpacing: FONTS.tracking.wide,
+  },
+
   formingNotice: {
     backgroundColor: COLORS.goldGlow,
     borderRadius: RADIUS.md,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: COLORS.gold + '30',
     padding: SPACING.md,
-    marginBottom: SPACING.sm,
+    marginBottom: SPACING.md,
   },
   formingNoticeTxt: {
     fontSize: FONTS.sizes.xs,
@@ -247,6 +365,20 @@ const styles = StyleSheet.create({
     color: COLORS.goldDark,
     letterSpacing: 0.5,
   },
+  previewBadge: {
+    paddingHorizontal: 8, paddingVertical: 2,
+    backgroundColor: COLORS.background,
+    borderRadius: RADIUS.full,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: COLORS.border,
+    flexShrink: 0,
+  },
+  previewTxt: {
+    fontSize: 8,
+    fontWeight: FONTS.weights.bold,
+    color: COLORS.textMuted,
+    letterSpacing: 1,
+  },
   timeAgo: {
     fontSize: FONTS.sizes.xs,
     color: COLORS.textMuted,
@@ -291,6 +423,7 @@ const styles = StyleSheet.create({
     borderColor: COLORS.gold + '60',
     backgroundColor: COLORS.goldGlow,
   },
+  reactionBtnDisabled: { opacity: 0.45 },
   reactionEmoji: { fontSize: 11, marginRight: 4 },
   reactionLabel: {
     fontSize: FONTS.sizes.xs,

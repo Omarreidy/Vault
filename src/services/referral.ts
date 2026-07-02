@@ -1,53 +1,88 @@
+import { Share } from 'react-native';
+import { supabase } from './supabase';
+
+/**
+ * Real referral system. Every profile gets a unique invite code
+ * (generated server-side); a new member redeems it once and both
+ * sides earn XP. All reads/writes go through security-definer RPCs.
+ */
+
+export const XP_PER_REFERRAL = 75;
+export const COHORT_SPOTS = 5;
+
 export interface ReferralInvite {
-  id: string;
-  name: string;
-  initials: string;
-  status: 'accepted' | 'pending';
-  xpEarned: number;
+  name: string;     // anonymized "First L."
   daysAgo: number;
 }
 
-export interface ReferralData {
-  inviteCode: string;
-  inviteLink: string;
-  cohortSpotsTotal: number;
-  cohortSpotsFilled: number;
-  totalXpEarned: number;
-  xpPerReferral: number;
+export interface ReferralInfo {
+  code: string;
+  xpEarned: number;
+  redeemed: boolean;  // whether this user already used someone's code
   invites: ReferralInvite[];
 }
 
-export const REFERRAL: ReferralData = {
-  inviteCode: 'VAULT-AX7K',
-  inviteLink: 'vault.app/join/AX7K',
-  cohortSpotsTotal: 5,         // 5 open spots in your cohort
-  cohortSpotsFilled: 2,        // 2 accepted so far
-  totalXpEarned: 150,
-  xpPerReferral: 75,
-  invites: [
-    {
-      id: 'r1',
-      name: 'Jamie S.',
-      initials: 'JS',
-      status: 'accepted',
-      xpEarned: 75,
-      daysAgo: 3,
-    },
-    {
-      id: 'r2',
-      name: 'Drew M.',
-      initials: 'DM',
-      status: 'accepted',
-      xpEarned: 75,
-      daysAgo: 8,
-    },
-    {
-      id: 'r3',
-      name: 'Sam T.',
-      initials: 'ST',
-      status: 'pending',
-      xpEarned: 0,
-      daysAgo: 1,
-    },
-  ],
+export type RedeemError =
+  | 'not_authenticated'
+  | 'already_redeemed'
+  | 'invalid_code'
+  | 'own_code'
+  | 'network';
+
+export async function fetchReferralInfo(): Promise<ReferralInfo | null> {
+  try {
+    const { data, error } = await supabase.rpc('get_referral_stats');
+    if (error || !data?.ok) return null;
+    return {
+      code: data.code ?? '',
+      xpEarned: data.xp_earned ?? 0,
+      redeemed: !!data.redeemed,
+      invites: (data.invites ?? []).map((i: any) => ({
+        name: i.name ?? 'Vault member',
+        daysAgo: i.days_ago ?? 0,
+      })),
+    };
+  } catch {
+    return null;
+  }
+}
+
+export async function redeemReferralCode(
+  code: string,
+): Promise<{ ok: boolean; error?: RedeemError; xp?: number }> {
+  try {
+    const { data, error } = await supabase.rpc('redeem_referral_code', {
+      invite_code: code.trim(),
+    });
+    if (error || !data) return { ok: false, error: 'network' };
+    return data as { ok: boolean; error?: RedeemError; xp?: number };
+  } catch {
+    return { ok: false, error: 'network' };
+  }
+}
+
+export const REDEEM_ERROR_MESSAGES: Record<RedeemError, string> = {
+  not_authenticated: 'You need to be signed in to redeem a code.',
+  already_redeemed:  "You've already used an invite code.",
+  invalid_code:      "That code doesn't match any member.",
+  own_code:          "That's your own code — share it with someone else!",
+  network:           "Couldn't reach the server. Try again in a moment.",
 };
+
+export function buildShareMessage(code: string): string {
+  return (
+    `Join my VAULT cohort — we're building wealth together.\n\n` +
+    `Download VAULT and enter my invite code: ${code}\n\n` +
+    `You'll be matched with people at your exact financial stage. ` +
+    `We both earn +${XP_PER_REFERRAL} XP when you join.`
+  );
+}
+
+/** Opens the native share sheet with the user's real invite code. */
+export async function shareInvite(prefetchedCode?: string): Promise<void> {
+  const code = prefetchedCode || (await fetchReferralInfo())?.code;
+  if (!code) return;
+  try {
+    await Share.share({ message: buildShareMessage(code) });
+  } catch {}
+}

@@ -15,36 +15,19 @@ export interface LeaderboardStats {
   topPercent: number | null;
 }
 
-export async function fetchLeaderboardStats(userTier: string): Promise<LeaderboardStats> {
-  const [{ count: totalCount }, { data: { user } }] = await Promise.all([
-    supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('onboarding_complete', true),
-    supabase.auth.getUser(),
-  ]);
-
-  const totalMembers = totalCount ?? 0;
-
-  if (!user || totalMembers === 0) {
-    return { totalMembers, userRank: null, topPercent: null };
+/**
+ * Rank data comes from the get_leaderboard_stats RPC (security definer) —
+ * profiles RLS only exposes the caller's own row, so counting other
+ * members' scores client-side would silently return zero.
+ */
+export async function fetchLeaderboardStats(_userTier: string): Promise<LeaderboardStats> {
+  const { data, error } = await supabase.rpc('get_leaderboard_stats');
+  if (error || !data) {
+    return { totalMembers: 0, userRank: null, topPercent: null };
   }
-
-  const { data: myProfile } = await supabase
-    .from('profiles')
-    .select('score')
-    .eq('id', user.id)
-    .single();
-
-  if (!myProfile?.score) {
-    return { totalMembers, userRank: null, topPercent: null };
-  }
-
-  const { count: aheadCount } = await supabase
-    .from('profiles')
-    .select('id', { count: 'exact', head: true })
-    .eq('onboarding_complete', true)
-    .gt('score', myProfile.score);
-
-  const userRank = (aheadCount ?? 0) + 1;
-  const topPercent = totalMembers > 0 ? Math.round((userRank / totalMembers) * 100) : null;
-
-  return { totalMembers, userRank, topPercent };
+  return {
+    totalMembers: data.total_members ?? 0,
+    userRank: data.user_rank ?? null,
+    topPercent: data.top_percent ?? null,
+  };
 }
