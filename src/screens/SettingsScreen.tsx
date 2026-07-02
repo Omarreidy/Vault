@@ -144,7 +144,7 @@ interface Props {
 
 export default function SettingsScreen({ onClose, onResetOnboarding }: Props) {
   const { tier, name } = useRealProfile();
-  const { refresh: refreshPlaid } = usePlaid();
+  const { hardRefresh: refreshPlaid } = usePlaid();
   const info = TIERS[tier];
 
   // Notification toggles

@@ -212,7 +212,7 @@ export default function TrajectoryScreen() {
   const [activeTab, setActiveTab] = useState<'trajectory' | 'timeline'>('trajectory');
   const [actionsCompleted] = useState(0);
   const [activeScenario, setActiveScenario] = useState(0);
-  const { plaidConnected, plaidSummary, refresh: refreshPlaid } = usePlaid();
+  const { plaidConnected, plaidSummary, hardRefresh: refreshPlaid } = usePlaid();
   const [showPlaid, setShowPlaid] = useState(false);
   const [onboardingInputs, setOnboardingInputs] = useState<TrajectoryInputs>(DEFAULT_TRAJECTORY_INPUTS);
 

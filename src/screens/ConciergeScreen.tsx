@@ -43,7 +43,7 @@ interface Props { onClose?: () => void; initialPrompt?: string; }
 
 export default function ConciergeScreen({ onClose, initialPrompt }: Props = {}) {
   const { isPremium } = useRealProfile();
-  const { plaidConnected, refresh: refreshPlaid } = usePlaid();
+  const { plaidConnected, hardRefresh: refreshPlaid } = usePlaid();
 
   const [messages, setMessages]             = useState<Message[]>([]);
   const [input, setInput]                   = useState('');

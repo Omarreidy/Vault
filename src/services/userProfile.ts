@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from './supabase';
 import { fetchLiveScore, fetchProfileScore, getTierFromScore } from './velocity';
 import { VelocityScore, TierName } from '../types';
+import { usePlaid } from '../context/PlaidContext';
 
 export interface RealProfile {
   name: string;
@@ -19,6 +20,11 @@ const EMPTY_SCORE: VelocityScore = {
 };
 
 export function useRealProfile(): RealProfile {
+  // Re-load whenever Plaid data changes so score/tier update the moment a bank
+  // is connected (screens stay mounted in the tab navigator, so a mount-only
+  // fetch would show stale data until the next app restart).
+  const { plaidConnected, plaidSummary } = usePlaid();
+
   const [profile, setProfile] = useState<RealProfile>({
     name: '',
     email: '',
@@ -70,7 +76,7 @@ export function useRealProfile(): RealProfile {
     });
 
     return () => { cancelled = true; };
-  }, []);
+  }, [plaidConnected, plaidSummary]);
 
   return profile;
 }

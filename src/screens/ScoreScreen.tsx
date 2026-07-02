@@ -29,7 +29,7 @@ const TABS = ['Score', 'Cohort', 'Goals', 'Challenges', 'Achievements'] as const
 type Tab = typeof TABS[number];
 
 export default function ScoreScreen() {
-  const { plaidConnected, plaidSummary, refresh: refreshPlaid } = usePlaid();
+  const { plaidConnected, plaidSummary, hardRefresh: refreshPlaid } = usePlaid();
   const [liveScore, setLiveScore] = useState<VelocityScore | null>(null);
   const [scoreSource, setScoreSource] = useState<'plaid' | 'profile' | 'mock'>('mock');
   const [scoreLoading, setScoreLoading] = useState(true);

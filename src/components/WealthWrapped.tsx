@@ -6,6 +6,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { COLORS, FONTS, SPACING, RADIUS } from '../constants/theme';
+import { usePlaid } from '../context/PlaidContext';
 
 const { width, height } = Dimensions.get('window');
 
@@ -54,6 +55,14 @@ export default function WealthWrapped({ visible, onClose }: Props) {
   const cardScale   = useRef(new Animated.Value(0.93)).current;
   const cardOpacity = useRef(new Animated.Value(0)).current;
   const shimmerX    = useRef(new Animated.Value(-width)).current;
+
+  const { plaidConnected, plaidSummary } = usePlaid();
+  const hasData = plaidConnected && !!plaidSummary && plaidSummary.accountCount > 0;
+  const liquid   = plaidSummary ? plaidSummary.checking + plaidSummary.savings : 0;
+  const netWorth = plaidSummary ? liquid + plaidSummary.investments - plaidSummary.creditDebt : 0;
+  const monthLabel = new Date()
+    .toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+    .toUpperCase();
 
   useEffect(() => {
     if (!visible) return;
@@ -110,21 +119,59 @@ export default function WealthWrapped({ visible, onClose }: Props) {
             {/* Header */}
             <View style={styles.header}>
               <Text style={styles.eyebrow}>VAULT · WEALTH RECAP</Text>
-              <Text style={styles.month}>YOUR 2026 RECAP</Text>
-              <Text style={styles.headline}>Your story is just beginning.</Text>
+              <Text style={styles.month} numberOfLines={1} adjustsFontSizeToFit>
+                {hasData ? monthLabel : 'YOUR 2026 RECAP'}
+              </Text>
+              <Text style={styles.headline}>
+                {hasData ? 'Live, from your connected accounts.' : 'Your story is just beginning.'}
+              </Text>
             </View>
 
             {/* Divider */}
             <View style={styles.divider} />
 
-            {/* Not-ready state */}
-            <View style={styles.notReadyBlock}>
-              <Text style={styles.notReadyGlyph}>◈</Text>
-              <Text style={styles.notReadyTitle}>Your first recap isn't ready yet</Text>
-              <Text style={styles.notReadySub}>
-                Connect your bank accounts and build for a full month. VAULT will generate your personalized Wealth Recap — score changes, net worth growth, moves completed, and your percentile ranking.
-              </Text>
-            </View>
+            {hasData && plaidSummary ? (
+              <>
+                {/* Net worth hero */}
+                <View style={styles.scoreBlock}>
+                  <Text style={styles.scoreNum} numberOfLines={1} adjustsFontSizeToFit>
+                    ${netWorth.toLocaleString()}
+                  </Text>
+                  <View style={styles.scoreDeltaBadge}>
+                    <Text style={styles.scoreDeltaTxt}>
+                      {plaidSummary.accountCount} ACCOUNT{plaidSummary.accountCount === 1 ? '' : 'S'} SYNCED
+                    </Text>
+                  </View>
+                  <Text style={styles.scoreLabel}>NET WORTH · LIVE</Text>
+                </View>
+
+                <View style={styles.divider} />
+
+                {/* Real stats */}
+                <View style={styles.stats}>
+                  <StatRow label="Liquid cash" value={formatK(liquid)} delay={200} gold />
+                  <StatRow label="Invested" value={formatK(plaidSummary.investments)} delay={280} />
+                  {plaidSummary.creditDebt > 0 && (
+                    <StatRow label="Credit debt" value={formatK(plaidSummary.creditDebt)} delay={360} />
+                  )}
+                  {plaidSummary.estimatedMonthlyIncome > 0 && (
+                    <StatRow label="Monthly income" value={formatK(Math.round(plaidSummary.estimatedMonthlyIncome))} delay={440} />
+                  )}
+                  {plaidSummary.monthlySpend > 0 && (
+                    <StatRow label="Monthly spend" value={formatK(plaidSummary.monthlySpend)} delay={520} />
+                  )}
+                </View>
+              </>
+            ) : (
+              /* Not-ready state — no bank connected yet */
+              <View style={styles.notReadyBlock}>
+                <Text style={styles.notReadyGlyph}>◈</Text>
+                <Text style={styles.notReadyTitle}>Your first recap isn't ready yet</Text>
+                <Text style={styles.notReadySub}>
+                  Connect your bank accounts and build for a full month. VAULT will generate your personalized Wealth Recap — score changes, net worth growth, moves completed, and your percentile ranking.
+                </Text>
+              </View>
+            )}
 
             {/* Close */}
             <View style={styles.actions}>

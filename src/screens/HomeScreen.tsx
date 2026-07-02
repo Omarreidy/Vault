@@ -157,7 +157,7 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const realProfile = useRealProfile();
   const userName = realProfile.name;
-  const { plaidConnected, refresh: refreshPlaid } = usePlaid();
+  const { plaidConnected, hardRefresh: refreshPlaid } = usePlaid();
   const [feedTab, setFeedTab] = useState<'foryou' | 'cohort'>('foryou');
   const [totalXP, setTotalXP]       = useState(0);
   const [actedCount, setActedCount] = useState(0);
