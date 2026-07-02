@@ -3,10 +3,6 @@ import { getStreak } from './streak';
 import { getTierFromScore, getNextTier, getPointsToNextTier } from './velocity';
 import { TierName } from '../types';
 
-export async function registerForPushNotifications(): Promise<string | null> {
-  return null;
-}
-
 export type NotifType =
   | 'score_up' | 'score_down' | 'tier_progress' | 'streak'
   | 'new_moves' | 'challenge_complete' | 'goal_milestone' | 'insight' | 'win';

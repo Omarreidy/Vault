@@ -49,7 +49,8 @@
           "cameraPermission": "VAULT uses your camera to scan financial documents."
         }
       ],
-      "expo-font"
+      "expo-font",
+      "expo-notifications"
     ],
     "privacyPolicyUrl": "https://vault-r4zwi63m1-vault-s-projects5.vercel.app/privacy",
     "extra": {

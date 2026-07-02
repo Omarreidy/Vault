@@ -11,6 +11,7 @@ import PolicyModal from '../components/PolicyModal';
 import { COLORS, FONTS, SPACING, RADIUS, TIERS, CARD_SHADOW } from '../constants/theme';
 import { PRIVACY_POLICY, TERMS_OF_SERVICE } from '../constants/legal';
 import { resetOnboarding } from '../services/onboarding';
+import { syncDailyReminder } from '../services/push';
 import { useRealProfile } from '../services/userProfile';
 import { usePlaid } from '../context/PlaidContext';
 import { supabase } from '../services/supabase';
@@ -193,7 +194,9 @@ export default function SettingsScreen({ onClose, onResetOnboarding }: Props) {
     AsyncStorage.setItem(NOTIF_PREFS_KEY, JSON.stringify({
       moves: notifMoves, streak: notifStreak, score: notifScore,
       weekly: notifWeekly, insight: notifInsight,
-    })).catch(() => {});
+    }))
+      .then(() => syncDailyReminder()) // streak toggle controls the real scheduled reminder
+      .catch(() => {});
   }, [notifMoves, notifStreak, notifScore, notifWeekly, notifInsight]);
 
   // ── Handlers ──────────────────────────────────────────────────────────────

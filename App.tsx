@@ -10,6 +10,7 @@ import OnboardingScreen from './src/screens/OnboardingScreen';
 import AuthScreen from './src/screens/AuthScreen';
 import { supabase } from './src/services/supabase';
 import { PlaidProvider } from './src/context/PlaidContext';
+import { initPushNotifications } from './src/services/push';
 
 const RC_API_KEY = 'appl_iHfaWTgWajGmNhQValXNlUdqwxI';
 
@@ -78,6 +79,11 @@ function AppContent() {
 
     return () => subscription.unsubscribe();
   }, []);
+
+  // Register push token + daily reminder once the user reaches the main app.
+  useEffect(() => {
+    if (appState === 'main') initPushNotifications();
+  }, [appState]);
 
   const checkOnboarding = async (session: Session) => {
     if (Platform.OS !== 'web') {
