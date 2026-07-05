@@ -248,7 +248,7 @@ export default function CohortActivityFeed() {
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
-  list: { padding: SPACING.lg, paddingBottom: 0 },
+  list: { padding: SPACING.lg, paddingBottom: SPACING.xl },
 
   loading: {
     alignItems: 'center',

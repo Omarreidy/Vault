@@ -40,8 +40,23 @@ export default function AuthScreen({ onAuth }: Props) {
           email: email.trim(),
           password,
         });
-        if (err) throw err;
-        if (!data.session) {
+        if (err) {
+          // Account already exists — sign them in with the same credentials
+          // instead of surfacing a dead-end error.
+          if (/already registered|already exists/i.test(err.message ?? '')) {
+            const { error: signInErr } = await supabase.auth.signInWithPassword({
+              email: email.trim(),
+              password,
+            });
+            if (signInErr) {
+              setMode('signin');
+              setError('This email already has an account. Check your password and sign in.');
+              return;
+            }
+          } else {
+            throw err;
+          }
+        } else if (!data.session) {
           setAwaitingConfirm(true);
           return;
         }

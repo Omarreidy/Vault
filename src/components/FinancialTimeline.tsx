@@ -214,47 +214,6 @@ function MonthBlock({ month, monthIndex }: { month: TimelineMonth; monthIndex: n
   );
 }
 
-// ─── Top summary ribbon ───────────────────────────────────────────────────────
-
-function SummaryRibbon() {
-  const scale   = useRef(new Animated.Value(0.94)).current;
-  const opacity = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    Animated.parallel([
-      Animated.spring(scale,   { toValue: 1, tension: 60, friction: 9, useNativeDriver: false }),
-      Animated.timing(opacity, { toValue: 1, duration: 400, useNativeDriver: false }),
-    ]).start();
-  }, []);
-
-  return (
-    <Animated.View style={[styles.ribbon, CARD_SHADOW, { opacity, transform: [{ scale }] }]}>
-      <View style={styles.ribbonAccent} />
-      <View style={styles.ribbonBody}>
-        <View style={styles.ribbonLeft}>
-          <Text style={styles.ribbonEye}>YOUR FINANCIAL BIOGRAPHY</Text>
-          <Text style={styles.ribbonTitle}>
-            {TIMELINE_TOTALS.totalMoves} moves · {TIMELINE_TOTALS.monthsActive} months
-          </Text>
-          <Text style={styles.ribbonSub}>
-            +${TIMELINE_TOTALS.totalNetWorthGain.toLocaleString()} net worth since joining
-          </Text>
-        </View>
-        <View style={styles.ribbonXP}>
-          <Text style={styles.ribbonXPVal}>{TIMELINE_TOTALS.totalXp}</Text>
-          <Text style={styles.ribbonXPLbl}>XP TOTAL</Text>
-        </View>
-      </View>
-      <View style={styles.pillRow}>
-        <StatPill label="MOVES" value={String(TIMELINE_TOTALS.totalMoves)} delay={100} />
-        <StatPill label="MONTHS" value={String(TIMELINE_TOTALS.monthsActive)} delay={180} />
-        <StatPill label="NET GAIN" value={`+$${(TIMELINE_TOTALS.totalNetWorthGain / 1000).toFixed(1)}K`} delay={260} />
-        <StatPill label="XP" value={String(TIMELINE_TOTALS.totalXp)} delay={340} />
-      </View>
-    </Animated.View>
-  );
-}
-
 // ─── Empty biography state ───────────────────────────────────────────────────
 
 function EmptyBiography({ onViewSample }: { onViewSample: () => void }) {

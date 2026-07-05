@@ -569,8 +569,8 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: SPACING.lg,
-    paddingTop: SPACING.xs,
-    paddingBottom: SPACING.sm,
+    paddingTop: SPACING.sm,
+    paddingBottom: SPACING.md,
   },
   greeting: {
     fontSize: FONTS.sizes.xs,
@@ -664,7 +664,7 @@ const styles = StyleSheet.create({
 
   toggleRow: {
     alignItems: 'center',
-    paddingBottom: SPACING.sm,
+    paddingBottom: SPACING.md,
   },
   toggle: {
     flexDirection: 'row',

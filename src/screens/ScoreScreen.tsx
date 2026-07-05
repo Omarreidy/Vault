@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { getStreak } from '../services/streak';
 import * as Haptics from 'expo-haptics';
-import { GOALS, Goal, getGoalProgress, getMonthsToGoal, loadGoals, saveGoals } from '../services/goals';
+import { GOALS, Goal, getGoalProgress, getMonthsToGoal, loadGoalsWithAutoSeed, saveGoals } from '../services/goals';
 import { ACHIEVEMENTS, getAchievements, buildAchievementContext, Achievement } from '../services/achievements';
 import { WEEKLY_CHALLENGES, DAILY_CHALLENGES, Challenge, evaluateChallenges } from '../services/challenges';
 import { loadStats, recordScoreVisit, weeklyVelocityGain } from '../services/progressStats';
@@ -107,8 +107,13 @@ export default function ScoreScreen() {
   const [addProgressAmt, setAddProgressAmt] = useState('');
   const [goalComplete, setGoalComplete] = useState(false);
 
-  // Load goals the user previously created so they persist across app restarts.
-  useEffect(() => { loadGoals().then(stored => { if (stored.length) setGoals(stored); }); }, []);
+  // Single goals load path: returns saved goals, and the first time a bank
+  // is connected it also seeds tailored goals from the user's real numbers.
+  useEffect(() => {
+    loadGoalsWithAutoSeed(plaidConnected ? plaidSummary : null)
+      .then(stored => { if (stored.length) setGoals(stored); })
+      .catch(() => {});
+  }, [plaidConnected, plaidSummary]);
 
   // Challenges + achievements state (auto-tracked from real behavior)
   const [challenges, setChallenges] = useState<Challenge[]>(WEEKLY_CHALLENGES);
