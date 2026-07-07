@@ -281,6 +281,9 @@ export default function InsightsScreen() {
               style={[styles.tabToggleBtn, activeTab === tab && styles.tabToggleBtnActive]}
               onPress={() => handleTabSwitch(tab)}
               activeOpacity={0.8}
+              accessibilityRole="button"
+              accessibilityState={{ selected: activeTab === tab }}
+              accessibilityLabel={`Show ${tab} view`}
             >
               <Text style={[styles.tabToggleTxt, activeTab === tab && styles.tabToggleTxtActive]}>
                 {tab.charAt(0).toUpperCase() + tab.slice(1)}
@@ -402,10 +405,22 @@ export default function InsightsScreen() {
       {/* Action buttons */}
       {!!currentCard && (
         <View style={styles.actions}>
-          <TouchableOpacity style={styles.skipBtn} onPress={swipeSkip} activeOpacity={0.75}>
+          <TouchableOpacity
+            style={styles.skipBtn}
+            onPress={swipeSkip}
+            activeOpacity={0.75}
+            accessibilityRole="button"
+            accessibilityLabel="Skip this pulse card"
+          >
             <Text style={styles.skipTxt}>Skip</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.saveBtn} onPress={swipeSave} activeOpacity={0.85}>
+          <TouchableOpacity
+            style={styles.saveBtn}
+            onPress={swipeSave}
+            activeOpacity={0.85}
+            accessibilityRole="button"
+            accessibilityLabel="Save this pulse card"
+          >
             <Text style={styles.saveTxt}>◆  Save</Text>
           </TouchableOpacity>
         </View>

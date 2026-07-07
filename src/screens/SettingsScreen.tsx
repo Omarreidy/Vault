@@ -67,18 +67,24 @@ function LinkRow({ label, sub, value, onPress, danger }: {
     <>
       <View style={styles.rowLeft}>
         <Text style={[styles.rowLabel, danger && { color: COLORS.red }]}>{label}</Text>
-        {sub && <Text style={styles.rowSub}>{sub}</Text>}
+        {sub ? <Text style={styles.rowSub}>{sub}</Text> : null}
       </View>
       <View style={styles.rowRight}>
-        {value && <Text style={styles.rowValue}>{value}</Text>}
-        {onPress && <Text style={[styles.chevron, danger && { color: COLORS.red }]}>›</Text>}
+        {value ? <Text style={styles.rowValue}>{value}</Text> : null}
+        {onPress ? <Text style={[styles.chevron, danger && { color: COLORS.red }]}>›</Text> : null}
       </View>
     </>
   );
   // Display-only rows (no onPress) render as a plain row — no chevron, not tappable.
   if (!onPress) return <View style={styles.row}>{content}</View>;
   return (
-    <TouchableOpacity style={styles.row} onPress={onPress} activeOpacity={0.7}>
+    <TouchableOpacity
+      style={styles.row}
+      onPress={onPress}
+      activeOpacity={0.7}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+    >
       {content}
     </TouchableOpacity>
   );

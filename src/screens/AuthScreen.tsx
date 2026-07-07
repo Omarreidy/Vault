@@ -99,6 +99,9 @@ export default function AuthScreen({ onAuth }: Props) {
                 style={[styles.toggleBtn, mode === 'signup' && styles.toggleBtnActive]}
                 onPress={() => { setMode('signup'); setError(''); }}
                 activeOpacity={0.8}
+                accessibilityRole="button"
+                accessibilityState={{ selected: mode === 'signup' }}
+                accessibilityLabel="Create account mode"
               >
                 <Text style={[styles.toggleTxt, mode === 'signup' && styles.toggleTxtActive]}>
                   Create account
@@ -108,6 +111,9 @@ export default function AuthScreen({ onAuth }: Props) {
                 style={[styles.toggleBtn, mode === 'signin' && styles.toggleBtnActive]}
                 onPress={() => { setMode('signin'); setError(''); }}
                 activeOpacity={0.8}
+                accessibilityRole="button"
+                accessibilityState={{ selected: mode === 'signin' }}
+                accessibilityLabel="Sign in mode"
               >
                 <Text style={[styles.toggleTxt, mode === 'signin' && styles.toggleTxtActive]}>
                   Sign in
@@ -160,6 +166,9 @@ export default function AuthScreen({ onAuth }: Props) {
               onPress={handleSubmit}
               disabled={loading}
               activeOpacity={0.85}
+              accessibilityRole="button"
+              accessibilityLabel={mode === 'signup' ? 'Create account' : 'Sign in'}
+              accessibilityState={{ disabled: loading }}
             >
               <Text style={styles.btnTxt}>
                 {loading ? 'Please wait…' : mode === 'signup' ? 'Get started →' : 'Sign in →'}

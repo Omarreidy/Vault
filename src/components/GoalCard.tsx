@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Animated } from 'react-native';
+import { View, Text, StyleSheet, Animated, Platform } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 import { Goal, getGoalProgress, getMonthsToGoal } from '../services/goals';
 import { COLORS, FONTS, SPACING, RADIUS, CARD_SHADOW } from '../constants/theme';
@@ -22,6 +22,7 @@ function CircleProgress({ progress, color, size = 72 }: { progress: number; colo
     inputRange: [0, 1],
     outputRange: [circumference, 0],
   });
+  const webDashOffset = circumference * (1 - progress);
 
   const pct = Math.round(progress * 100);
 
@@ -38,18 +39,33 @@ function CircleProgress({ progress, color, size = 72 }: { progress: number; colo
           fill="none"
         />
         {/* Progress arc — starts at 12 o'clock */}
-        <AnimatedCircle
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
-          stroke={color}
-          strokeWidth={stroke}
-          fill="none"
-          strokeLinecap="round"
-          strokeDasharray={circumference}
-          strokeDashoffset={dashOffset}
-          transform={`rotate(-90 ${size / 2} ${size / 2})`}
-        />
+        {Platform.OS === 'web' ? (
+          <Circle
+            cx={size / 2}
+            cy={size / 2}
+            r={radius}
+            stroke={color}
+            strokeWidth={stroke}
+            fill="none"
+            strokeLinecap="round"
+            strokeDasharray={circumference}
+            strokeDashoffset={webDashOffset}
+            transform={`rotate(-90 ${size / 2} ${size / 2})`}
+          />
+        ) : (
+          <AnimatedCircle
+            cx={size / 2}
+            cy={size / 2}
+            r={radius}
+            stroke={color}
+            strokeWidth={stroke}
+            fill="none"
+            strokeLinecap="round"
+            strokeDasharray={circumference}
+            strokeDashoffset={dashOffset}
+            transform={`rotate(-90 ${size / 2} ${size / 2})`}
+          />
+        )}
       </Svg>
       <Text style={{ fontFamily: FONTS.display, fontSize: FONTS.sizes.lg, fontWeight: FONTS.weights.light, color }}>{pct}%</Text>
     </View>

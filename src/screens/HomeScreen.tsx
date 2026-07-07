@@ -402,6 +402,9 @@ export default function HomeScreen() {
                 setShowScanner(true);
               }}
               activeOpacity={0.75}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              accessibilityRole="button"
+              accessibilityLabel="Open financial scanner"
             >
               <Text style={styles.scanIcon}>◎</Text>
               <Text style={styles.scanLabel}>SCAN</Text>
@@ -413,6 +416,9 @@ export default function HomeScreen() {
                 setShowNotifs(true);
               }}
               activeOpacity={0.75}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              accessibilityRole="button"
+              accessibilityLabel={notifCount > 0 ? `Open notifications, ${notifCount} unread` : 'Open notifications'}
             >
               <Text style={styles.bellIcon}>◌</Text>
               {notifCount > 0 && (
@@ -431,6 +437,9 @@ export default function HomeScreen() {
               style={[styles.toggleBtn, feedTab === 'foryou' && styles.toggleBtnActive]}
               onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {}); setFeedTab('foryou'); }}
               activeOpacity={0.8}
+              accessibilityRole="button"
+              accessibilityState={{ selected: feedTab === 'foryou' }}
+              accessibilityLabel="Show For You feed"
             >
               <Text style={[styles.toggleTxt, feedTab === 'foryou' && styles.toggleTxtActive]}>For You</Text>
             </TouchableOpacity>
@@ -438,6 +447,9 @@ export default function HomeScreen() {
               style={[styles.toggleBtn, feedTab === 'cohort' && styles.toggleBtnActive]}
               onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {}); setFeedTab('cohort'); }}
               activeOpacity={0.8}
+              accessibilityRole="button"
+              accessibilityState={{ selected: feedTab === 'cohort' }}
+              accessibilityLabel="Show Cohort feed"
             >
               <Text style={[styles.toggleTxt, feedTab === 'cohort' && styles.toggleTxtActive]}>Cohort</Text>
               {feedTab !== 'cohort' && <View style={styles.cohortDot} />}
