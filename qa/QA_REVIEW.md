@@ -101,3 +101,47 @@ Environment: Expo web at http://localhost:8081, mobile viewport 390x844
 - Added larger hit slop for Feed scanner and notification buttons.
 - Fixed Settings web text-node noise by replacing string-leaking JSX conditionals with explicit null branches.
 - Fixed Goal progress rings on web by using a non-animated SVG circle there.
+
+## Follow-up Pass (July 7, 2026 — second round)
+
+### Fixed
+
+1. **Plaid web trust issue (High #1) — FIXED.** `PlaidLinkScreen.web.tsx` no longer has a
+   blind "I've connected my bank" path. The button is now "I finished in Plaid — verify my
+   connection": it queries the user's own `plaid_items` rows (RLS-scoped) and only reports
+   success when the backend actually holds linked accounts. If none exist it says so honestly
+   and asks the user to finish the Plaid flow. Copy updated: "After completing Plaid, return
+   here and we'll verify your connection." Native iOS flow was already correct (real Plaid
+   callback + token exchange) — untouched.
+
+2. **Onboarding CTA progression (Low #8) — FIXED.** Reveal CTA is now "See my gaps →",
+   final CTA remains "Show me my moves" with an explicit next-step line beneath it
+   ("Next: your daily feed of personalized wealth moves."). Completing onboarding lands on
+   the Feed tab (first tab in AppNavigator) — verified.
+
+3. **Settings/account findability (Medium #5) — FIXED.** New ACCOUNT section (Sign out +
+   Replay onboarding) sits directly after CONNECTED ACCOUNTS, mid-page instead of bottom.
+   Delete account moved to its own DANGER ZONE section at the very bottom with a
+   descriptive sub-line — harder to hit accidentally, still behind a destructive confirm.
+
+4. **Accessibility round 2 (High #2, Medium #4) — EXTENDED.** Roles/labels/hitSlop added to:
+   Settings close button, Notifications close + "Mark all read", Plaid close buttons
+   (native + web), Plaid web verify button, cohort feed reaction buttons
+   (with selected/disabled state), onboarding final CTA, and Switch rows (labels).
+   Fixed last `{sub && <Text>}` text-node pattern in Settings ToggleRow.
+
+### Intentionally left
+
+- `shadow*` and `props.pointerEvents` deprecation warnings on web: fixing requires an
+  app-wide styling refactor of `CARD_SHADOW` (used across ~20 components) for a dev-only
+  warning with no production impact. Deferred.
+- Notifications empty state copy kept — already VAULT-specific (score/moves/tier framing).
+- Goals/cohort differentiation: addressed separately by tailored auto-goals generated from
+  real Plaid data (commit 601a7cb) and the real Supabase-backed cohort layer (ac167dd).
+
+### Verification (this pass)
+
+- `npx tsc --noEmit`: 0 app errors.
+- `npm run health`: 11/11 healthy (see terminal output).
+- Web export bundles cleanly.
+- Review account not modified (no onboarding replay, no data writes).

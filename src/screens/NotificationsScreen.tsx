@@ -152,11 +152,22 @@ export default function NotificationsScreen({ onClose }: Props) {
         </View>
         <View style={styles.headerActions}>
           {unreadCount > 0 && (
-            <TouchableOpacity style={styles.markAllBtn} onPress={markAllRead}>
+            <TouchableOpacity
+              style={styles.markAllBtn}
+              onPress={markAllRead}
+              accessibilityRole="button"
+              accessibilityLabel="Mark all notifications read"
+            >
               <Text style={styles.markAllTxt}>Mark all read</Text>
             </TouchableOpacity>
           )}
-          <TouchableOpacity style={styles.closeBtn} onPress={onClose}>
+          <TouchableOpacity
+            style={styles.closeBtn}
+            onPress={onClose}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            accessibilityRole="button"
+            accessibilityLabel="Close notifications"
+          >
             <Text style={styles.closeTxt}>×</Text>
           </TouchableOpacity>
         </View>

@@ -165,7 +165,14 @@ export default function PlaidLinkScreen({ visible, onClose, onSuccess }: Props) 
         {/* Header */}
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Connect Bank</Text>
-          <TouchableOpacity style={styles.closeBtn} onPress={onClose} activeOpacity={0.7}>
+          <TouchableOpacity
+            style={styles.closeBtn}
+            onPress={onClose}
+            activeOpacity={0.7}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            accessibilityRole="button"
+            accessibilityLabel="Close bank connection"
+          >
             <Text style={styles.closeTxt}>×</Text>
           </TouchableOpacity>
         </View>

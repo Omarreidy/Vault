@@ -38,6 +38,9 @@ function ReactionBtn({ reaction, onPress, disabled }: {
         onPress={handlePress}
         activeOpacity={1}
         disabled={disabled}
+        accessibilityRole="button"
+        accessibilityLabel={`React ${reaction.label}`}
+        accessibilityState={{ selected: reaction.reacted, disabled: !!disabled }}
       >
         <Text style={styles.reactionEmoji}>{reaction.emoji}</Text>
         <Text style={[styles.reactionLabel, reaction.reacted && styles.reactionLabelActive]}>

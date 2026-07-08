@@ -44,7 +44,7 @@ function ToggleRow({ label, sub, value, onChange }: ToggleRowProps) {
     <View style={styles.row}>
       <View style={styles.rowLeft}>
         <Text style={styles.rowLabel}>{label}</Text>
-        {sub && <Text style={styles.rowSub}>{sub}</Text>}
+        {sub ? <Text style={styles.rowSub}>{sub}</Text> : null}
       </View>
       <Switch
         value={value}
@@ -55,6 +55,7 @@ function ToggleRow({ label, sub, value, onChange }: ToggleRowProps) {
         trackColor={{ false: COLORS.border, true: COLORS.gold + '80' }}
         thumbColor={value ? COLORS.gold : COLORS.textMuted}
         ios_backgroundColor={COLORS.border}
+        accessibilityLabel={label}
       />
     </View>
   );
@@ -432,7 +433,13 @@ export default function SettingsScreen({ onClose, onResetOnboarding }: Props) {
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Settings</Text>
-        <TouchableOpacity style={styles.closeBtn} onPress={onClose}>
+        <TouchableOpacity
+          style={styles.closeBtn}
+          onPress={onClose}
+          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+          accessibilityRole="button"
+          accessibilityLabel="Close settings"
+        >
           <Text style={styles.closeTxt}>×</Text>
         </TouchableOpacity>
       </View>
@@ -521,6 +528,13 @@ export default function SettingsScreen({ onClose, onResetOnboarding }: Props) {
           />
         </Section>
 
+        {/* Account — sign out lives here, easy to find */}
+        <Section title="ACCOUNT">
+          <LinkRow label="Sign out" onPress={handleSignOut} />
+          <Divider />
+          <LinkRow label="Replay onboarding" sub="Restart the intro experience" onPress={handleResetOnboarding} />
+        </Section>
+
         {/* Privacy & Data */}
         <Section title="PRIVACY & DATA">
           <LinkRow label="Privacy policy"    onPress={handlePrivacy} />
@@ -539,13 +553,9 @@ export default function SettingsScreen({ onClose, onResetOnboarding }: Props) {
           <LinkRow label="Share VAULT" sub="Invite a friend"    onPress={handleShare} />
         </Section>
 
-        {/* Account */}
-        <Section title="ACCOUNT">
-          <LinkRow label="Replay onboarding" sub="Restart the intro experience" onPress={handleResetOnboarding} />
-          <Divider />
-          <LinkRow label="Sign out"      onPress={handleSignOut} />
-          <Divider />
-          <LinkRow label="Delete account" onPress={handleDeleteAccount} danger />
+        {/* Danger zone — kept isolated at the very bottom, behind its own confirm */}
+        <Section title="DANGER ZONE">
+          <LinkRow label="Delete account" sub="Permanently erase your account and data" onPress={handleDeleteAccount} danger />
         </Section>
 
         <Text style={styles.footer}>VAULT · Building wealth differently</Text>

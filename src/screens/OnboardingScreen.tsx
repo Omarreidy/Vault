@@ -320,7 +320,7 @@ export default function OnboardingScreen({ onComplete }: Props) {
                       onPress={() => { transitionTo('gaps'); setTimeout(handleGapStagger, 400); }}
                       activeOpacity={0.85}
                     >
-                      <Text style={styles.revealCtaTxt}>See what's holding you back →</Text>
+                      <Text style={styles.revealCtaTxt}>See my gaps →</Text>
                     </TouchableOpacity>
                   </Animated.View>
                 )}
@@ -359,6 +359,8 @@ export default function OnboardingScreen({ onComplete }: Props) {
                   style={styles.launchBtn}
                   onPress={handleComplete}
                   activeOpacity={0.88}
+                  accessibilityRole="button"
+                  accessibilityLabel="Show me my moves — enter VAULT"
                 >
                   <LinearGradient
                     colors={[COLORS.goldLight, COLORS.gold, COLORS.goldDark]}
@@ -370,7 +372,7 @@ export default function OnboardingScreen({ onComplete }: Props) {
                   </LinearGradient>
                 </TouchableOpacity>
 
-                <Text style={styles.launchFooter}>No credit card. Free to start.</Text>
+                <Text style={styles.launchFooter}>Next: your daily feed of personalized wealth moves. No credit card. Free to start.</Text>
               </View>
             )}
 

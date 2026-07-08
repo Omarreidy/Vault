@@ -30,9 +30,14 @@ export default function PlaidLinkScreen({ visible, onClose, onSuccess }: Props) 
   const [linkToken, setLinkToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [verifying, setVerifying] = useState(false);
+  const [verifyMsg, setVerifyMsg] = useState('');
 
   useEffect(() => {
-    if (visible) fetchLinkToken();
+    if (visible) {
+      setVerifyMsg('');
+      fetchLinkToken();
+    }
   }, [visible]);
 
   const fetchLinkToken = async () => {
@@ -69,7 +74,35 @@ export default function PlaidLinkScreen({ visible, onClose, onSuccess }: Props) 
     } else {
       Linking.openURL(url);
     }
-    // Note: on web we can't capture the callback — show a manual confirmation
+    // Note: on web we can't capture the callback — the user returns and we
+    // verify against the backend before reporting success.
+  };
+
+  // Success is only reported after the backend confirms real linked accounts.
+  const handleVerify = async () => {
+    if (verifying) return;
+    setVerifying(true);
+    setVerifyMsg('');
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('not signed in');
+      const { data, error: qErr } = await supabase
+        .from('plaid_items')
+        .select('accounts')
+        .eq('user_id', user.id);
+      if (qErr) throw qErr;
+      const accounts = (data ?? []).flatMap((row: any) => row.accounts ?? []);
+      if (accounts.length > 0) {
+        onSuccess(accounts);
+        onClose();
+      } else {
+        setVerifyMsg("No connected bank found yet. Finish the Plaid flow in the other tab, then verify again.");
+      }
+    } catch {
+      setVerifyMsg("Couldn't verify right now. Check your connection and try again.");
+    } finally {
+      setVerifying(false);
+    }
   };
 
   return (
@@ -77,7 +110,14 @@ export default function PlaidLinkScreen({ visible, onClose, onSuccess }: Props) 
       <SafeAreaView style={styles.root}>
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Connect Bank</Text>
-          <TouchableOpacity style={styles.closeBtn} onPress={onClose} activeOpacity={0.7}>
+          <TouchableOpacity
+            style={styles.closeBtn}
+            onPress={onClose}
+            activeOpacity={0.7}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            accessibilityRole="button"
+            accessibilityLabel="Close bank connection"
+          >
             <Text style={styles.closeTxt}>×</Text>
           </TouchableOpacity>
         </View>
@@ -89,7 +129,7 @@ export default function PlaidLinkScreen({ visible, onClose, onSuccess }: Props) 
           </View>
           <Text style={styles.title}>Connect your accounts</Text>
           <Text style={styles.sub}>
-            Tap below to open Plaid in a new tab. Connect your bank, then come back to the app.
+            Tap below to open Plaid in a new tab. After completing Plaid, return here and we'll verify your connection.
           </Text>
 
           <View style={styles.badges}>
@@ -116,12 +156,20 @@ export default function PlaidLinkScreen({ visible, onClose, onSuccess }: Props) 
             </TouchableOpacity>
           )}
 
+          {!!verifyMsg && <Text style={styles.verifyMsg}>{verifyMsg}</Text>}
+
           <TouchableOpacity
             style={styles.doneBtn}
-            onPress={() => { onSuccess([]); onClose(); }}
+            onPress={handleVerify}
+            disabled={verifying}
             activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel="Verify bank connection"
+            accessibilityState={{ disabled: verifying }}
           >
-            <Text style={styles.doneTxt}>I've connected my bank ✓</Text>
+            <Text style={styles.doneTxt}>
+              {verifying ? 'Verifying…' : 'I finished in Plaid — verify my connection'}
+            </Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -173,4 +221,5 @@ const styles = StyleSheet.create({
   btnTxt: { fontSize: FONTS.sizes.md, fontWeight: FONTS.weights.bold, color: '#08080C', letterSpacing: 0.3 },
   doneBtn: { paddingVertical: 12 },
   doneTxt: { fontSize: FONTS.sizes.sm, color: COLORS.green, fontWeight: FONTS.weights.medium },
+  verifyMsg: { fontSize: FONTS.sizes.xs, color: COLORS.textDim, textAlign: 'center', lineHeight: 18 },
 });
