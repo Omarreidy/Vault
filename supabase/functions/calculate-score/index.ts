@@ -1,9 +1,5 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
-
-const cors = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+import { requireUser, corsHeaders as cors } from '../_shared/auth.ts';
 
 function clamp(val: number, min = 0, max = 100) {
   return Math.min(Math.max(Math.round(val), min), max);
@@ -12,9 +8,13 @@ function clamp(val: number, min = 0, max = 100) {
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
 
+  // Scores are computed and written for the VERIFIED caller only — nobody
+  // can recompute or overwrite another member's score/tier.
+  let caller: { id: string };
+  try { caller = await requireUser(req); } catch (r) { return r as Response; }
+
   try {
-    const { user_id } = await req.json();
-    if (!user_id) throw new Error('user_id required');
+    const user_id = caller.id;
 
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,

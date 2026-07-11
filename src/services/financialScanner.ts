@@ -158,8 +158,9 @@ export const MOCK_SCAN_RESULTS: ScanResult[] = [
   },
 ];
 
+import { functionAuthHeaders } from './supabase';
+
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? 'https://gvdfypehwmemootjizmd.supabase.co';
-const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? 'sb_publishable_tHoiSHF-49L1_p0OLRPeKw_5mfSi0fs';
 
 export async function scanDocument(imageUri: string): Promise<ScanResult> {
   // Lazy-require the native image module so it loads only when a scan actually
@@ -184,11 +185,7 @@ export async function scanDocument(imageUri: string): Promise<ScanResult> {
 
   const res = await fetch(`${SUPABASE_URL}/functions/v1/financial-scanner`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-      'apikey': SUPABASE_ANON_KEY,
-    },
+    headers: await functionAuthHeaders(),
     body: JSON.stringify({ imageBase64: base64, mimeType: 'image/jpeg' }),
   });
 

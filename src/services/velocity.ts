@@ -1,6 +1,6 @@
 import { VelocityScore, TierName } from '../types';
 import { TIERS } from '../constants/theme';
-import { supabase } from './supabase';
+import { supabase, functionAuthHeaders } from './supabase';
 
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? 'https://gvdfypehwmemootjizmd.supabase.co';
 const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? 'sb_publishable_tHoiSHF-49L1_p0OLRPeKw_5mfSi0fs';
@@ -41,11 +41,7 @@ export async function fetchLiveScore(): Promise<VelocityScore | null> {
 
     const res = await fetch(`${SUPABASE_URL}/functions/v1/calculate-score`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-        'apikey': SUPABASE_ANON_KEY,
-      },
+      headers: await functionAuthHeaders(),
       body: JSON.stringify({ user_id: user.id }),
     });
 

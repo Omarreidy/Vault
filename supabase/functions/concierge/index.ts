@@ -1,9 +1,5 @@
 import Anthropic from 'npm:@anthropic-ai/sdk@0.99.0';
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+import { requireUser, corsHeaders } from '../_shared/auth.ts';
 
 function fmt(n: number) {
   return '$' + n.toLocaleString('en-US');
@@ -58,6 +54,9 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
+
+  // Signed-in members only — this endpoint spends real Anthropic tokens.
+  try { await requireUser(req); } catch (r) { return r as Response; }
 
   try {
     const { messages, userContext } = await req.json();

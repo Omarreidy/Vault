@@ -12,3 +12,17 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     detectSessionInUrl: false,
   },
 });
+
+/**
+ * Headers for edge-function calls. Protected functions require the caller's
+ * real session JWT — the anon key alone is rejected with 401. Falls back to
+ * the anon key only for the few public, read-only endpoints.
+ */
+export async function functionAuthHeaders(): Promise<Record<string, string>> {
+  const { data: { session } } = await supabase.auth.getSession();
+  return {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${session?.access_token ?? SUPABASE_ANON_KEY}`,
+    'apikey': SUPABASE_ANON_KEY,
+  };
+}

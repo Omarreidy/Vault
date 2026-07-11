@@ -1,15 +1,15 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+import { requireUser, corsHeaders } from '../_shared/auth.ts';
 
 // Re-pulls fresh accounts + transactions from Plaid for every item a user has
 // linked, and updates the stored snapshot. Designed to never throw on a single
 // bad item — one failing institution must not break the whole refresh.
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
+
+  // Refreshes only the verified caller's own items.
+  let user: { id: string };
+  try { user = await requireUser(req); } catch (r) { return r as Response; }
 
   try {
     const clientId = Deno.env.get('PLAID_CLIENT_ID')!;
@@ -21,9 +21,6 @@ Deno.serve(async (req) => {
       ? 'https://development.plaid.com'
       : 'https://sandbox.plaid.com';
 
-    const { user_id } = await req.json().catch(() => ({}));
-    if (!user_id) throw new Error('user_id required');
-
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
@@ -32,7 +29,7 @@ Deno.serve(async (req) => {
     const { data: items } = await supabase
       .from('plaid_items')
       .select('item_id, access_token')
-      .eq('user_id', user_id);
+      .eq('user_id', user.id);
 
     if (!items || items.length === 0) {
       return new Response(JSON.stringify({ refreshed: 0, reason: 'no_items' }), {

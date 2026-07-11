@@ -1,26 +1,27 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
-
-const cors = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+import { requireUser, corsHeaders as cors } from '../_shared/auth.ts';
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
 
+  // A signed-in user may only trigger a push to THEMSELVES. Anything else
+  // would be a phishing/spam vector (arbitrary content to arbitrary users).
+  let user: { id: string };
+  try { user = await requireUser(req); } catch (r) { return r as Response; }
+
   try {
-    const { user_id, title, body, data } = await req.json();
+    const { title, body, data } = await req.json();
 
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     );
 
-    // Get user's push token
+    // Get the caller's own push token
     const { data: profile } = await supabase
       .from('profiles')
       .select('push_token')
-      .eq('id', user_id)
+      .eq('id', user.id)
       .single();
 
     if (!profile?.push_token) {

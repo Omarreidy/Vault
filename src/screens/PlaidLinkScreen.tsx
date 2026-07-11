@@ -6,7 +6,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
 import * as Haptics from 'expo-haptics';
-import { supabase } from '../services/supabase';
+import { supabase, functionAuthHeaders } from '../services/supabase';
 import BankConnectedScreen from './BankConnectedScreen';
 import { COLORS, FONTS, SPACING, RADIUS, CARD_SHADOW } from '../constants/theme';
 
@@ -46,11 +46,7 @@ export default function PlaidLinkScreen({ visible, onClose, onSuccess }: Props) 
       const { data: { user } } = await supabase.auth.getUser();
       const res = await fetch(`${SUPABASE_URL}/functions/v1/plaid-link-token`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-          'apikey': SUPABASE_ANON_KEY,
-        },
+        headers: await functionAuthHeaders(),
         body: JSON.stringify({ user_id: user?.id ?? 'guest' }),
       });
       const data = await res.json();
@@ -76,11 +72,7 @@ export default function PlaidLinkScreen({ visible, onClose, onSuccess }: Props) 
         if (!user) throw new Error('Please sign in before connecting a bank.');
         const res = await fetch(`${SUPABASE_URL}/functions/v1/plaid-exchange`, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-            'apikey': SUPABASE_ANON_KEY,
-          },
+          headers: await functionAuthHeaders(),
           body: JSON.stringify({ public_token: msg.public_token, user_id: user.id }),
         });
         const data = await res.json();

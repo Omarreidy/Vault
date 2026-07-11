@@ -9,6 +9,7 @@ import * as Haptics from 'expo-haptics';
 import { COLORS, FONTS, SPACING, RADIUS, CARD_SHADOW } from '../constants/theme';
 import PolicyModal from '../components/PolicyModal';
 import { PRIVACY_POLICY, TERMS_OF_SERVICE } from '../constants/legal';
+import { syncPremiumStatus } from '../services/premium';
 
 const PERKS = [
   { icon: '◈', title: 'Unlimited AI Concierge', sub: 'Ask anything, any time — no limits' },
@@ -74,6 +75,8 @@ export default function UpgradeScreen({ visible, onClose, onSuccess }: Props) {
 
       const { customerInfo } = await Purchases.purchasePackage(pkg);
       if (customerInfo.entitlements.active['premium']) {
+        // Persist the entitlement so premium survives app restarts.
+        await syncPremiumStatus();
         onSuccess?.();
         onClose();
       }
@@ -94,6 +97,7 @@ export default function UpgradeScreen({ visible, onClose, onSuccess }: Props) {
       const Purchases = require('react-native-purchases').default;
       const customerInfo = await Purchases.restorePurchases();
       if (customerInfo.entitlements.active['premium']) {
+        await syncPremiumStatus();
         onSuccess?.();
         onClose();
       } else {

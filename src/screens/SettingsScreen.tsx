@@ -15,6 +15,7 @@ import { syncDailyReminder } from '../services/push';
 import { useRealProfile } from '../services/userProfile';
 import { usePlaid } from '../context/PlaidContext';
 import { supabase } from '../services/supabase';
+import { syncPremiumStatus } from '../services/premium';
 import PlaidLinkScreen from './PlaidLinkScreen';
 import UpgradeScreen from './UpgradeScreen';
 
@@ -292,6 +293,7 @@ export default function SettingsScreen({ onClose, onResetOnboarding }: Props) {
       const Purchases = require('react-native-purchases').default;
       const customerInfo = await Purchases.restorePurchases();
       if (customerInfo.entitlements.active['premium']) {
+        await syncPremiumStatus();
         Alert.alert('Restored!', 'Your Premium subscription is active.', [{ text: 'Great' }]);
       } else {
         Alert.alert('No subscription found', 'No active subscription found on this account.\n\nContact support@getvault.app if you believe this is an error.', [{ text: 'OK' }]);

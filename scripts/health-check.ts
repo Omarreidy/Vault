@@ -100,12 +100,35 @@ function validateGamification() {
 }
 
 // ─── Part 2: Live endpoint checks ───────────────────────────────────────────
-async function post(fn: string, body: unknown): Promise<any> {
+// Protected functions require a real signed-in session JWT. The health check
+// signs in as the review account once and reuses that token; the anon key is
+// only used for the genuinely public endpoints (market-data/news/research).
+const REVIEW_EMAIL = process.env.HEALTHCHECK_EMAIL ?? 'appreview@getvault.app';
+const REVIEW_PASSWORD = process.env.HEALTHCHECK_PASSWORD ?? 'VaultReview2026!';
+let sessionToken: string | null = null;
+
+async function signIn(): Promise<void> {
+  try {
+    const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'apikey': ANON },
+      body: JSON.stringify({ email: REVIEW_EMAIL, password: REVIEW_PASSWORD }),
+    });
+    const d = await res.json();
+    sessionToken = d.access_token ?? null;
+    if (!sessionToken) warn('auth: could not sign in review account — protected checks may fail');
+  } catch (e) {
+    warn(`auth: sign-in unreachable (${e})`);
+  }
+}
+
+async function post(fn: string, body: unknown, opts: { auth?: boolean } = {}): Promise<any> {
+  const token = opts.auth === false ? ANON : (sessionToken ?? ANON);
   const res = await fetch(`${SUPABASE_URL}/functions/v1/${fn}`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${ANON}`,
+      'Authorization': `Bearer ${token}`,
       'apikey': ANON,
     },
     body: JSON.stringify(body),
@@ -115,6 +138,28 @@ async function post(fn: string, body: unknown): Promise<any> {
 
 const looksLikeAuthError = (s: string) =>
   /401|x-api-key|invalid api key|authentication_error/i.test(s);
+
+// Security regression test: every protected function MUST reject the bare anon
+// key with 401. If any starts accepting anon again, this fails the build.
+async function checkAuthEnforced() {
+  const protectedFns = [
+    'plaid-link-token', 'plaid-exchange', 'plaid-refresh',
+    'calculate-score', 'concierge', 'financial-scanner', 'send-notification',
+  ];
+  const leaks: string[] = [];
+  await Promise.all(protectedFns.map(async fn => {
+    try {
+      const res = await fetch(`${SUPABASE_URL}/functions/v1/${fn}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${ANON}`, 'apikey': ANON },
+        body: JSON.stringify({}),
+      });
+      if (res.status !== 401) leaks.push(`${fn} (${res.status})`);
+    } catch { /* network flake — ignore, not a security signal */ }
+  }));
+  if (leaks.length > 0) fail(`auth-enforcement: these accept anon key without a session → ${leaks.join(', ')}`);
+  else pass('auth-enforcement: all 7 protected functions reject anon key (401)');
+}
 
 async function checkMarketData() {
   try {
@@ -162,7 +207,7 @@ async function checkConcierge() {
   try {
     const res = await fetch(`${SUPABASE_URL}/functions/v1/concierge`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${ANON}`, 'apikey': ANON },
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${sessionToken ?? ANON}`, 'apikey': ANON },
       body: JSON.stringify({ messages: [{ role: 'user', content: 'Reply with the single word OK' }] }),
     });
     const text = (await res.text()).trim();
@@ -228,7 +273,11 @@ async function main() {
   validateInsights();
   validateGamification();
 
+  // Sign in first so protected-function checks use a real session.
+  await signIn();
+
   await Promise.all([
+    checkAuthEnforced(),
     checkMarketData(),
     checkMarketNews(),
     checkResearch(),

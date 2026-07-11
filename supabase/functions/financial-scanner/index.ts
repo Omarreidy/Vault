@@ -1,12 +1,11 @@
 import Anthropic from 'npm:@anthropic-ai/sdk@0.99.0';
-
-const cors = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+import { requireUser, corsHeaders as cors } from '../_shared/auth.ts';
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
+
+  // Signed-in members only — this endpoint spends real Anthropic tokens.
+  try { await requireUser(req); } catch (r) { return r as Response; }
 
   try {
     const { imageBase64, mimeType = 'image/jpeg' } = await req.json();

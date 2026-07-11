@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
-import { supabase } from '../services/supabase';
+import { supabase, functionAuthHeaders } from '../services/supabase';
 import { COLORS, FONTS, SPACING, RADIUS, CARD_SHADOW } from '../constants/theme';
 
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? 'https://gvdfypehwmemootjizmd.supabase.co';
@@ -47,11 +47,7 @@ export default function PlaidLinkScreen({ visible, onClose, onSuccess }: Props) 
       const { data: { user } } = await supabase.auth.getUser();
       const res = await fetch(`${SUPABASE_URL}/functions/v1/plaid-link-token`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-          'apikey': SUPABASE_ANON_KEY,
-        },
+        headers: await functionAuthHeaders(),
         body: JSON.stringify({ user_id: user?.id ?? 'guest' }),
       });
       const data = await res.json();

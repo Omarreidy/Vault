@@ -1,10 +1,11 @@
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+import { requireUser, corsHeaders } from '../_shared/auth.ts';
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
+
+  // Only signed-in members can mint Plaid Link tokens.
+  let user: { id: string };
+  try { user = await requireUser(req); } catch (r) { return r as Response; }
 
   try {
     const clientId = Deno.env.get('PLAID_CLIENT_ID')!;
@@ -17,8 +18,7 @@ Deno.serve(async (req) => {
       ? 'https://development.plaid.com'
       : 'https://sandbox.plaid.com';
 
-    const body = await req.json().catch(() => ({}));
-    const userId = body.user_id ?? 'default-user';
+    const userId = user.id;
 
     const res = await fetch(`${baseUrl}/link/token/create`, {
       method: 'POST',

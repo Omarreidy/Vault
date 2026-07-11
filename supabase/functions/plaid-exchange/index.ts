@@ -1,12 +1,13 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+import { requireUser, corsHeaders } from '../_shared/auth.ts';
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
+
+  // Bank data is written to the VERIFIED caller's account only — the user id
+  // comes from their session JWT, never from the request body.
+  let user: { id: string };
+  try { user = await requireUser(req); } catch (r) { return r as Response; }
 
   try {
     const clientId = Deno.env.get('PLAID_CLIENT_ID')!;
@@ -19,7 +20,7 @@ Deno.serve(async (req) => {
       ? 'https://development.plaid.com'
       : 'https://sandbox.plaid.com';
 
-    const { public_token, user_id } = await req.json();
+    const { public_token } = await req.json();
     if (!public_token) throw new Error('Missing public_token');
 
     // Exchange public token for access token
@@ -62,7 +63,7 @@ Deno.serve(async (req) => {
     );
 
     await supabase.from('plaid_items').upsert({
-      user_id,
+      user_id: user.id,
       item_id,
       access_token,
       accounts: accountsData.accounts ?? [],

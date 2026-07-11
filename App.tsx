@@ -11,6 +11,7 @@ import AuthScreen from './src/screens/AuthScreen';
 import { supabase } from './src/services/supabase';
 import { PlaidProvider } from './src/context/PlaidContext';
 import { initPushNotifications } from './src/services/push';
+import { syncPremiumStatus } from './src/services/premium';
 
 const RC_API_KEY = 'appl_iHfaWTgWajGmNhQValXNlUdqwxI';
 
@@ -91,6 +92,9 @@ function AppContent() {
         const Purchases = require('react-native-purchases').default;
         await Purchases.logIn(session.user.id);
       } catch {}
+      // Keep profiles.is_premium in step with the store subscription —
+      // renewals, cancellations, and purchases made on other devices.
+      syncPremiumStatus().catch(() => {});
     }
 
     const { data } = await supabase
