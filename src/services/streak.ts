@@ -7,14 +7,25 @@ const LAST_OPEN_KEY   = '@vault_last_open_date';
 // Streak lengths worth announcing to the cohort.
 const STREAK_MILESTONES = [3, 7, 14, 30, 60, 100];
 
+// Streak days are the DEVICE's local calendar days ('YYYY-MM-DD'). Using UTC
+// here (toISOString) wrongly reset streaks for anyone west of UTC who opens
+// the app in the evening — two consecutive local days can straddle a UTC day.
 function toDateString(d: Date): string {
-  return d.toISOString().slice(0, 10); // 'YYYY-MM-DD'
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${d.getFullYear()}-${m}-${day}`;
 }
 
 function yesterday(): string {
   const d = new Date();
   d.setDate(d.getDate() - 1);
   return toDateString(d);
+}
+
+// Corrupt storage must never become a NaN streak that persists forever.
+function parseStreak(raw: string | null, fallback: number): number {
+  const n = parseInt(raw ?? '', 10);
+  return Number.isFinite(n) && n > 0 ? n : fallback;
 }
 
 /** Call once on app open. Increments streak if this is a new day, resets if a day was skipped. */
@@ -25,7 +36,7 @@ export async function updateStreak(): Promise<number> {
     AsyncStorage.getItem(STREAK_KEY),
   ]);
 
-  const current = parseInt(streakRaw ?? '0', 10);
+  const current = parseStreak(streakRaw, 0);
 
   if (lastOpen === today) return current; // already counted today
 
@@ -58,5 +69,5 @@ export async function getStreak(): Promise<number> {
 
   const today = toDateString(new Date());
   if (lastOpen !== today && lastOpen !== yesterday()) return 0;
-  return parseInt(streakRaw ?? '1', 10);
+  return parseStreak(streakRaw, 1);
 }

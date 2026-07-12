@@ -21,8 +21,13 @@ export interface VaultStats {
   weekStamp: string;           // YYYY-MM-DD (Monday) of last weekly window
 }
 
+// Daily/weekly windows follow the DEVICE's local calendar. toISOString (UTC)
+// reset the daily counters at 7–8 pm for US users and could stamp the wrong
+// Monday (local getDay combined with a UTC date string).
 function todayStr(d = new Date()): string {
-  return d.toISOString().slice(0, 10);
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${d.getFullYear()}-${m}-${day}`;
 }
 
 function mondayStr(d = new Date()): string {
@@ -31,6 +36,13 @@ function mondayStr(d = new Date()): string {
   const monday = new Date(d);
   monday.setDate(d.getDate() + diff);
   return todayStr(monday);
+}
+
+// Corrupt/legacy storage must never turn counters into NaN or strings
+// (`"3" + 1` would concatenate). Coerce every numeric field on load.
+function toCount(v: unknown): number {
+  const n = typeof v === 'number' ? v : Number(v);
+  return Number.isFinite(n) && n >= 0 ? Math.floor(n) : 0;
 }
 
 function fresh(): VaultStats {
@@ -53,6 +65,12 @@ export async function loadStats(): Promise<VaultStats> {
   try {
     const raw = await AsyncStorage.getItem(KEY);
     let s: VaultStats = raw ? { ...fresh(), ...JSON.parse(raw) } : fresh();
+    s.movesActedTotal = toCount(s.movesActedTotal);
+    s.movesActedToday = toCount(s.movesActedToday);
+    s.movesActedWeek  = toCount(s.movesActedWeek);
+    s.xpTotal = toCount(s.xpTotal);
+    s.xpWeek  = toCount(s.xpWeek);
+    if (s.weekStartScore !== null && !Number.isFinite(s.weekStartScore)) s.weekStartScore = null;
 
     const today = todayStr();
     const monday = mondayStr();

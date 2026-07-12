@@ -23,13 +23,18 @@ Deno.serve(async (req) => {
     const { public_token } = await req.json();
     if (!public_token) throw new Error('Missing public_token');
 
-    // Exchange public token for access token
+    // Exchange public token for access token. A failed exchange must be a
+    // clean error — never a partial row that later scores as "no accounts".
     const exchangeRes = await fetch(`${baseUrl}/item/public_token/exchange`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ client_id: clientId, secret, public_token }),
     });
-    const { access_token, item_id } = await exchangeRes.json();
+    const exchangeData = await exchangeRes.json();
+    if (!exchangeRes.ok || !exchangeData.access_token || !exchangeData.item_id) {
+      throw new Error(exchangeData?.error_message ?? 'Plaid token exchange failed');
+    }
+    const { access_token, item_id } = exchangeData;
 
     // Fetch accounts
     const accountsRes = await fetch(`${baseUrl}/accounts/get`, {
@@ -38,6 +43,9 @@ Deno.serve(async (req) => {
       body: JSON.stringify({ client_id: clientId, secret, access_token }),
     });
     const accountsData = await accountsRes.json();
+    if (!accountsRes.ok || !Array.isArray(accountsData.accounts)) {
+      throw new Error(accountsData?.error_message ?? 'Plaid accounts fetch failed');
+    }
 
     // Fetch transactions (last 30 days)
     const now = new Date();
@@ -62,18 +70,23 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     );
 
+    const transactions = Array.isArray(txData.transactions) ? txData.transactions : [];
+
     await supabase.from('plaid_items').upsert({
       user_id: user.id,
       item_id,
       access_token,
-      accounts: accountsData.accounts ?? [],
-      transactions: txData.transactions ?? [],
+      accounts: accountsData.accounts,
+      // Like plaid-refresh: never wipe previously-stored transactions with an
+      // empty list (PRODUCT_NOT_READY on reconnect) — an emptied window would
+      // silently score as "zero spend". New rows get the column default [].
+      ...(transactions.length > 0 ? { transactions } : {}),
       updated_at: new Date().toISOString(),
     }, { onConflict: 'item_id' });
 
     return new Response(JSON.stringify({
-      accounts: accountsData.accounts ?? [],
-      transactions: txData.transactions ?? [],
+      accounts: accountsData.accounts,
+      transactions,
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });

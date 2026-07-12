@@ -3,10 +3,14 @@ import { View, Text, StyleSheet, Animated } from 'react-native';
 import { usePlaid } from '../context/PlaidContext';
 import { COLORS, FONTS, SPACING, RADIUS, CARD_SHADOW } from '../constants/theme';
 
+// Sign-aware: net worth is legitimately negative when credit debt exceeds
+// assets — "-$5K", never "$-5,000" (or a negative million skipping the buckets).
 function fmt(n: number): string {
-  if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000) return `$${Math.round(n / 1_000)}K`;
-  return `$${Math.round(n).toLocaleString()}`;
+  const sign = n < 0 ? '-' : '';
+  const abs = Math.abs(n);
+  if (abs >= 1_000_000) return `${sign}$${(abs / 1_000_000).toFixed(1)}M`;
+  if (abs >= 1_000) return `${sign}$${Math.round(abs / 1_000)}K`;
+  return `${sign}$${Math.round(abs).toLocaleString()}`;
 }
 
 export default function NetWorthTracker() {

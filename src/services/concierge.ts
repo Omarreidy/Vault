@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { dedupeAccounts, categorizeAccounts, sumBalances } from './plaidMath';
 
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? 'https://gvdfypehwmemootjizmd.supabase.co';
 const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? 'sb_publishable_tHoiSHF-49L1_p0OLRPeKw_5mfSi0fs';
@@ -42,14 +43,12 @@ async function fetchUserContext(): Promise<UserContext | null> {
 
     if (!base.plaidConnected) return base;
 
-    const allAccounts = (plaidItems ?? []).flatMap((item: any) => item.accounts ?? []);
-    const sum = (arr: any[], key: string) =>
-      Math.round(arr.reduce((s: number, a: any) => s + (a.balances?.[key] ?? 0), 0));
+    // Shared canonical math (plaidMath.ts) — same categorization + dedupe the
+    // score uses, so the AI advisor reasons from the same numbers as the app.
+    const allAccounts = dedupeAccounts((plaidItems ?? []).flatMap((item: any) => item.accounts ?? []));
+    const sum = (arr: any[], key: 'current' | 'limit') => Math.round(sumBalances(arr, key));
 
-    const checking   = allAccounts.filter((a: any) => a.subtype === 'checking');
-    const savings    = allAccounts.filter((a: any) => ['savings', 'money market', 'cd'].includes(a.subtype));
-    const investment = allAccounts.filter((a: any) => ['brokerage', '401k', 'ira', 'roth', '403b', '529'].includes(a.subtype));
-    const credit     = allAccounts.filter((a: any) => a.type === 'credit');
+    const { checking, savings, investment, credit } = categorizeAccounts(allAccounts);
 
     const totalCreditDebt  = sum(credit, 'current');
     const totalCreditLimit = sum(credit, 'limit');

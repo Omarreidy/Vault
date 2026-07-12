@@ -152,11 +152,15 @@ export async function saveGoals(goals: Goal[]): Promise<void> {
 }
 
 export function getMonthsToGoal(goal: Goal): number {
-  const remaining = goal.target - goal.current;
+  const remaining = Math.max(goal.target - goal.current, 0);
+  if (remaining === 0) return 0; // funded or over-funded — never negative months
   if (goal.monthlyContribution <= 0) return 999;
   return Math.ceil(remaining / goal.monthlyContribution);
 }
 
 export function getGoalProgress(goal: Goal): number {
-  return Math.min(goal.current / goal.target, 1);
+  // A non-positive target is degenerate data — report no progress rather
+  // than NaN/Infinity leaking into progress-bar widths.
+  if (!(goal.target > 0)) return 0;
+  return Math.min(Math.max(goal.current / goal.target, 0), 1);
 }

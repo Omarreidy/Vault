@@ -1,16 +1,14 @@
 import { VelocityScore, TierName } from '../types';
 import { TIERS } from '../constants/theme';
 import { supabase, functionAuthHeaders } from './supabase';
+import { tierFromScore } from './plaidMath';
 
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? 'https://gvdfypehwmemootjizmd.supabase.co';
 const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? 'sb_publishable_tHoiSHF-49L1_p0OLRPeKw_5mfSi0fs';
 
+// Thresholds live in plaidMath.ts so client and server can never disagree.
 export function getTierFromScore(score: number): TierName {
-  if (score >= 900) return 'BLACK';
-  if (score >= 700) return 'PLATINUM';
-  if (score >= 450) return 'GOLD';
-  if (score >= 200) return 'SILVER';
-  return 'BRONZE';
+  return tierFromScore(score);
 }
 
 export function getTierProgress(score: number): number {
@@ -104,10 +102,13 @@ export function calculateVelocityScore(data: {
   spendingDiscipline: number;
   actionsTaken: number;
 }): VelocityScore {
-  const savings    = Math.min(Math.round(data.savingsRate * 100), 100);
-  const investment = Math.min(Math.round(data.investmentRate * 100), 100);
-  const debt       = Math.min(Math.round(data.debtPaydownRate * 100), 100);
-  const spending   = Math.min(Math.round(data.spendingDiscipline * 100), 100);
+  // Clamp 0–100 exactly like the server's dimension scores — a negative rate
+  // must not produce a negative dimension or drag the total below zero.
+  const clamp = (v: number) => Math.min(Math.max(Math.round(v), 0), 100);
+  const savings    = clamp(data.savingsRate * 100);
+  const investment = clamp(data.investmentRate * 100);
+  const debt       = clamp(data.debtPaydownRate * 100);
+  const spending   = clamp(data.spendingDiscipline * 100);
   const total      = Math.round(savings * 3 + investment * 2.5 + debt * 2.5 + spending * 2);
   const tier       = getTierFromScore(total);
 

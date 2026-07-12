@@ -37,6 +37,7 @@
     "react-native-webview": "^13.16.1"
   },
   "devDependencies": {
+    "@types/node": "^22.20.1",
     "@types/react": "~19.2.2",
     "puppeteer": "^24.43.1",
     "tsx": "^4.22.4",
@@ -48,8 +49,10 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "health": "tsx scripts/health-check.ts",
-    "build:ios": "npm run health && eas build --platform ios --profile production",
-    "build:ios:preview": "npm run health && eas build --platform ios --profile preview",
+    "test": "TZ=America/New_York node --require ./tests/helpers/register-stubs.cjs --import tsx --test tests/*.test.ts",
+    "typecheck": "tsc --noEmit && tsc -p tests --noEmit",
+    "build:ios": "npm run health && npm test && eas build --platform ios --profile production",
+    "build:ios:preview": "npm run health && npm test && eas build --platform ios --profile preview",
     "submit:ios": "eas submit --platform ios --latest"
   },
   "private": true

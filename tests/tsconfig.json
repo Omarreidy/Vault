@@ -1,0 +1,16 @@
+{
+  "compilerOptions": {
+    "strict": true,
+    "target": "ESNext",
+    "module": "preserve",
+    "moduleResolution": "bundler",
+    "lib": ["DOM", "ESNext"],
+    "jsx": "react-jsx",
+    "types": ["node"],
+    "esModuleInterop": true,
+    "allowJs": true,
+    "skipLibCheck": true,
+    "noEmit": true
+  },
+  "include": ["./**/*.test.ts", "../src/**/*", "../supabase/functions/concierge/prompt.ts", "../supabase/functions/financial-scanner/parse.ts", "../supabase/functions/_shared/finance.ts"]
+}

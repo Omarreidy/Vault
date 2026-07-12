@@ -1,6 +1,14 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { AppState, AppStateStatus } from 'react-native';
 import { supabase, functionAuthHeaders } from '../services/supabase';
+import {
+  dedupeAccounts,
+  dedupeTransactions,
+  categorizeAccounts,
+  sumBalances,
+  estimateMonthlyIncome,
+  sumSpend,
+} from '../services/plaidMath';
 
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? 'https://gvdfypehwmemootjizmd.supabase.co';
 const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? 'sb_publishable_tHoiSHF-49L1_p0OLRPeKw_5mfSi0fs';
@@ -56,39 +64,22 @@ export function PlaidProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      const allAccounts = plaidItems.flatMap((item: any) => item.accounts ?? []);
-      const allTx       = plaidItems.flatMap((item: any) => item.transactions ?? []);
+      // Shared canonical math (plaidMath.ts): dedupes re-linked accounts and
+      // pending/posted transaction pairs before summing.
+      const allAccounts = dedupeAccounts(plaidItems.flatMap((item: any) => item.accounts ?? []));
+      const allTx       = dedupeTransactions(plaidItems.flatMap((item: any) => item.transactions ?? []));
 
-      const checking   = allAccounts.filter((a: any) => a.subtype === 'checking');
-      const savings    = allAccounts.filter((a: any) => ['savings', 'money market', 'cd'].includes(a.subtype));
-      const investment = allAccounts.filter((a: any) => ['brokerage', '401k', 'ira', 'roth', '403b', '529'].includes(a.subtype));
-      const credit     = allAccounts.filter((a: any) => a.type === 'credit');
-
-      const sum = (arr: any[], key: string) =>
-        Math.round(arr.reduce((s: number, a: any) => s + (a.balances?.[key] ?? 0), 0));
-
-      const incomeTx = allTx.filter((t: any) =>
-        t.amount < 0 &&
-        ['Payroll', 'Deposit', 'Income'].some(c =>
-          (t.category ?? []).some((tc: string) => tc.includes(c))
-        )
-      );
-      const estimatedMonthlyIncome = incomeTx.length > 0
-        ? Math.abs(incomeTx.reduce((s: number, t: any) => s + t.amount, 0))
-        : 0;
-
-      const spendTx = allTx.filter((t: any) => t.amount > 0);
-      const monthlySpend = Math.round(spendTx.reduce((s: number, t: any) => s + t.amount, 0));
+      const { checking, savings, investment, credit } = categorizeAccounts(allAccounts);
 
       setPlaidConnected(true);
       setPlaidSummary({
-        checking: sum(checking, 'current'),
-        savings: sum(savings, 'current'),
-        investments: sum(investment, 'current'),
-        creditDebt: sum(credit, 'current'),
-        creditLimit: sum(credit, 'limit'),
-        estimatedMonthlyIncome,
-        monthlySpend,
+        checking: Math.round(sumBalances(checking, 'current')),
+        savings: Math.round(sumBalances(savings, 'current')),
+        investments: Math.round(sumBalances(investment, 'current')),
+        creditDebt: Math.round(sumBalances(credit, 'current')),
+        creditLimit: Math.round(sumBalances(credit, 'limit')),
+        estimatedMonthlyIncome: estimateMonthlyIncome(allTx),
+        monthlySpend: Math.round(sumSpend(allTx)),
         accountCount: allAccounts.length,
       });
     } catch {

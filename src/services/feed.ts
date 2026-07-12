@@ -2,6 +2,7 @@ import { WealthMove } from '../types';
 import { Insight } from './insights';
 import { WealthWin } from '../types';
 import { supabase } from './supabase';
+import { dedupeAccounts, dedupeTransactions } from './plaidMath';
 
 export type FeedItemType = 'move' | 'pulse' | 'win' | 'beliefs';
 
@@ -77,8 +78,8 @@ export async function fetchPersonalizedMoves(): Promise<WealthMove[] | null> {
 
     if (!plaidItems || plaidItems.length === 0) return null;
 
-    const allAccounts  = plaidItems.flatMap((item: any) => item.accounts ?? []);
-    const allTx        = plaidItems.flatMap((item: any) => item.transactions ?? []);
+    const allAccounts  = dedupeAccounts(plaidItems.flatMap((item: any) => item.accounts ?? []));
+    const allTx        = dedupeTransactions(plaidItems.flatMap((item: any) => item.transactions ?? []));
 
     const checking     = allAccounts.filter((a: any) => a.subtype === 'checking');
     const savings      = allAccounts.filter((a: any) => ['savings','money market','cd'].includes(a.subtype));

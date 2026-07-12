@@ -1,5 +1,6 @@
 import Anthropic from 'npm:@anthropic-ai/sdk@0.99.0';
 import { requireUser, corsHeaders as cors } from '../_shared/auth.ts';
+import { parseScanResult } from './parse.ts';
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
@@ -56,23 +57,9 @@ Rules:
     });
 
     const text = response.content[0].type === 'text' ? response.content[0].text : '';
-    let result: any = {};
-    try {
-      const jsonMatch = text.match(/\{[\s\S]*\}/);
-      if (jsonMatch) result = JSON.parse(jsonMatch[0]);
-    } catch {
-      result = {
-        verdict: 'BUDGET CHECK',
-        itemName: 'Scanned Item',
-        emoji: '📄',
-        tagline: 'Could not fully analyze — try a clearer photo.',
-        annualImpact: 'Unknown',
-        wealthScoreImpact: 'Neutral',
-        insight: text.slice(0, 300),
-        tip: 'Take a clearer, well-lit photo for a more precise verdict.',
-        xp: 10,
-      };
-    }
+    // Validate everything the model returned before the client renders it —
+    // verdict is coerced into the enum and xp clamped to the 0–25 design range.
+    const result = parseScanResult(text);
 
     return new Response(JSON.stringify(result), {
       headers: { ...cors, 'Content-Type': 'application/json' },

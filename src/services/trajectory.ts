@@ -51,7 +51,10 @@ export function computeTrajectory(inputs: TrajectoryInputs): TrajectoryResult {
   } = inputs;
 
   const actionBoost = actionsCompleted * ACTION_SAVINGS_RATE_BOOST;
-  const baseSavingsRate = Math.max(0, (annualIncome - annualExpenses) / annualIncome);
+  // Zero/negative income would make this 0/0 = NaN and poison every output.
+  const baseSavingsRate = annualIncome > 0
+    ? Math.max(0, (annualIncome - annualExpenses) / annualIncome)
+    : 0;
   const effectiveSavingsRate = Math.min(baseSavingsRate + actionBoost, 0.80);
 
   const annualSavings = annualIncome * effectiveSavingsRate;

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from './supabase';
+import { dedupeAccounts, dedupeTransactions } from './plaidMath';
 
 export type TimelineCategory = 'savings' | 'investing' | 'debt' | 'income' | 'milestone';
 export type TimelineEntryType = 'move' | 'milestone' | 'joined' | 'streak' | 'badge' | 'net_worth';
@@ -465,8 +466,8 @@ export function useTimeline(plaidConnected?: boolean): TimelineState {
             .select('accounts, transactions')
             .eq('user_id', user.id);
 
-          const accounts = (items ?? []).flatMap((it: any) => it.accounts ?? []);
-          const transactions = (items ?? []).flatMap((it: any) => it.transactions ?? []);
+          const accounts = dedupeAccounts((items ?? []).flatMap((it: any) => it.accounts ?? []));
+          const transactions = dedupeTransactions((items ?? []).flatMap((it: any) => it.transactions ?? []));
           if (accounts.length > 0) {
             plaidEntries = buildPlaidEntries(accounts, transactions);
           }
