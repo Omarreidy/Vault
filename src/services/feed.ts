@@ -4,7 +4,7 @@ import { WealthWin } from '../types';
 import { supabase } from './supabase';
 import { dedupeAccounts, dedupeTransactions } from './plaidMath';
 
-export type FeedItemType = 'move' | 'pulse' | 'win' | 'beliefs';
+export type FeedItemType = 'move' | 'pulse' | 'win' | 'beliefs' | 'connect' | 'brief';
 
 export interface FeedItem {
   id: string;
@@ -61,6 +61,52 @@ export function buildFeed(
       feed.push({ id: `move-${shuffledMoves[mIdx].id}`, type: 'move', data: shuffledMoves[mIdx++] });
     }
   }
+  return feed;
+}
+
+export const CONNECT_CARD_ID = 'connect-unlock';
+export const BELIEFS_ID = 'beliefs-audit';
+export const BRIEF_ID = 'daily-brief';
+
+// The Daily Vault Open ordering contract. The feed is a ritual, not a pile:
+//
+// 1. The daily brief opens: velocity delta since yesterday + moves to close.
+// 2. Personalized moves (from real bank data) follow, biggest impact first.
+// 3. Not connected: one connect-to-unlock card sits right after the first
+//    real move, before the user starts skimming.
+// 4. The beliefs audit stays in the feed but never near the front.
+//
+// Pure and deterministic so the daily feed stays stable within a day.
+export function composeFeed(
+  base: FeedItem[],
+  personalizedMoves: WealthMove[] | null,
+  plaidConnected: boolean,
+): FeedItem[] {
+  const personalized: FeedItem[] = (personalizedMoves ?? [])
+    .slice()
+    .sort((a, b) => b.impactValue - a.impactValue)
+    .slice(0, 5)
+    .map(m => ({ id: `move-${m.id}`, type: 'move' as const, data: { ...m, personalized: true } }));
+
+  const personalizedIds = new Set(personalized.map(i => i.id));
+  const rest = base.filter(i =>
+    !personalizedIds.has(i.id) && i.type !== 'beliefs' && i.type !== 'connect' && i.type !== 'brief');
+  const beliefs = base.find(i => i.type === 'beliefs');
+
+  const feed: FeedItem[] = [
+    { id: BRIEF_ID, type: 'brief', data: null },
+    ...personalized,
+    ...rest,
+  ];
+
+  if (!plaidConnected) {
+    // Index 2: after the brief and the first real move.
+    feed.splice(Math.min(2, feed.length), 0, { id: CONNECT_CARD_ID, type: 'connect', data: null });
+  }
+
+  // Re-insert the beliefs audit a few cards deep — content, not the opener.
+  if (beliefs) feed.splice(Math.min(6, feed.length), 0, beliefs);
+
   return feed;
 }
 

@@ -10,6 +10,8 @@ export interface WealthMove {
   effort: 'instant' | 'quick' | 'medium';
   actionLabel: string;
   lesson?: { headline: string; body: string; xp: number };
+  // True when the move was generated from the user's own linked accounts.
+  personalized?: boolean;
 }
 
 export interface VelocityScore {

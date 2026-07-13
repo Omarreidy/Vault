@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef, useEffect } from 'react';
+import React, { useState, useCallback, useRef, useEffect, useLayoutEffect } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
   Modal, Dimensions, Animated,
@@ -6,13 +6,15 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 
-import { buildFeed, fetchPersonalizedMoves, FeedItem } from '../services/feed';
+import { buildFeed, composeFeed, fetchPersonalizedMoves, FeedItem } from '../services/feed';
+import { track, EVENTS } from '../services/analytics';
 import { ALL_MOVES } from '../services/mockData';
 import { INSIGHTS, Insight } from '../services/insights';
 import { useRealProfile } from '../services/userProfile';
 import { WealthMove, WealthWin } from '../types';
 
 import FeedMoveCard from '../components/FeedMoveCard';
+import FeedConnectCard from '../components/FeedConnectCard';
 import FeedPulseCard from '../components/FeedPulseCard';
 import FeedWinCard from '../components/FeedWinCard';
 import BeliefsAuditCard from '../components/BeliefsAuditCard';
@@ -26,29 +28,32 @@ import PlaidNudge from '../components/PlaidNudge';
 import PlaidLinkScreen from './PlaidLinkScreen';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { postActivity, fetchMemberCount } from '../services/cohort';
-import { updateStreak } from '../services/streak';
-import { recordMove } from '../services/progressStats';
+import { getStreak, recordActionStreak } from '../services/streak';
+import { recordMove, loadStats, recordDailyScore, dailyDelta, weeklyVelocityGain } from '../services/progressStats';
+import { xpForMove, DAILY_MOVES_TARGET } from '../services/ritual';
+import { fetchLiveScore, fetchProfileScore } from '../services/velocity';
+import { syncWeeklyRecap } from '../services/push';
+import DailyBriefCard from '../components/DailyBriefCard';
 import { usePlaid } from '../context/PlaidContext';
 import { getUnreadCount } from '../services/notifications';
 
 import { COLORS, FONTS, SPACING, RADIUS, CARD_SHADOW } from '../constants/theme';
 
-const DEFAULT_FEED = buildFeed(ALL_MOVES, INSIGHTS, []);
+// Optimistic default while Plaid state loads: no connect card yet (it appears
+// once we know the user isn't connected), beliefs audit already demoted.
+const DEFAULT_FEED = composeFeed(buildFeed(ALL_MOVES, INSIGHTS, []), null, true);
 
+// XP amounts are deterministic (services/ritual.ts) — only the flavor text rotates.
 const REWARD_MESSAGES = [
   'Smart move.',
   'Building momentum.',
   "That's how wealth is built.",
-  "You're ahead of 71% today.",
   'Your future self thanks you.',
   'Elite habit.',
   'One step closer.',
   'Compounding starts now.',
 ];
 
-// Variable reward — unpredictable XP keeps users coming back
-const XP_POOL = [15, 20, 25, 30, 40, 47, 55, 60, 75];
-const pickXP  = () => XP_POOL[Math.floor(Math.random() * XP_POOL.length)];
 const pickMsg = () => REWARD_MESSAGES[Math.floor(Math.random() * REWARD_MESSAGES.length)];
 
 function EndOfFeedCard({ streakDays, onBackToTop }: { streakDays: number; onBackToTop: () => void }) {
@@ -157,7 +162,7 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const realProfile = useRealProfile();
   const userName = realProfile.name;
-  const { plaidConnected, hardRefresh: refreshPlaid } = usePlaid();
+  const { plaidConnected, plaidReady, hardRefresh: refreshPlaid } = usePlaid();
   const [feedTab, setFeedTab] = useState<'foryou' | 'cohort'>('foryou');
   const [totalXP, setTotalXP]       = useState(0);
   const [actedCount, setActedCount] = useState(0);
@@ -175,26 +180,41 @@ export default function HomeScreen() {
   const [feed, setFeed] = useState<FeedItem[]>(DEFAULT_FEED);
   const [streakDays, setStreakDays] = useState(0);
 
-  const loadPersonalizedFeed = useCallback(() => {
+  // Daily Open brief state: today's moves so far (persisted) + velocity delta.
+  const [movesTodayBase, setMovesTodayBase] = useState(0);
+  const [briefDelta, setBriefDelta] = useState<number | null>(null);
+  const [briefScore, setBriefScore] = useState<number | null>(null);
+  const [briefSource, setBriefSource] = useState<'live' | 'estimated' | null>(null);
+
+  // Which feed variant the user last saw — so feed_composed fires once per
+  // variant change, not on every recomposition.
+  const feedVariantRef = useRef<string | null>(null);
+  // Drops out-of-order fetch resolutions when connection state changes mid-flight.
+  const feedRequestRef = useRef(0);
+
+  const loadPersonalizedFeed = useCallback((connected: boolean) => {
+    const requestId = ++feedRequestRef.current;
     fetchPersonalizedMoves().then(personalizedMoves => {
-      if (personalizedMoves && personalizedMoves.length > 0) {
-        const personalizedItems: FeedItem[] = personalizedMoves.slice(0, 5).map(m => ({
-          id: `move-${m.id}`,
-          type: 'move' as const,
-          data: m,
-        }));
-        setFeed(() => {
-          const base = buildFeed(ALL_MOVES, INSIGHTS, []);
-          base.splice(1, 0, ...personalizedItems);
-          return base;
-        });
+      if (requestId !== feedRequestRef.current) return;
+      const next = composeFeed(buildFeed(ALL_MOVES, INSIGHTS, []), personalizedMoves, connected);
+      setFeed(next);
+      const variant = personalizedMoves && personalizedMoves.length > 0
+        ? 'personalized' : connected ? 'default' : 'connect';
+      if (feedVariantRef.current !== variant) {
+        feedVariantRef.current = variant;
+        track(EVENTS.FEED_COMPOSED, { variant, items: next.length });
       }
     });
   }, []);
 
-  // Initial load: streak, nudge dismissed flag, member count
+  // Initial load: streak (read-only — actions extend it, not opens), lifetime
+  // XP, today's move count, nudge dismissed flag, member count.
   useEffect(() => {
-    updateStreak().then(setStreakDays);
+    getStreak().then(setStreakDays);
+    loadStats().then(stats => {
+      setTotalXP(stats.xpTotal);
+      setMovesTodayBase(stats.movesActedToday);
+    });
     getUnreadCount().then(setNotifCount).catch(() => {});
     AsyncStorage.getItem('@vault_plaid_nudge_dismissed').then(val => {
       if (val === 'true') setShowPlaidNudge(false);
@@ -204,10 +224,37 @@ export default function HomeScreen() {
     fetchMemberCount().then(count => { if (count) setMemberCount(count); });
   }, []);
 
-  // Reload personalized feed whenever Plaid connection status changes
+  // Daily Open: fetch today's velocity score, record it as today's snapshot,
+  // compute the delta vs yesterday, and refresh the weekly recap push with
+  // current numbers. Live score first; onboarding estimate as fallback.
   useEffect(() => {
-    loadPersonalizedFeed();
-  }, [plaidConnected, loadPersonalizedFeed]);
+    let cancelled = false;
+    (async () => {
+      try {
+        let source: 'live' | 'estimated' = 'live';
+        let s = await fetchLiveScore();
+        if (!s) { s = await fetchProfileScore(); source = 'estimated'; }
+        if (!s || cancelled) return;
+        const stats = await recordDailyScore(s.total);
+        if (cancelled) return;
+        setBriefScore(s.total);
+        setBriefSource(source);
+        setBriefDelta(dailyDelta(stats, s.total));
+        syncWeeklyRecap(weeklyVelocityGain(stats, s.total)).catch(() => {});
+      } catch {
+        // brief shows its syncing state; non-fatal
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  // Reload personalized feed whenever Plaid connection status changes.
+  // Waits for the context's first load so a connected user never sees the
+  // connect-to-unlock card flash in (and the list never re-anchors mid-view).
+  useEffect(() => {
+    if (!plaidReady) return;
+    loadPersonalizedFeed(plaidConnected);
+  }, [plaidReady, plaidConnected, loadPersonalizedFeed]);
   const [notifCount, setNotifCount] = useState(0);
   const [itemHeight, setItemHeight] = useState(Dimensions.get('window').height);
 
@@ -274,14 +321,28 @@ export default function HomeScreen() {
     });
   }, []);
 
-  const handleAct = useCallback((moveTitle: string) => {
+  const handleAct = useCallback((move: WealthMove, index: number) => {
     // Guard against double-fire from rapid taps
     if (isAnimating.current) return;
-    const xp  = pickXP();
-    const msg = pickMsg();
+    const moveTitle = move.title;
+    const xp = xpForMove(move); // deterministic: effort + personalized bonus
     const newCount = actedCount + 1;
+    const movesToday = movesTodayBase + newCount;
+    const closedNow = movesToday === DAILY_MOVES_TARGET;
+    const msg = closedNow ? 'Vault closed for today ✓' : pickMsg();
     setActedCount(newCount);
     setTotalXP(prev => prev + xp);
+    track(EVENTS.MOVE_ACTED, {
+      move_id: move.id, personalized: !!move.personalized, index, xp, moves_today: movesToday,
+    });
+    if (closedNow) {
+      track(EVENTS.VAULT_CLOSED, { moves_today: movesToday });
+    }
+    // Streaks reward action: the first completed move of the day extends it.
+    recordActionStreak().then(({ streak, extended }) => {
+      setStreakDays(streak);
+      if (extended) track(EVENTS.STREAK_EXTENDED, { streak });
+    }).catch(() => {});
     // Durably record the move so Challenges + Achievements reflect real activity.
     recordMove(xp).catch(() => {});
     // Share it with the cohort so other members can see and react; the id
@@ -301,12 +362,15 @@ export default function HomeScreen() {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
     }, 80);
     showReward(xp, msg, moveTitle);
-  }, [showReward, actedCount, plaidConnected]);
+  }, [showReward, actedCount, movesTodayBase, plaidConnected]);
 
-  const handleSkip = useCallback(() => {
+  const handleSkip = useCallback((move?: WealthMove, index?: number) => {
     if (isAnimating.current) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
     isAnimating.current = true;
+    if (move) {
+      track(EVENTS.MOVE_SKIPPED, { move_id: move.id, personalized: !!move.personalized, index });
+    }
     scrollToNext();
     setTimeout(() => { isAnimating.current = false; }, 500);
   }, [scrollToNext]);
@@ -331,15 +395,37 @@ export default function HomeScreen() {
 
   const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 50 }).current;
 
+  // Browser scroll anchoring keeps the OLD first card in view when the
+  // composed feed prepends the #1 move, silently landing the user on card 2.
+  // Layout effect = snap back to the opener before paint (no flash) — but
+  // never yank a user who has already started browsing.
+  useLayoutEffect(() => {
+    if (currentIndexRef.current === 0) {
+      flatListRef.current?.scrollToOffset({ offset: 0, animated: false });
+    }
+  }, [feed]);
+
   const feedLength = feed.length;
 
   const renderItem = useCallback(({ item, index }: { item: FeedItem; index: number }) => (
     <View style={{ height: itemHeight, width: '100%' }}>
+      {item.type === 'brief' && (
+        <DailyBriefCard
+          delta={briefDelta}
+          scoreTotal={briefScore}
+          scoreSource={briefSource}
+          streakDays={streakDays}
+          movesToday={movesTodayBase + actedCount}
+          onStart={scrollToNext}
+          index={index}
+          total={feedLength}
+        />
+      )}
       {item.type === 'move' && (
         <FeedMoveCard
           move={item.data as WealthMove}
-          onAct={() => handleAct((item.data as WealthMove).title)}
-          onSkip={handleSkip}
+          onAct={() => handleAct(item.data as WealthMove, index)}
+          onSkip={() => handleSkip(item.data as WealthMove, index)}
           onAskConcierge={() => {
             setConciergePrompt(`Tell me more about this WealthMove: "${(item.data as WealthMove).title}"`);
             setShowConcierge(true);
@@ -372,8 +458,17 @@ export default function HomeScreen() {
           onComplete={scrollToNext}
         />
       )}
+      {item.type === 'connect' && (
+        <FeedConnectCard
+          index={index}
+          total={feedLength}
+          onConnect={() => setShowPlaid(true)}
+          onSkip={() => handleSkip()}
+        />
+      )}
     </View>
-  ), [itemHeight, handleAct, handleSkip, handleSave, feedLength, scrollToNext]);
+  ), [itemHeight, handleAct, handleSkip, handleSave, feedLength, scrollToNext,
+      briefDelta, briefScore, briefSource, streakDays, movesTodayBase, actedCount]);
 
   return (
     <View style={styles.root}>
@@ -391,7 +486,7 @@ export default function HomeScreen() {
           <View style={styles.headerRight}>
             {totalXP > 0 && (
               <View style={styles.xpChip}>
-                <Text style={styles.xpTxt}>+{totalXP} XP</Text>
+                <Text style={styles.xpTxt}>{totalXP.toLocaleString()} XP</Text>
               </View>
             )}
             <TierBadge tier={realProfile.tier} size="sm" showLabel={false} />
@@ -539,6 +634,7 @@ export default function HomeScreen() {
         onClose={() => setShowPlaid(false)}
         onSuccess={() => {
           setShowPlaid(false);
+          track(EVENTS.PLAID_LINK_SUCCEEDED, { source: 'home_feed' });
           refreshPlaid();
         }}
       />

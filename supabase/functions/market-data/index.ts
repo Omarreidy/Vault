@@ -1,10 +1,13 @@
-const cors = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+import { requireUser, corsHeaders as cors } from '../_shared/auth.ts';
+import { allowRequest, tooManyRequests } from '../_shared/ratelimit.ts';
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
+
+  // Signed-in members only, and throttled — this burns shared Finnhub quota.
+  let user: { id: string };
+  try { user = await requireUser(req); } catch (r) { return r as Response; }
+  if (!(await allowRequest(user.id, 'market-data', 30, 60))) return tooManyRequests();
 
   try {
     const fh = Deno.env.get('FINNHUB_KEY')!;
@@ -63,7 +66,7 @@ Deno.serve(async (req) => {
     });
   } catch (err) {
     console.error(err);
-    return new Response(JSON.stringify({ error: String(err) }), {
+    return new Response(JSON.stringify({ error: 'Request failed' }), {
       status: 500, headers: { ...cors, 'Content-Type': 'application/json' },
     });
   }

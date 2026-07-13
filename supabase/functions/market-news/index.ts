@@ -1,7 +1,5 @@
-const cors = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+import { requireUser, corsHeaders as cors } from '../_shared/auth.ts';
+import { allowRequest, tooManyRequests } from '../_shared/ratelimit.ts';
 
 const CATEGORY_MAP: Record<string, string> = {
   'federal reserve': 'FED', 'fed ': 'FED', 'interest rate': 'FED', 'fomc': 'FED',
@@ -32,6 +30,12 @@ function sentiment(headline: string): string {
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
+
+  // Signed-in members only, and throttled — Alpha Vantage's free tier is only
+  // ~25 requests/day total, so an unauthenticated endpoint is trivially drained.
+  let user: { id: string };
+  try { user = await requireUser(req); } catch (r) { return r as Response; }
+  if (!(await allowRequest(user.id, 'market-news', 20, 60))) return tooManyRequests();
 
   try {
     const fhKey = Deno.env.get('FINNHUB_KEY')!;
@@ -81,7 +85,7 @@ Deno.serve(async (req) => {
     });
   } catch (err) {
     console.error(err);
-    return new Response(JSON.stringify({ error: String(err) }), {
+    return new Response(JSON.stringify({ error: 'Request failed' }), {
       status: 500, headers: { ...cors, 'Content-Type': 'application/json' },
     });
   }

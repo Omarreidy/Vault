@@ -7,8 +7,13 @@
  */
 import { test, mock, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { updateStreak, getStreak } from '../src/services/streak';
+import { recordActionStreak, getStreak } from '../src/services/streak';
 import { loadStats, recordMove, addXP, recordScoreVisit, weeklyVelocityGain } from '../src/services/progressStats';
+
+// Streaks now extend on completed moves (recordActionStreak) instead of app
+// opens, but the calendar math under test is identical — adapt the old
+// number-returning shape so every boundary assertion below stays exact.
+const updateStreak = async () => (await recordActionStreak()).streak;
 
 const store: Map<string, string> = (globalThis as any).__asyncStore;
 

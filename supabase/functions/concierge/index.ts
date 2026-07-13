@@ -1,5 +1,6 @@
 import Anthropic from 'npm:@anthropic-ai/sdk@0.99.0';
 import { requireUser, corsHeaders } from '../_shared/auth.ts';
+import { allowRequest, tooManyRequests } from '../_shared/ratelimit.ts';
 import { buildSystemPrompt } from './prompt.ts';
 
 Deno.serve(async (req) => {
@@ -8,7 +9,9 @@ Deno.serve(async (req) => {
   }
 
   // Signed-in members only — this endpoint spends real Anthropic tokens.
-  try { await requireUser(req); } catch (r) { return r as Response; }
+  let user: { id: string };
+  try { user = await requireUser(req); } catch (r) { return r as Response; }
+  if (!(await allowRequest(user.id, 'concierge', 20, 60))) return tooManyRequests();
 
   try {
     const { messages, userContext } = await req.json();

@@ -17,6 +17,8 @@ export interface VaultStats {
   xpTotal: number;             // lifetime XP
   xpWeek: number;              // resets weekly
   weekStartScore: number | null; // velocity score snapshot at start of week
+  lastKnownScore: number | null; // most recent velocity score seen (any day)
+  prevDayScore: number | null;   // lastKnownScore as of the last day rollover
   dayStamp: string;            // YYYY-MM-DD of last daily window
   weekStamp: string;           // YYYY-MM-DD (Monday) of last weekly window
 }
@@ -55,6 +57,8 @@ function fresh(): VaultStats {
     xpTotal: 0,
     xpWeek: 0,
     weekStartScore: null,
+    lastKnownScore: null,
+    prevDayScore: null,
     dayStamp: todayStr(),
     weekStamp: mondayStr(),
   };
@@ -71,6 +75,8 @@ export async function loadStats(): Promise<VaultStats> {
     s.xpTotal = toCount(s.xpTotal);
     s.xpWeek  = toCount(s.xpWeek);
     if (s.weekStartScore !== null && !Number.isFinite(s.weekStartScore)) s.weekStartScore = null;
+    if (s.lastKnownScore !== null && !Number.isFinite(s.lastKnownScore)) s.lastKnownScore = null;
+    if (s.prevDayScore !== null && !Number.isFinite(s.prevDayScore)) s.prevDayScore = null;
 
     const today = todayStr();
     const monday = mondayStr();
@@ -80,6 +86,8 @@ export async function loadStats(): Promise<VaultStats> {
       s.movesActedToday = 0;
       s.scoreVisitedToday = false;
       s.conciergeUsedToday = false;
+      // Yesterday's closing score becomes today's comparison baseline.
+      if (s.lastKnownScore !== null) s.prevDayScore = s.lastKnownScore;
       s.dayStamp = today;
       changed = true;
     }
@@ -135,6 +143,28 @@ export async function recordConcierge(): Promise<VaultStats> {
   const s = await loadStats();
   s.conciergeUsedToday = true;
   return save(s);
+}
+
+/**
+ * Records the latest velocity score for daily-delta tracking. The first score
+ * ever seen becomes its own baseline (delta 0) so the Daily Open never shows
+ * a fake jump on install day.
+ */
+export async function recordDailyScore(score: number): Promise<VaultStats> {
+  const s = await loadStats();
+  if (!Number.isFinite(score)) return s;
+  if (s.prevDayScore === null && s.lastKnownScore === null) s.prevDayScore = score;
+  s.lastKnownScore = score;
+  // The weekly snapshot also anchors here so the recap works even for users
+  // who never visit the Score tab.
+  if (s.weekStartScore === null) s.weekStartScore = score;
+  return save(s);
+}
+
+/** Velocity change since yesterday's baseline; null until a baseline exists. */
+export function dailyDelta(stats: VaultStats, currentScore: number): number | null {
+  if (stats.prevDayScore === null || !Number.isFinite(currentScore)) return null;
+  return currentScore - stats.prevDayScore;
 }
 
 /** Weekly velocity gain (current score minus the snapshot taken at week start). */

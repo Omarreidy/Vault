@@ -1,9 +1,11 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useState, useEffect } from 'react';
 import { TierName } from '../types';
-import { getTierFromScore, getTierProgress } from './velocity';
-import { supabase } from './supabase';
+import { supabase, functionAuthHeaders } from './supabase';
 import { postActivity } from './cohort';
+import { computeOnboardingScore, Gap } from './onboardingScore';
+
+const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? 'https://gvdfypehwmemootjizmd.supabase.co';
 
 export interface OnboardingAnswers {
   name: string;
@@ -21,110 +23,15 @@ export interface OnboardingResult {
   gaps: Gap[];
 }
 
-export interface Gap {
-  icon: string;
-  text: string;
-}
+export type { Gap } from './onboardingScore';
 
-const AGE_SCORES: Record<string, number> = {
-  '18–24': 190,
-  '25–34': 290,
-  '35–44': 400,
-  '45+':   360,
-};
-
-const INCOME_MULTIPLIERS: Record<string, number> = {
-  'Under $40K':   0.82,
-  '$40K – $70K':  0.94,
-  '$70K – $120K': 1.08,
-  '$120K+':       1.18,
-};
-
-const GOAL_BOOSTS: Record<string, number> = {
-  'Build wealth':     30,
-  'Get out of debt':  10,
-  'Save more':        20,
-  'Grow investments': 40,
-};
-
-// Gap text varies by income so specific numbers are never embarrassingly wrong
-function buildGaps(goal: string, income: string): Gap[] {
-  const isLowIncome  = income === 'Under $40K';
-  const isHighIncome = income === '$120K+';
-
-  switch (goal) {
-    case 'Build wealth':
-      return [
-        {
-          icon: '📈',
-          text: isLowIncome
-            ? 'You may be missing employer match — even small contributions compound fast'
-            : `You may be leaving ${isHighIncome ? '$3,000+' : '$1,200+'}/yr in unclaimed employer match`,
-        },
-        {
-          icon: '💤',
-          text: isLowIncome
-            ? 'Cash sitting idle in checking is losing value to inflation every day'
-            : `Cash sitting idle in checking is likely earning near zero — a HYSA earns 50x more`,
-        },
-        { icon: '🔍', text: 'Subscription charges you\'ve forgotten are quietly draining your account' },
-      ];
-
-    case 'Get out of debt':
-      return [
-        { icon: '⛓', text: 'High-interest debt is costing you more annually than most investments earn' },
-        { icon: '💳', text: 'You may qualify for a balance transfer at 0% APR — most people never check' },
-        { icon: '📉', text: 'Minimum payments keep you in debt 4x longer than a targeted paydown plan' },
-      ];
-
-    case 'Save more':
-      return [
-        {
-          icon: '💤',
-          text: isLowIncome
-            ? 'Cash in checking earns near zero — a high-yield account costs nothing to open'
-            : 'Cash sitting in checking is losing purchasing power while HYSA rates sit above 4%',
-        },
-        { icon: '🔍', text: 'Forgotten subscriptions are likely costing more than you think per year' },
-        { icon: '🛡', text: 'Most people are 1–2 months short of a real emergency fund cushion' },
-      ];
-
-    case 'Grow investments':
-      return [
-        {
-          icon: '📈',
-          text: isLowIncome
-            ? 'Even small employer match contributions are a 100% instant return — easy to miss'
-            : `You may be leaving ${isHighIncome ? '$3,000+' : '$1,200+'}/yr in unclaimed employer match`,
-        },
-        { icon: '💡', text: 'Your current allocation may be more conservative than your age and timeline warrant' },
-        {
-          icon: '⚡',
-          text: isHighIncome
-            ? 'Increasing contributions by $400/month now could mean $360K+ extra at 60'
-            : 'Investing $100–200/month more now could mean $150K+ extra at retirement',
-        },
-      ];
-
-    default:
-      return buildGaps('Build wealth', income);
-  }
-}
-
+// Client-side estimate — drives the reveal animation ONLY. The value persisted
+// to `profiles` is recomputed authoritatively by the submit-onboarding edge
+// function from the same shared formula (qa/FINANCIAL_SPEC.md §12, D1), so the
+// number shown here always matches the number stored.
 export function calculateOnboardingScore(answers: OnboardingAnswers): OnboardingResult {
-  const base       = AGE_SCORES[answers.age] ?? 290;
-  const multiplier = INCOME_MULTIPLIERS[answers.income] ?? 1.0;
-  const boost      = GOAL_BOOSTS[answers.goal] ?? 20;
-  const raw        = Math.round(base * multiplier + boost);
-  // Allow Bronze at the low end; cap below Platinum so real data drives tier growth
-  const score      = Math.min(Math.max(raw, 150), 620);
-
-  const tier        = getTierFromScore(score);
-  const tierProgress = getTierProgress(score);
-  const percentile  = Math.round((score / 10) * 0.95); // kept for DB compat, not shown in UI
-  const gaps        = buildGaps(answers.goal, answers.income);
-
-  return { name: '', score, tier, tierProgress, percentile, gaps };
+  const r = computeOnboardingScore(answers);
+  return { name: '', score: r.score, tier: r.tier as TierName, tierProgress: r.tierProgress, percentile: r.percentile, gaps: r.gaps };
 }
 
 const ONBOARDING_RESULT_KEY   = '@vault_onboarding_result';
@@ -173,22 +80,34 @@ export async function getTrajectoryInputs(): Promise<StoredTrajectoryInputs | nu
   }
 }
 
-export async function markOnboardingComplete(result: OnboardingResult): Promise<void> {
+export async function markOnboardingComplete(
+  result: OnboardingResult,
+  answers?: OnboardingAnswers,
+): Promise<void> {
   await AsyncStorage.setItem(ONBOARDING_RESULT_KEY, JSON.stringify(result));
 
   const { data: { user } } = await supabase.auth.getUser();
-  if (user) {
-    await supabase.from('profiles').update({
-      name: result.name,
-      score: result.score,
-      tier: result.tier,
-      tier_progress: result.tierProgress,
-      percentile: result.percentile,
-      onboarding_complete: true,
-    }).eq('id', user.id);
-    // Announce the new member to the cohort feed; best-effort.
-    postActivity('joined', 'Joined VAULT', 'New member in the cohort. First move unlocked.').catch(() => {});
+  if (!user) return;
+
+  // Score/tier/percentile are guarded columns — clients cannot write them
+  // (D1). The edge function recomputes them from the raw answers under the
+  // service role and persists authoritatively. `name` is passed through; the
+  // client only supplies inputs, never the resulting score.
+  const payload = answers
+    ? { name: result.name, age: answers.age, income: answers.income, goal: answers.goal }
+    : { name: result.name };
+  try {
+    await fetch(`${SUPABASE_URL}/functions/v1/submit-onboarding`, {
+      method: 'POST',
+      headers: await functionAuthHeaders(),
+      body: JSON.stringify(payload),
+    });
+  } catch {
+    // Non-fatal: local reveal + AsyncStorage already reflect the result; the
+    // score can be reconciled on next score fetch / app open.
   }
+  // Announce the new member to the cohort feed; best-effort.
+  postActivity('joined', 'Joined VAULT', 'New member in the cohort. First move unlocked.').catch(() => {});
 }
 
 export async function resetOnboarding(): Promise<void> {

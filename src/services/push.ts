@@ -1,6 +1,7 @@
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from './supabase';
+import { buildWeeklyRecapBody } from './ritual';
 
 // Must match app.json → extra.eas.projectId (required by getExpoPushTokenAsync).
 const EAS_PROJECT_ID = '1bd77465-3a6e-4210-a447-faee867083cb';
@@ -9,6 +10,7 @@ const EAS_PROJECT_ID = '1bd77465-3a6e-4210-a447-faee867083cb';
 const NOTIF_PREFS_KEY = '@vault_notif_prefs';
 
 const DAILY_REMINDER_ID = 'vault-daily-streak';
+const WEEKLY_RECAP_ID   = 'vault-weekly-recap';
 
 // expo-notifications is loaded lazily so the web export (Vercel) never
 // bundles/executes native notification code.
@@ -120,13 +122,57 @@ export async function syncDailyReminder(): Promise<void> {
       identifier: DAILY_REMINDER_ID,
       content: {
         title: '🔥 Protect your streak',
-        body: "Today's wealth moves are ready. One open keeps your streak alive.",
+        body: "Today's wealth moves are ready. One move keeps your streak alive.",
         sound: 'default',
       },
       trigger: {
         type: Notifications.SchedulableTriggerInputTypes.DAILY,
         hour: 17,
         minute: 0,
+      },
+    });
+  } catch {
+    // non-fatal
+  }
+}
+
+/**
+ * Weekly velocity recap — "+12 pts this week — see what moved." Re-synced on
+ * every app open with the latest weekly gain so the Sunday-evening delivery
+ * carries current numbers. Fixed identifier keeps it idempotent; the Settings
+ * "weekly" toggle controls it.
+ */
+export async function syncWeeklyRecap(weeklyGain?: number): Promise<void> {
+  const Notifications = getNotifications();
+  if (!Notifications) return;
+
+  try {
+    let weeklyOn = true;
+    try {
+      const raw = await AsyncStorage.getItem(NOTIF_PREFS_KEY);
+      if (raw) weeklyOn = JSON.parse(raw).weekly !== false;
+    } catch {}
+
+    if (!weeklyOn) {
+      await Notifications.cancelScheduledNotificationAsync(WEEKLY_RECAP_ID);
+      return;
+    }
+
+    const { status } = await Notifications.getPermissionsAsync();
+    if (status !== 'granted') return;
+
+    await Notifications.scheduleNotificationAsync({
+      identifier: WEEKLY_RECAP_ID,
+      content: {
+        title: '✦ Your week in wealth',
+        body: buildWeeklyRecapBody(weeklyGain),
+        sound: 'default',
+      },
+      trigger: {
+        type: Notifications.SchedulableTriggerInputTypes.WEEKLY,
+        weekday: 1, // Sunday
+        hour: 17,
+        minute: 30,
       },
     });
   } catch {

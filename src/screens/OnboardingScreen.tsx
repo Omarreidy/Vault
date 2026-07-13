@@ -166,7 +166,7 @@ export default function OnboardingScreen({ onComplete }: Props) {
     if (!result) return;
     const answers: OnboardingAnswers = { name: name.trim(), age, income, goal };
     await storeOnboardingAnswers(answers);
-    await markOnboardingComplete({ ...result, name: name.trim() });
+    await markOnboardingComplete({ ...result, name: name.trim() }, answers);
     onComplete();
   };
 

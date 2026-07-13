@@ -14,9 +14,9 @@ Automated regression tests live in `tests/` (`npm test`).
 | Data | Where it lives | Written by | Trust level |
 |---|---|---|---|
 | Bank accounts + transactions | `plaid_items.accounts / .transactions` (jsonb snapshot) | `plaid-exchange`, `plaid-refresh` edge functions (service role) | **Server** — client can read own rows; RLS blocks cross-user |
-| Velocity score / tier / percentile | `profiles.score/tier/percentile` | `calculate-score` edge fn **and** client onboarding | ⚠️ **Client-writable** (see §12, D1) |
-| Premium entitlement | `profiles.is_premium` | `premium.ts` client sync from RevenueCat | ⚠️ **Client-writable** (D1) |
-| Referral XP | `profiles.referral_xp` | `redeem_referral_code` RPC (security definer) — but also client-writable via RLS | ⚠️ (D1) |
+| Velocity score / tier / percentile | `profiles.score/tier/percentile` | `calculate-score` + `submit-onboarding` edge fns (service role) | **Server** — client writes frozen by guard trigger (D1 fixed) |
+| Premium entitlement | `profiles.is_premium` | `revenuecat-webhook` edge fn (service role) | **Server** — client writes frozen by guard trigger (D1 fixed) |
+| Referral XP | `profiles.referral_xp` | `redeem_referral_code` RPC (security definer, guard-bypass) | **Server** — client writes frozen by guard trigger (D1 fixed) |
 | Streak / daily stats / goals / achievements / XP | AsyncStorage (device only) | client | Client-only by design (cosmetic gamification; not billed, not cross-user) — except streak milestones are broadcast to the cohort feed |
 | Transaction snapshot window | last **30 days** at time of exchange/refresh | server | Server |
 
@@ -205,27 +205,49 @@ cosmetic rewards, but streak milestones posted to the cohort feed are client-ass
 
 ## 12. Subscription entitlements
 
-- RevenueCat is the intended source of truth; `premium.ts` mirrors the active `premium` entitlement into
-  `profiles.is_premium` at launch/purchase/restore. If RevenueCat is unreachable (billing event delayed,
-  offline) it returns `null` and **writes nothing** — a paid user is never silently downgraded (tested).
-  A *delayed* billing event that RevenueCat reports as expired **will** clear the flag until the event lands —
-  no grace period. Documented risk.
-- Free concierge limit = 5 messages/day, counted in **AsyncStorage** and checked **only in the UI**.
+- RevenueCat is the source of truth. As of the D1 fix, the **RevenueCat webhook → `revenuecat-webhook`
+  edge function (service role)** is the ONLY writer of `profiles.is_premium`. The client (`premium.ts`) no
+  longer writes it — it reads the server truth and briefly polls after a purchase so the webhook's write is
+  reflected without an app restart. On web / when unknown it returns `null`; a paid user is never silently
+  downgraded (tested).
+- Free concierge limit = 5 messages/day, counted in **AsyncStorage** and checked **only in the UI** (see
+  remaining risk below — not yet server-enforced).
 
-**DEFECT D1 (CRITICAL — documented, not fixed in this pass):** `profiles` RLS allows unrestricted
-self-update, so any authenticated user can `PATCH` their own row and set `is_premium = true`,
-`score = 1000`, `tier = 'BLACK'`, `percentile`, or `referral_xp` with nothing but the public anon key —
-bypassing the paywall and topping the leaderboard. The concierge / scanner edge functions authenticate the
-JWT but check **no entitlement and no rate limit**, so the 5-message free limit is also bypassable by calling
-the function directly.
-**Why not fixed here:** the app's own legitimate flows currently write these columns from the client
-(onboarding writes score/tier; `premium.ts` writes is_premium), and the same JWT performs both the legitimate
-and the malicious write — no RLS policy can distinguish them. The fix is architectural and needs deploy
-access + a RevenueCat server key:
-1. RevenueCat **webhook → edge function** (service role) as the only writer of `is_premium`; column-guard
-   trigger rejecting client updates to `is_premium/score/tier/percentile/referral_xp`;
-2. move the onboarding score write into an edge function (formula is already deterministic);
-3. concierge/scanner check `is_premium` + a server-side daily counter before spending Anthropic tokens.
+**DEFECT D1 (CRITICAL — FIXED 2026-07-12):** previously `profiles` RLS allowed unrestricted self-update, so
+any authenticated user could `PATCH` their own row and set `is_premium = true`, `score = 1000`,
+`tier = 'BLACK'`, `percentile`, or `referral_xp` with nothing but the public anon key — bypassing the paywall
+and topping the leaderboard.
+
+**Fix (migration `20260712000000_guard_profile_columns.sql`, applied to prod):** a `BEFORE UPDATE` trigger on
+`profiles` freezes the sensitive columns (`is_premium`, `premium_since`, `score`, `tier`, `tier_progress`,
+`percentile`, `referral_xp`, `referred_by`, `referred_at`) for any PostgREST caller carrying an
+`authenticated`/`anon` JWT. The RLS "update own profile" policy stays, so a client's `update … set name` still
+succeeds — only the protected fields are silently reverted to their OLD values. Trusted writers pass through:
+the **service role** (edge functions), **direct DB connections** (SQL editor / migrations), and
+**SECURITY DEFINER RPCs** that opt in via `set local app.guard_bypass = 'on'` (the referral RPC, so it can
+still award `referral_xp`). The legitimate writers are now:
+1. `calculate-score` (service role) — score/tier/percentile from Plaid data;
+2. `submit-onboarding` (service role) — recomputes the onboarding score from raw quiz answers so the client
+   never supplies the number (shared formula in `onboardingScore.ts` ⇆ `_shared/onboarding.ts`, parity-tested);
+3. `revenuecat-webhook` (service role, `--no-verify-jwt`, static-secret auth) — sole writer of `is_premium`;
+4. `redeem_referral_code` RPC — `referral_xp` via the bypass flag.
+
+**Verified in prod (2026-07-12):** signed in as a real user and attempted the exact attack
+(`PATCH is_premium=true, score=1000, tier=BLACK, referral_xp=999999`) — the request returned 200 but every
+guarded column stayed frozen while `name` updated normally; `calculate-score` (service role) still persists
+scores through the guard; the webhook rejects a wrong secret with 401 and accepts the configured secret.
+
+**One manual step remains** to close the is_premium hole fully: configure the RevenueCat webhook in the
+RevenueCat dashboard (Project → Integrations → Webhooks): URL
+`https://gvdfypehwmemootjizmd.supabase.co/functions/v1/revenuecat-webhook`, Authorization header set to the
+value stored in the Supabase secret `REVENUECAT_WEBHOOK_SECRET`. Until then, `is_premium` is no longer
+client-writable (the hole is closed) but nothing sets it on purchase, so premium won't provision — fine while
+there are no live payers.
+
+**Still open (tracked, not part of D1's column-guard):** the concierge / scanner edge functions authenticate
+the JWT but enforce **no entitlement check and no server-side rate limit**, so the 5-message/day free limit
+(client-only) is still bypassable by calling the function directly. This is a token-cost/DoS concern, not a
+data-integrity one; a server-side per-user daily counter + `is_premium` gate is the follow-up.
 
 ## 13. AI features (concierge, scanner)
 

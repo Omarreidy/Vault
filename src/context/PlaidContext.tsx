@@ -30,6 +30,10 @@ export interface PlaidSummary {
 
 interface PlaidContextType {
   plaidConnected: boolean;
+  // False until the first load completes — consumers that branch on
+  // plaidConnected (e.g. the feed's connect-to-unlock card) should wait for
+  // this so a connected user never flashes the disconnected experience.
+  plaidReady: boolean;
   plaidSummary: PlaidSummary | null;
   refresh: () => Promise<void>;       // read stored snapshot
   hardRefresh: () => Promise<void>;   // re-pull from Plaid, then read
@@ -37,6 +41,7 @@ interface PlaidContextType {
 
 const PlaidContext = createContext<PlaidContextType>({
   plaidConnected: false,
+  plaidReady: false,
   plaidSummary: null,
   refresh: async () => {},
   hardRefresh: async () => {},
@@ -44,6 +49,7 @@ const PlaidContext = createContext<PlaidContextType>({
 
 export function PlaidProvider({ children }: { children: React.ReactNode }) {
   const [plaidConnected, setPlaidConnected] = useState(false);
+  const [plaidReady, setPlaidReady] = useState(false);
   const [plaidSummary, setPlaidSummary] = useState<PlaidSummary | null>(null);
   const lastHardRefresh = useRef(0);
   const refreshing = useRef(false);
@@ -84,6 +90,8 @@ export function PlaidProvider({ children }: { children: React.ReactNode }) {
       });
     } catch {
       // silent — don't crash if offline
+    } finally {
+      setPlaidReady(true);
     }
   }, []);
 
@@ -132,7 +140,7 @@ export function PlaidProvider({ children }: { children: React.ReactNode }) {
   }, [hardRefresh]);
 
   return (
-    <PlaidContext.Provider value={{ plaidConnected, plaidSummary, refresh: load, hardRefresh }}>
+    <PlaidContext.Provider value={{ plaidConnected, plaidReady, plaidSummary, refresh: load, hardRefresh }}>
       {children}
     </PlaidContext.Provider>
   );

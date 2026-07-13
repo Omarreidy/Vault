@@ -206,17 +206,29 @@ export default function FeedMoveCard({ move, onAct, onSkip, onAskConcierge, inde
 
         <View>
           <View style={styles.topRow}>
-            <View style={[styles.tag, { backgroundColor: meta.accent + '15', borderColor: meta.accent + '35' }]}>
-              <View style={[styles.tagDot, { backgroundColor: meta.accent }]} />
-              <Text style={[styles.tagTxt, { color: meta.accent }]}>{meta.tag}</Text>
+            <View style={styles.tagGroup}>
+              <View style={[styles.tag, { backgroundColor: meta.accent + '15', borderColor: meta.accent + '35' }]}>
+                <View style={[styles.tagDot, { backgroundColor: meta.accent }]} />
+                <Text style={[styles.tagTxt, { color: meta.accent }]}>{meta.tag}</Text>
+              </View>
+              {move.personalized && (
+                <View style={styles.liveTag}>
+                  <View style={styles.liveTagDot} />
+                  <Text style={styles.liveTagTxt}>YOUR ACCOUNTS</Text>
+                </View>
+              )}
             </View>
             <View style={styles.topRight}>
-              <Text style={styles.effort}>{EFFORT[move.effort]}</Text>
+              {/* Effort yields to the provenance badge on narrow screens */}
+              {!move.personalized && <Text style={styles.effort}>{EFFORT[move.effort]}</Text>}
               <Text style={styles.counter}>{index + 1} / {total}</Text>
             </View>
           </View>
 
           <View style={styles.body}>
+            {move.personalized && index === 0 && (
+              <Text style={styles.firstMoveEyebrow}>YOUR #1 MOVE TODAY</Text>
+            )}
             <Text style={styles.title} numberOfLines={3}>{move.title}</Text>
             <Text style={styles.desc} numberOfLines={5}>{move.description}</Text>
           </View>
@@ -315,6 +327,21 @@ const styles = StyleSheet.create({
   },
 
   topRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  tagGroup: { flexDirection: 'row', alignItems: 'center', gap: 6, flexShrink: 1 },
+  liveTag: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    paddingHorizontal: 10, paddingVertical: 5,
+    borderRadius: RADIUS.full, borderWidth: 1,
+    backgroundColor: 'rgba(126,184,164,0.1)', borderColor: 'rgba(126,184,164,0.35)',
+  },
+  liveTagDot: { width: 5, height: 5, borderRadius: 2.5, backgroundColor: '#7EB8A4' },
+  liveTagTxt: { fontSize: FONTS.sizes.xs, fontWeight: FONTS.weights.bold, letterSpacing: FONTS.tracking.wide, color: '#7EB8A4' },
+  firstMoveEyebrow: {
+    fontSize: FONTS.sizes.xs,
+    color: COLORS.gold,
+    fontWeight: FONTS.weights.bold,
+    letterSpacing: FONTS.tracking.widest,
+  },
   tag: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
     paddingHorizontal: 12, paddingVertical: 5,

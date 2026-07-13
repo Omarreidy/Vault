@@ -1,8 +1,10 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { postActivity } from './cohort';
 
+// Storage keys predate the action-based streak — kept verbatim so streaks
+// earned under the old "open the app" rule carry over seamlessly.
 const STREAK_KEY      = '@vault_streak_days';
-const LAST_OPEN_KEY   = '@vault_last_open_date';
+const LAST_ACTION_KEY = '@vault_last_open_date';
 
 // Streak lengths worth announcing to the cohort.
 const STREAK_MILESTONES = [3, 7, 14, 30, 60, 100];
@@ -28,46 +30,56 @@ function parseStreak(raw: string | null, fallback: number): number {
   return Number.isFinite(n) && n > 0 ? n : fallback;
 }
 
-/** Call once on app open. Increments streak if this is a new day, resets if a day was skipped. */
-export async function updateStreak(): Promise<number> {
+export interface StreakResult {
+  streak: number;
+  /** True when this call moved the streak forward (first action of the day). */
+  extended: boolean;
+}
+
+/**
+ * Streaks reward ACTION, not attendance: call when the user completes a move.
+ * The first completed move of a calendar day extends the streak; a day with
+ * no completed moves breaks it. Idempotent within a day.
+ */
+export async function recordActionStreak(): Promise<StreakResult> {
   const today = toDateString(new Date());
-  const [lastOpen, streakRaw] = await Promise.all([
-    AsyncStorage.getItem(LAST_OPEN_KEY),
+  const [lastAction, streakRaw] = await Promise.all([
+    AsyncStorage.getItem(LAST_ACTION_KEY),
     AsyncStorage.getItem(STREAK_KEY),
   ]);
 
   const current = parseStreak(streakRaw, 0);
 
-  if (lastOpen === today) return current; // already counted today
+  if (lastAction === today) return { streak: current, extended: false }; // already counted today
 
-  const newStreak = lastOpen === yesterday() ? current + 1 : 1;
+  const newStreak = lastAction === yesterday() ? current + 1 : 1;
 
   await Promise.all([
-    AsyncStorage.setItem(LAST_OPEN_KEY, today),
+    AsyncStorage.setItem(LAST_ACTION_KEY, today),
     AsyncStorage.setItem(STREAK_KEY, String(newStreak)),
   ]);
 
-  // First open of the day that lands on a milestone — share it with the
+  // First action of the day that lands on a milestone — share it with the
   // cohort (best-effort; never blocks the streak update).
   if (STREAK_MILESTONES.includes(newStreak)) {
     postActivity(
       'streak_milestone',
       `Hit a ${newStreak}-day streak${newStreak >= 7 ? ' 🔥' : ''}`,
-      `${newStreak} consecutive days of showing up.`,
+      `${newStreak} consecutive days of real wealth moves.`,
     ).catch(() => {});
   }
 
-  return newStreak;
+  return { streak: newStreak, extended: true };
 }
 
 /** Read current streak without modifying it. Returns 0 if streak is broken. */
 export async function getStreak(): Promise<number> {
-  const [lastOpen, streakRaw] = await Promise.all([
-    AsyncStorage.getItem(LAST_OPEN_KEY),
+  const [lastAction, streakRaw] = await Promise.all([
+    AsyncStorage.getItem(LAST_ACTION_KEY),
     AsyncStorage.getItem(STREAK_KEY),
   ]);
 
   const today = toDateString(new Date());
-  if (lastOpen !== today && lastOpen !== yesterday()) return 0;
+  if (lastAction !== today && lastAction !== yesterday()) return 0;
   return parseStreak(streakRaw, 1);
 }

@@ -7,7 +7,8 @@ import * as Haptics from 'expo-haptics';
 import { GOALS, Goal, getGoalProgress, getMonthsToGoal, loadGoalsWithAutoSeed, saveGoals } from '../services/goals';
 import { ACHIEVEMENTS, getAchievements, buildAchievementContext, Achievement } from '../services/achievements';
 import { WEEKLY_CHALLENGES, DAILY_CHALLENGES, Challenge, evaluateChallenges } from '../services/challenges';
-import { loadStats, recordScoreVisit, weeklyVelocityGain } from '../services/progressStats';
+import { loadStats, recordScoreVisit, weeklyVelocityGain, addXP } from '../services/progressStats';
+import { syncWeeklyRecap } from '../services/push';
 import ScoreMeter from '../components/ScoreMeter';
 import TierBadge from '../components/TierBadge';
 import GoalCard from '../components/GoalCard';
@@ -68,6 +69,8 @@ export default function ScoreScreen() {
             conciergeUsedToday: stats.conciergeUsedToday,
             weeklyVelocityGain: weeklyVelocityGain(stats, scoreTotal),
           });
+          // Keep the Sunday recap push current with this week's gain.
+          syncWeeklyRecap(weeklyVelocityGain(stats, scoreTotal)).catch(() => {});
           setDailyChallenges(daily);
           setChallenges(weekly);
 
@@ -177,7 +180,8 @@ export default function ScoreScreen() {
     setChallenges(prev => prev.map(c => c.id === selectedChallenge.id ? updated : c));
     setSelectedChallenge(updated);
     showXP(done ? updated.reward : Math.round(updated.reward / updated.target));
-    if (done) { setChallengeComplete(true); celebrate(); }
+    // Completion credits the full reward into the one XP ledger (progressStats).
+    if (done) { addXP(updated.reward).catch(() => {}); setChallengeComplete(true); celebrate(); }
   };
 
   const handleCreateGoal = () => {
@@ -394,7 +398,7 @@ export default function ScoreScreen() {
                 <View style={styles.wTop}>
                   <Text style={styles.wIcon}>{c.icon}</Text>
                   <View style={[styles.wReward, c.completed && styles.wRewardDone]}>
-                    <Text style={[styles.wRewardTxt, c.completed && styles.wRewardTxtDone]}>{c.completed ? '✓ Earned' : `+${c.reward} pts`}</Text>
+                    <Text style={[styles.wRewardTxt, c.completed && styles.wRewardTxtDone]}>{c.completed ? '✓ Earned' : `+${c.reward} XP`}</Text>
                   </View>
                 </View>
                 <Text style={styles.wTitle}>{c.title}</Text>
@@ -414,7 +418,7 @@ export default function ScoreScreen() {
                 <View style={styles.wTop}>
                   <Text style={styles.wIcon}>{c.icon}</Text>
                   <View style={[styles.wReward, c.completed && styles.wRewardDone]}>
-                    <Text style={[styles.wRewardTxt, c.completed && styles.wRewardTxtDone]}>{c.completed ? '✓ Earned' : `+${c.reward} pts`}</Text>
+                    <Text style={[styles.wRewardTxt, c.completed && styles.wRewardTxtDone]}>{c.completed ? '✓ Earned' : `+${c.reward} XP`}</Text>
                   </View>
                 </View>
                 <Text style={styles.wTitle}>{c.title}</Text>
@@ -601,7 +605,7 @@ export default function ScoreScreen() {
             <View style={mStyles.section}>
               <View style={mStyles.rewardRow}>
                 <View style={mStyles.rewardBadge}>
-                  <Text style={mStyles.rewardTxt}>+{selectedChallenge.reward} pts on completion</Text>
+                  <Text style={mStyles.rewardTxt}>+{selectedChallenge.reward} XP on completion</Text>
                 </View>
               </View>
               <View style={mStyles.progressRow}>
@@ -620,7 +624,7 @@ export default function ScoreScreen() {
               <View style={mStyles.completeCard}>
                 <Text style={mStyles.completeEmoji}>🏆</Text>
                 <Text style={mStyles.completeTitle}>Challenge Complete!</Text>
-                <Text style={mStyles.completeSub}>+{selectedChallenge.reward} pts added to your Vault score.</Text>
+                <Text style={mStyles.completeSub}>+{selectedChallenge.reward} XP earned. Your Vault score moves when your money does.</Text>
               </View>
             ) : (
               <View style={mStyles.section}>

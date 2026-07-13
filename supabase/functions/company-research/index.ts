@@ -1,17 +1,27 @@
 import Anthropic from 'npm:@anthropic-ai/sdk@0.99.0';
-
-const cors = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+import { requireUser, corsHeaders as cors } from '../_shared/auth.ts';
+import { allowRequest, tooManyRequests } from '../_shared/ratelimit.ts';
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
 
-  try {
-    const { ticker } = await req.json();
-    if (!ticker) throw new Error('ticker required');
+  // Signed-in members only — this endpoint spends real Anthropic + FMP tokens.
+  let user: { id: string };
+  try { user = await requireUser(req); } catch (r) { return r as Response; }
+  if (!(await allowRequest(user.id, 'company-research', 12, 60))) return tooManyRequests();
 
+  // Ticker is interpolated into third-party API URLs AND the model prompt, so
+  // constrain it to a real symbol shape — no query params, paths, or prose.
+  const body = await req.json().catch(() => ({}));
+  const rawTicker = typeof body?.ticker === 'string' ? body.ticker.trim() : '';
+  if (!/^[A-Za-z][A-Za-z.\-]{0,5}$/.test(rawTicker)) {
+    return new Response(JSON.stringify({ error: 'invalid ticker' }), {
+      status: 400, headers: { ...cors, 'Content-Type': 'application/json' },
+    });
+  }
+  const ticker = rawTicker.toUpperCase();
+
+  try {
     const fmp = Deno.env.get('FMP_KEY')!;
     const fh = Deno.env.get('FINNHUB_KEY')!;
     const anthropicKey = Deno.env.get('ANTHROPIC_API_KEY')!;
@@ -182,7 +192,7 @@ Return ONLY a valid JSON object with these exact fields (no markdown, no explana
     });
   } catch (err) {
     console.error(err);
-    return new Response(JSON.stringify({ error: String(err) }), {
+    return new Response(JSON.stringify({ error: 'Research unavailable' }), {
       status: 500, headers: { ...cors, 'Content-Type': 'application/json' },
     });
   }

@@ -51,7 +51,7 @@ Deno.serve(async (req) => {
     });
   } catch (err) {
     console.error(err);
-    return new Response(JSON.stringify({ error: String(err) }), {
+    return new Response(JSON.stringify({ error: 'Request failed' }), {
       status: 500, headers: { ...cors, 'Content-Type': 'application/json' },
     });
   }

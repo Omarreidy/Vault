@@ -2,40 +2,39 @@ import { Platform } from 'react-native';
 import { supabase } from './supabase';
 
 /**
- * Mirrors the RevenueCat `premium` entitlement into `profiles.is_premium` —
- * the flag every screen gates on (via useRealProfile). Without this sync a
- * paying subscriber loses premium on their next app launch, because nothing
- * else ever persists the entitlement.
+ * Reads the authoritative premium entitlement from `profiles.is_premium`.
  *
- * Safe to call on every launch and after any purchase/restore:
- * - no-ops on web (no RevenueCat there)
- * - only writes when the stored flag actually differs
- * - never throws (returns the entitlement state, or null when unknown)
+ * As of the D1 fix (qa/FINANCIAL_SPEC.md §12) `is_premium` is a GUARDED column:
+ * clients cannot write it, and the RevenueCat webhook edge function is the ONLY
+ * writer. So the client no longer mirrors the entitlement — it just reads the
+ * server truth. After a purchase, RevenueCat fires the webhook within a few
+ * seconds; this helper briefly polls so the value it returns reflects that.
+ *
+ * - no-ops on web (no RevenueCat / native purchases there)
+ * - never throws (returns the flag, or null when unknown)
  */
-export async function syncPremiumStatus(): Promise<boolean | null> {
+export async function syncPremiumStatus(
+  opts: { attempts?: number; delayMs?: number } = {},
+): Promise<boolean | null> {
   if (Platform.OS === 'web') return null;
+  const attempts = opts.attempts ?? 4;
+  const delayMs = opts.delayMs ?? 1200;
   try {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const Purchases = require('react-native-purchases').default;
-    const info = await Purchases.getCustomerInfo();
-    const active = !!info?.entitlements?.active?.['premium'];
-
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return active;
+    if (!user) return null;
 
-    const { data: prof } = await supabase
-      .from('profiles')
-      .select('is_premium')
-      .eq('id', user.id)
-      .single();
-
-    if (prof && prof.is_premium !== active) {
-      await supabase.from('profiles').update({
-        is_premium: active,
-        ...(active ? { premium_since: new Date().toISOString() } : {}),
-      }).eq('id', user.id);
+    // Poll a few times so a just-completed purchase (webhook lands in ~1–3s)
+    // is reflected without forcing the caller to restart the app.
+    for (let attempt = 0; attempt < attempts; attempt++) {
+      const { data } = await supabase
+        .from('profiles')
+        .select('is_premium')
+        .eq('id', user.id)
+        .single();
+      if (data?.is_premium === true) return true;
+      if (attempt < attempts - 1) await new Promise(r => setTimeout(r, delayMs));
     }
-    return active;
+    return false;
   } catch {
     return null;
   }

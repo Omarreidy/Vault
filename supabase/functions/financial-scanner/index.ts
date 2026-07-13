@@ -1,16 +1,26 @@
 import Anthropic from 'npm:@anthropic-ai/sdk@0.99.0';
 import { requireUser, corsHeaders as cors } from '../_shared/auth.ts';
+import { allowRequest, tooManyRequests } from '../_shared/ratelimit.ts';
 import { parseScanResult } from './parse.ts';
+
+const ALLOWED_MIME = new Set(['image/jpeg', 'image/png', 'image/webp']);
+// Anthropic rejects images over ~5MB; base64 inflates raw bytes by ~4/3, so cap
+// the encoded string so an oversized body can't inflate a request server-side.
+const MAX_IMAGE_B64_LEN = 7_000_000;
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
 
   // Signed-in members only — this endpoint spends real Anthropic tokens.
-  try { await requireUser(req); } catch (r) { return r as Response; }
+  let user: { id: string };
+  try { user = await requireUser(req); } catch (r) { return r as Response; }
+  if (!(await allowRequest(user.id, 'financial-scanner', 15, 60))) return tooManyRequests();
 
   try {
     const { imageBase64, mimeType = 'image/jpeg' } = await req.json();
-    if (!imageBase64) throw new Error('imageBase64 required');
+    if (!imageBase64 || typeof imageBase64 !== 'string') throw new Error('imageBase64 required');
+    if (imageBase64.length > MAX_IMAGE_B64_LEN) throw new Error('image too large');
+    const media_type = ALLOWED_MIME.has(mimeType) ? mimeType : 'image/jpeg';
 
     const client = new Anthropic({ apiKey: Deno.env.get('ANTHROPIC_API_KEY')! });
 
@@ -22,7 +32,7 @@ Deno.serve(async (req) => {
         content: [
           {
             type: 'image',
-            source: { type: 'base64', media_type: mimeType, data: imageBase64 },
+            source: { type: 'base64', media_type, data: imageBase64 },
           },
           {
             type: 'text',
@@ -66,7 +76,7 @@ Rules:
     });
   } catch (err) {
     console.error(err);
-    return new Response(JSON.stringify({ error: String(err) }), {
+    return new Response(JSON.stringify({ error: 'Scan failed' }), {
       status: 500, headers: { ...cors, 'Content-Type': 'application/json' },
     });
   }

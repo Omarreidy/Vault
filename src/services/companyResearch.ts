@@ -1,5 +1,6 @@
+import { functionAuthHeaders } from './supabase';
+
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? 'https://gvdfypehwmemootjizmd.supabase.co';
-const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? 'sb_publishable_tHoiSHF-49L1_p0OLRPeKw_5mfSi0fs';
 
 const RESEARCH_TTL = 30 * 60 * 1000; // 30 minutes per ticker
 const researchCache = new Map<string, { data: any; ts: number }>();
@@ -12,11 +13,7 @@ export async function fetchCompanyResearch(ticker: string): Promise<any> {
   }
   const res = await fetch(`${SUPABASE_URL}/functions/v1/company-research`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-      'apikey': SUPABASE_ANON_KEY,
-    },
+    headers: await functionAuthHeaders(),
     body: JSON.stringify({ ticker: key }),
   });
   if (!res.ok) throw new Error('Research unavailable');

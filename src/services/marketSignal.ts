@@ -35,14 +35,9 @@ export interface NewsItem {
   url?: string;
 }
 
-const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? 'https://gvdfypehwmemootjizmd.supabase.co';
-const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? 'sb_publishable_tHoiSHF-49L1_p0OLRPeKw_5mfSi0fs';
+import { functionAuthHeaders } from './supabase';
 
-const headers = {
-  'Content-Type': 'application/json',
-  'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-  'apikey': SUPABASE_ANON_KEY,
-};
+const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? 'https://gvdfypehwmemootjizmd.supabase.co';
 
 // Fallback snapshot for when market is closed / API limit hit
 export const FALLBACK_SNAPSHOT: MarketSnapshot = {
@@ -59,7 +54,9 @@ export async function fetchMarketData(): Promise<LiveMarketData> {
   if (marketDataCache && Date.now() - marketDataCache.ts < TTL) {
     return marketDataCache.data;
   }
-  const res = await fetch(`${SUPABASE_URL}/functions/v1/market-data`, { method: 'GET', headers });
+  const res = await fetch(`${SUPABASE_URL}/functions/v1/market-data`, {
+    method: 'GET', headers: await functionAuthHeaders(),
+  });
   if (!res.ok) throw new Error('Market data unavailable');
   const data = await res.json();
   marketDataCache = { data, ts: Date.now() };
@@ -70,7 +67,9 @@ export async function fetchMarketNews(): Promise<NewsItem[]> {
   if (marketNewsCache && Date.now() - marketNewsCache.ts < TTL) {
     return marketNewsCache.data;
   }
-  const res = await fetch(`${SUPABASE_URL}/functions/v1/market-news`, { method: 'GET', headers });
+  const res = await fetch(`${SUPABASE_URL}/functions/v1/market-news`, {
+    method: 'GET', headers: await functionAuthHeaders(),
+  });
   if (!res.ok) throw new Error('News unavailable');
   const result = await res.json();
   const articles = result.articles ?? [];

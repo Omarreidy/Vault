@@ -1,82 +1,89 @@
 /**
- * Premium entitlement sync (RevenueCat → profiles.is_premium):
- * paid user with a delayed/unreachable billing backend is never silently
- * downgraded; the flag only changes when the entitlement actually differs;
- * web is a no-op. (The server-side gap — the column being client-writable —
- * is documented as D1 in qa/FINANCIAL_SPEC.md.)
+ * Premium entitlement read (src/services/premium.ts). As of the D1 fix,
+ * `profiles.is_premium` is a guarded column written ONLY by the RevenueCat
+ * webhook edge function; the client no longer mirrors RevenueCat into it, it
+ * just reads the server truth. These verify the authoritative-read contract:
+ * web no-op, signed-out → null, DB truth returned, and a just-completed
+ * purchase (webhook lands mid-poll) is picked up without an app restart.
+ * (The webhook's own decision logic is covered in revenuecat-webhook.test.ts;
+ * the column guard itself is enforced by the DB migration.)
  */
 import { test, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { syncPremiumStatus } from '../src/services/premium';
 
-type Row = { is_premium: boolean };
-
-function installProfileMock(row: Row | null) {
-  const calls: any[] = [];
+function installProfileMock(rows: (boolean | null)[] | boolean | null, signedIn = true) {
+  const sequence = Array.isArray(rows) ? [...rows] : [rows];
+  const reads: number[] = [];
+  let i = 0;
   (globalThis as any).__supabaseMock = {
     auth: {
-      getUser: async () => ({ data: { user: row ? { id: 'user-1' } : null }, error: null }),
+      getUser: async () => ({ data: { user: signedIn ? { id: 'user-1' } : null }, error: null }),
       getSession: async () => ({ data: { session: null }, error: null }),
     },
-    from: (table: string) => ({
-      select: () => ({ eq: () => ({ single: async () => ({ data: row, error: null }) }) }),
-      update: (payload: any) => {
-        calls.push({ table, payload });
-        return { eq: async () => ({ data: null, error: null }) };
-      },
+    from: () => ({
+      select: () => ({
+        eq: () => ({
+          single: async () => {
+            reads.push(Date.now());
+            const val = sequence[Math.min(i, sequence.length - 1)];
+            i++;
+            return { data: val === null ? null : { is_premium: val }, error: null };
+          },
+        }),
+      }),
     }),
     rpc: async () => ({ data: null, error: null }),
   };
-  return calls;
+  return { reads: () => reads.length };
 }
 
 beforeEach(() => {
   (globalThis as any).__platformOS = 'ios';
-  (globalThis as any).__purchasesMock = null;
 });
 
-test('web platform is a no-op (no RevenueCat there)', async () => {
+test('web platform is a no-op (no native purchases there)', async () => {
   (globalThis as any).__platformOS = 'web';
-  const calls = installProfileMock({ is_premium: false });
+  const m = installProfileMock(true);
   assert.equal(await syncPremiumStatus(), null);
-  assert.equal(calls.length, 0);
+  assert.equal(m.reads(), 0);
 });
 
-test('newly active entitlement persists is_premium=true with premium_since', async () => {
-  (globalThis as any).__purchasesMock = { customerInfo: { entitlements: { active: { premium: {} } } } };
-  const calls = installProfileMock({ is_premium: false });
-  assert.equal(await syncPremiumStatus(), true);
-  assert.equal(calls.length, 1);
-  assert.equal(calls[0].payload.is_premium, true);
-  assert.ok(calls[0].payload.premium_since, 'premium_since stamped on upgrade');
+test('signed-out user → null, no profile read', async () => {
+  const m = installProfileMock(true, false);
+  assert.equal(await syncPremiumStatus(), null);
+  assert.equal(m.reads(), 0);
 });
 
-test('idempotent: matching flag writes nothing (repeated launches, two sessions)', async () => {
-  (globalThis as any).__purchasesMock = { customerInfo: { entitlements: { active: { premium: {} } } } };
-  const calls = installProfileMock({ is_premium: true });
-  assert.equal(await syncPremiumStatus(), true);
-  assert.equal(await syncPremiumStatus(), true);
-  assert.equal(calls.length, 0);
+test('active entitlement in profiles → true on the first read', async () => {
+  const m = installProfileMock(true);
+  assert.equal(await syncPremiumStatus({ attempts: 4, delayMs: 0 }), true);
+  assert.equal(m.reads(), 1); // short-circuits, no extra polling
 });
 
-test('paid user with RevenueCat unreachable (billing event delayed/offline) keeps premium', async () => {
-  (globalThis as any).__purchasesMock = { error: new Error('network down') };
-  const calls = installProfileMock({ is_premium: true });
-  assert.equal(await syncPremiumStatus(), null); // unknown — never guessed
-  assert.equal(calls.length, 0);                 // and never written
+test('no entitlement → false after exhausting the poll', async () => {
+  const m = installProfileMock(false);
+  assert.equal(await syncPremiumStatus({ attempts: 3, delayMs: 0 }), false);
+  assert.equal(m.reads(), 3);
 });
 
-test('expired entitlement clears the flag without stamping premium_since', async () => {
-  (globalThis as any).__purchasesMock = { customerInfo: { entitlements: { active: {} } } };
-  const calls = installProfileMock({ is_premium: true });
-  assert.equal(await syncPremiumStatus(), false);
-  assert.equal(calls[0].payload.is_premium, false);
-  assert.equal('premium_since' in calls[0].payload, false);
+test('just-purchased: webhook lands mid-poll → picked up without a restart', async () => {
+  // First two reads see the webhook has not landed; the third sees is_premium.
+  const m = installProfileMock([false, false, true]);
+  assert.equal(await syncPremiumStatus({ attempts: 5, delayMs: 0 }), true);
+  assert.equal(m.reads(), 3); // stopped as soon as it flipped true
 });
 
-test('signed-out user: entitlement reported, no profile write attempted', async () => {
-  (globalThis as any).__purchasesMock = { customerInfo: { entitlements: { active: { premium: {} } } } };
-  const calls = installProfileMock(null);
-  assert.equal(await syncPremiumStatus(), true);
-  assert.equal(calls.length, 0);
+test('DB unreachable → null (never a fabricated entitlement)', async () => {
+  (globalThis as any).__supabaseMock = {
+    auth: { getUser: async () => ({ data: { user: { id: 'u' } }, error: null }) },
+    from: () => ({ select: () => ({ eq: () => ({ single: async () => { throw new Error('down'); } }) }) }),
+    rpc: async () => ({ data: null, error: null }),
+  };
+  assert.equal(await syncPremiumStatus({ attempts: 2, delayMs: 0 }), null);
+});
+
+test('null profile row (no profile yet) → false, never true', async () => {
+  installProfileMock(null);
+  assert.equal(await syncPremiumStatus({ attempts: 2, delayMs: 0 }), false);
 });

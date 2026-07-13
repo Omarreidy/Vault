@@ -12,5 +12,5 @@
     "skipLibCheck": true,
     "noEmit": true
   },
-  "include": ["./**/*.test.ts", "../src/**/*", "../supabase/functions/concierge/prompt.ts", "../supabase/functions/financial-scanner/parse.ts", "../supabase/functions/_shared/finance.ts"]
+  "include": ["./**/*.test.ts", "../src/**/*", "../supabase/functions/concierge/prompt.ts", "../supabase/functions/financial-scanner/parse.ts", "../supabase/functions/revenuecat-webhook/parse.ts", "../supabase/functions/_shared/finance.ts", "../supabase/functions/_shared/onboarding.ts"]
 }
