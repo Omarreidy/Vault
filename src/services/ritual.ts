@@ -54,11 +54,15 @@ export function buildBriefState(input: {
   };
 }
 
-/** "+12", "−4", "±0" — display form of a velocity delta. */
+// ASCII only — "+12", "-4", "0". React Native doesn't fall back per-glyph
+// across fonts the way web CSS font-stacks do, so a typographic minus (−),
+// plus-minus (±), or em dash (—) rendered in a display/serif font can show
+// as a missing-glyph box on-device even when it looks fine in a browser
+// preview. Plain digits and ASCII "+"/"-" are guaranteed in every font.
 export function formatDelta(delta: number): string {
   if (delta > 0) return `+${delta}`;
-  if (delta < 0) return `−${Math.abs(delta)}`;
-  return '±0';
+  if (delta < 0) return `-${Math.abs(delta)}`;
+  return '0';
 }
 
 /** Body copy for the weekly recap push. Pure so the copy is testable. */
@@ -67,4 +71,18 @@ export function buildWeeklyRecapBody(weeklyGain?: number): string {
     return `+${weeklyGain} Wealth Velocity this week — see what moved.`;
   }
   return 'Your weekly wealth recap is ready — see where your money moved.';
+}
+
+// Flavor text rotates on the vault-closing moment; the underlying XP and
+// streak numbers never do (see xpForMove above — same discipline applies).
+export const VAULT_CLOSED_HEADLINES = [
+  'Vault closed for today.',
+  "That's a wrap.",
+  'Three for three.',
+  'Locked in.',
+  'Today: handled.',
+];
+
+export function pickVaultClosedHeadline(): string {
+  return VAULT_CLOSED_HEADLINES[Math.floor(Math.random() * VAULT_CLOSED_HEADLINES.length)];
 }

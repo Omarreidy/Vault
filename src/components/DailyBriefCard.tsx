@@ -63,7 +63,9 @@ export default function DailyBriefCard({
         <View style={styles.deltaBlock}>
           {delta === null ? (
             <>
-              <Text style={[styles.deltaNum, { color: deltaColor }]}>—</Text>
+              {/* ASCII placeholder — the display font used at this size can
+                  render non-ASCII glyphs as a missing-glyph box on-device. */}
+              <Text style={[styles.deltaNum, { color: deltaColor }]}>...</Text>
               <Text style={styles.deltaLabel}>SYNCING YOUR VELOCITY…</Text>
             </>
           ) : (

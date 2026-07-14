@@ -158,57 +158,173 @@ export const MOCK_SCAN_RESULTS: ScanResult[] = [
   },
 ];
 
-import { functionAuthHeaders } from './supabase';
+import { supabase, functionAuthHeaders } from './supabase';
 
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? 'https://gvdfypehwmemootjizmd.supabase.co';
 
-export async function scanDocument(imageUri: string): Promise<ScanResult> {
-  // Lazy-require the native image module so it loads only when a scan actually
-  // runs — never at app launch. A top-level import would pull the native module
-  // into the startup path, and any issue there crashes the app before it opens.
-  const { ImageManipulator, SaveFormat } = require('expo-image-manipulator');
+// ─── Failure taxonomy ─────────────────────────────────────────────────────────
+// Every way a scan can fail maps to exactly one reason, so the UI can tell
+// "you're offline" from "try again in a minute" from "our end is down".
 
-  // Compress + downscale before upload. Full-res phone photos produce multi-MB
-  // base64 payloads that exceed the model's image limit and cause 500s — which
-  // is what was silently triggering the fake mock fallback.
-  const context = ImageManipulator.manipulate(imageUri);
-  context.resize({ width: 1024 });
-  const rendered = await context.renderAsync();
-  const image = await rendered.saveAsync({
-    compress: 0.7,
-    format: SaveFormat.JPEG,
-    base64: true,
-  });
+export type ScanFailureReason =
+  | 'offline'          // device can't reach the network
+  | 'auth'             // no session / session expired
+  | 'rate_limited'     // server said slow down (429)
+  | 'image_too_large'  // payload over the analyzable cap even after compression
+  | 'image_unreadable' // the photo couldn't be processed on-device
+  | 'unavailable';     // our side (or every AI provider) failed
 
-  const base64 = image.base64;
-  if (!base64) throw new Error('Could not read image');
-
-  const res = await fetch(`${SUPABASE_URL}/functions/v1/financial-scanner`, {
-    method: 'POST',
-    headers: await functionAuthHeaders(),
-    body: JSON.stringify({ imageBase64: base64, mimeType: 'image/jpeg' }),
-  });
-
-  if (!res.ok) throw new Error('Scanner unavailable');
-  const data = await res.json();
-  if (data.error) throw new Error(data.error);
-  return { ...data, id: Date.now().toString() } as ScanResult;
+export class ScanError extends Error {
+  reason: ScanFailureReason;
+  /** True only for transport-level blips worth one client-side retry. The
+   *  server already retries and falls back across providers before returning
+   *  503, so a 503 is final — re-running the whole chain would just double
+   *  the wait for the same answer. */
+  transient: boolean;
+  constructor(reason: ScanFailureReason, message?: string, transient = false) {
+    super(message ?? reason);
+    this.name = 'ScanError';
+    this.reason = reason;
+    this.transient = transient;
+  }
 }
 
-// Honest fallback when the live scan fails — never fake a verdict.
-export function getScanErrorResult(): ScanResult {
-  return {
-    id: Date.now().toString(),
-    verdict: 'BUDGET CHECK',
-    itemName: "Couldn't analyze",
-    emoji: '🔄',
-    tagline: 'The scan didn\'t go through. Try again with a clearer, well-lit photo.',
-    annualImpact: '—',
-    wealthScoreImpact: 'No change',
-    insight: 'VAULT couldn\'t reach the analysis engine or read this image. This can happen with very dark, blurry, or close-up shots.',
-    tip: 'Hold steady, fill the frame with the item, and make sure there\'s good lighting.',
-    xp: 0,
-  };
+export const SCAN_ERROR_COPY: Record<ScanFailureReason, {
+  title: string;
+  body: string;
+  /** Whether retrying the same photo can plausibly succeed. */
+  canRetrySameImage: boolean;
+}> = {
+  offline: {
+    title: "You're offline",
+    body: "VAULT can't reach the network. Check your connection, then try again.",
+    canRetrySameImage: true,
+  },
+  auth: {
+    title: 'Session expired',
+    body: 'Your session has expired. Sign in again to keep scanning.',
+    canRetrySameImage: false,
+  },
+  rate_limited: {
+    title: 'Easy does it',
+    body: "You've hit the scan limit for now. Give it a minute, then try again.",
+    canRetrySameImage: true,
+  },
+  image_too_large: {
+    title: 'Image too large',
+    body: "This image couldn't be compressed enough to analyze. Retake the photo from a bit further back.",
+    canRetrySameImage: false,
+  },
+  image_unreadable: {
+    title: "Couldn't read that photo",
+    body: "The image couldn't be processed on this device. Retake it or pick a different one.",
+    canRetrySameImage: false,
+  },
+  unavailable: {
+    title: 'Analysis is temporarily down',
+    body: "Your photo is fine — our analysis engine didn't respond. Try again in a few minutes.",
+    canRetrySameImage: true,
+  },
+};
+
+// Mirrors the server's MAX_IMAGE_B64_LEN so an oversized payload is caught
+// before burning the user's bandwidth on a doomed upload.
+const MAX_IMAGE_B64_LEN = 7_000_000;
+// The server's provider chain is budgeted at 60s worst-case; give it headroom.
+const REQUEST_TIMEOUT_MS = 75_000;
+
+interface ScanOptions {
+  retryDelayMs?: number; // injectable for tests
+}
+
+export async function scanDocument(imageUri: string, opts: ScanOptions = {}): Promise<ScanResult> {
+  const { retryDelayMs = 700 } = opts;
+
+  // No session means a guaranteed 401 — surface it without a network round trip.
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) throw new ScanError('auth', 'no active session');
+
+  const base64 = await renderScanImage(imageUri);
+  if (base64.length > MAX_IMAGE_B64_LEN) throw new ScanError('image_too_large');
+
+  const headers = await functionAuthHeaders();
+
+  // One retry, only for transient transport failures (network blip, cold-start
+  // 5xx). Deterministic failures (401/413/429/503) surface immediately.
+  let lastError = new ScanError('unavailable');
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    try {
+      return await postScan(base64, headers);
+    } catch (err) {
+      lastError = err instanceof ScanError ? err : new ScanError('unavailable', String(err));
+      if (!lastError.transient || attempt === 2) throw lastError;
+      await new Promise(r => setTimeout(r, retryDelayMs * attempt));
+    }
+  }
+  throw lastError;
+}
+
+async function renderScanImage(imageUri: string): Promise<string> {
+  try {
+    // Lazy-require the native image module so it loads only when a scan actually
+    // runs — never at app launch. A top-level import would pull the native module
+    // into the startup path, and any issue there crashes the app before it opens.
+    const { ImageManipulator, SaveFormat } = require('expo-image-manipulator');
+
+    // Compress + downscale before upload. Full-res phone photos produce multi-MB
+    // base64 payloads that exceed the model's image limit and cause 500s — which
+    // is what was silently triggering the fake mock fallback.
+    const context = ImageManipulator.manipulate(imageUri);
+    context.resize({ width: 1024 });
+    const rendered = await context.renderAsync();
+    const image = await rendered.saveAsync({
+      compress: 0.7,
+      format: SaveFormat.JPEG,
+      base64: true,
+    });
+    if (!image.base64) throw new Error('no base64 in rendered image');
+    return image.base64;
+  } catch (err) {
+    throw new ScanError('image_unreadable', String((err as Error)?.message ?? err));
+  }
+}
+
+async function postScan(base64: string, headers: Record<string, string>): Promise<ScanResult> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
+  let res: Response;
+  try {
+    res = await fetch(`${SUPABASE_URL}/functions/v1/financial-scanner`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ imageBase64: base64, mimeType: 'image/jpeg' }),
+      signal: controller.signal,
+    });
+  } catch (err) {
+    // We already waited the full window on a timeout — don't retry that. A
+    // straight fetch throw is RN's "Network request failed": offline, but
+    // transient enough to be worth one quick retry before telling the user.
+    if ((err as Error)?.name === 'AbortError') throw new ScanError('unavailable', 'request timed out');
+    throw new ScanError('offline', String((err as Error)?.message ?? err), true);
+  } finally {
+    clearTimeout(timer);
+  }
+
+  let data: any = null;
+  try { data = await res.json(); } catch { /* non-JSON body; handled below */ }
+
+  if (!res.ok) {
+    if (res.status === 401 || res.status === 403) throw new ScanError('auth', `http ${res.status}`);
+    if (res.status === 429) throw new ScanError('rate_limited');
+    if (res.status === 413 || data?.error === 'image_too_large') throw new ScanError('image_too_large');
+    const transient = res.status === 500 || res.status === 502 || res.status === 504;
+    throw new ScanError('unavailable', data?.error ?? `http ${res.status}`, transient);
+  }
+  if (!data || data.error || typeof data.verdict !== 'string') {
+    throw new ScanError('unavailable', data?.error ?? 'malformed response');
+  }
+  return { ...data, id: Date.now().toString() } as ScanResult;
 }
 
 // Kept for fallback only

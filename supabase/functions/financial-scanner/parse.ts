@@ -1,5 +1,5 @@
 // Pure parsing/validation of the model's scan verdict — no Deno imports so it
-// is unit-testable (tests/scanner-parse.test.ts). The client renders this
+// is unit-testable (tests/ai.test.ts). The client renders this
 // object directly (colors/icons are keyed by verdict, XP is credited), so
 // every field the model returns is validated before it leaves the server.
 

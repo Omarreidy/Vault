@@ -118,6 +118,19 @@ test('daily counters reset on the next local day; lifetime totals persist', asyn
   assert.equal(s.movesActedWeek, 2); // same Mon-anchored week
 });
 
+test('xpToday (the vault-closed celebration total) resets daily like movesActedToday', async () => {
+  at('2026-03-02T18:00:00-05:00');
+  await recordMove(20);
+  await recordMove(30);
+  let s = await loadStats();
+  assert.equal(s.xpToday, 50);
+  assert.equal(s.xpTotal, 50); // lifetime unaffected by the reset that follows
+  at('2026-03-03T08:00:00-05:00');
+  s = await loadStats();
+  assert.equal(s.xpToday, 0);
+  assert.equal(s.xpTotal, 50); // lifetime survives the day rollover
+});
+
 test('weekly counters reset on Monday (local), not mid-Sunday-evening UTC', async () => {
   at('2026-03-06T19:00:00-05:00'); // Friday evening
   await recordMove(20);

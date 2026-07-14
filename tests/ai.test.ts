@@ -10,7 +10,7 @@ import { buildSystemPrompt } from '../supabase/functions/concierge/prompt';
 import { parseScanResult, fallbackScanResult } from '../supabase/functions/financial-scanner/parse';
 import { fetchLiveScore } from '../src/services/velocity';
 import { buildFeed } from '../src/services/feed';
-import { getScanErrorResult, VERDICT_COLORS } from '../src/services/financialScanner';
+import { VERDICT_COLORS } from '../src/services/financialScanner';
 
 // ── concierge prompt ─────────────────────────────────────────────────────────
 
@@ -91,11 +91,8 @@ test('non-string fields are coerced to safe defaults', () => {
   assert.equal(r.monthlyCost, undefined); // numeric monthlyCost dropped, not stringified
 });
 
-test('client scan error card is honest: zero XP, no verdict spin', () => {
-  const r = getScanErrorResult();
-  assert.equal(r.xp, 0);
-  assert.ok(r.itemName.includes("Couldn't analyze"));
-});
+// Client scan failures no longer render as a fake verdict card at all — each
+// failure reason surfaces as its own error state; see tests/scanner.test.ts.
 
 // ── client error contract: no plausible-but-wrong numbers ────────────────────
 

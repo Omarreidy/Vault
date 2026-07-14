@@ -34,6 +34,7 @@ import { xpForMove, DAILY_MOVES_TARGET } from '../services/ritual';
 import { fetchLiveScore, fetchProfileScore } from '../services/velocity';
 import { syncWeeklyRecap } from '../services/push';
 import DailyBriefCard from '../components/DailyBriefCard';
+import VaultClosedCelebration from '../components/VaultClosedCelebration';
 import { usePlaid } from '../context/PlaidContext';
 import { getUnreadCount } from '../services/notifications';
 
@@ -185,6 +186,16 @@ export default function HomeScreen() {
   const [briefDelta, setBriefDelta] = useState<number | null>(null);
   const [briefScore, setBriefScore] = useState<number | null>(null);
   const [briefSource, setBriefSource] = useState<'live' | 'estimated' | null>(null);
+  // XP earned today (persisted total + this session's), for the closing celebration.
+  const [xpToday, setXpToday] = useState(0);
+
+  // The dopamine hit: shown once, right after the cohort reaction, the moment
+  // the 3rd move of the day lands. Queued via the ref below so it never stacks
+  // on top of the (also full-screen) cohort reaction overlay.
+  const [showVaultClosed, setShowVaultClosed] = useState(false);
+  const [closedStreakDays, setClosedStreakDays] = useState(0);
+  const [closedXpToday, setClosedXpToday] = useState(0);
+  const pendingVaultClosed = useRef<{ streak: number; xpToday: number } | null>(null);
 
   // Which feed variant the user last saw — so feed_composed fires once per
   // variant change, not on every recomposition.
@@ -214,6 +225,7 @@ export default function HomeScreen() {
     loadStats().then(stats => {
       setTotalXP(stats.xpTotal);
       setMovesTodayBase(stats.movesActedToday);
+      setXpToday(stats.xpToday);
     });
     getUnreadCount().then(setNotifCount).catch(() => {});
     AsyncStorage.getItem('@vault_plaid_nudge_dismissed').then(val => {
@@ -329,19 +341,25 @@ export default function HomeScreen() {
     const newCount = actedCount + 1;
     const movesToday = movesTodayBase + newCount;
     const closedNow = movesToday === DAILY_MOVES_TARGET;
+    const newXpToday = xpToday + xp;
     const msg = closedNow ? 'Vault closed for today ✓' : pickMsg();
     setActedCount(newCount);
     setTotalXP(prev => prev + xp);
+    setXpToday(newXpToday);
     track(EVENTS.MOVE_ACTED, {
       move_id: move.id, personalized: !!move.personalized, index, xp, moves_today: movesToday,
     });
-    if (closedNow) {
-      track(EVENTS.VAULT_CLOSED, { moves_today: movesToday });
-    }
     // Streaks reward action: the first completed move of the day extends it.
     recordActionStreak().then(({ streak, extended }) => {
       setStreakDays(streak);
       if (extended) track(EVENTS.STREAK_EXTENDED, { streak });
+      // The dopamine hit — queued behind the cohort reaction (below) so the
+      // two full-screen overlays never stack; fires with the just-computed
+      // final streak so the celebration never underclaims it.
+      if (closedNow) {
+        track(EVENTS.VAULT_CLOSED, { moves_today: movesToday, xp_today: newXpToday, streak });
+        pendingVaultClosed.current = { streak, xpToday: newXpToday };
+      }
     }).catch(() => {});
     // Durably record the move so Challenges + Achievements reflect real activity.
     recordMove(xp).catch(() => {});
@@ -362,7 +380,7 @@ export default function HomeScreen() {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
     }, 80);
     showReward(xp, msg, moveTitle);
-  }, [showReward, actedCount, movesTodayBase, plaidConnected]);
+  }, [showReward, actedCount, movesTodayBase, xpToday, plaidConnected]);
 
   const handleSkip = useCallback((move?: WealthMove, index?: number) => {
     if (isAnimating.current) return;
@@ -652,6 +670,24 @@ export default function HomeScreen() {
         memberCount={memberCount}
         onDismiss={() => {
           setShowCohortReaction(false);
+          if (pendingVaultClosed.current) {
+            const { streak, xpToday: xp } = pendingVaultClosed.current;
+            pendingVaultClosed.current = null;
+            setClosedStreakDays(streak);
+            setClosedXpToday(xp);
+            setShowVaultClosed(true);
+          } else {
+            scrollToNext();
+          }
+        }}
+      />
+
+      <VaultClosedCelebration
+        visible={showVaultClosed}
+        streakDays={closedStreakDays}
+        xpToday={closedXpToday}
+        onClose={() => {
+          setShowVaultClosed(false);
           scrollToNext();
         }}
       />

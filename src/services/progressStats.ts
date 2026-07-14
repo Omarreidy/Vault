@@ -16,6 +16,7 @@ export interface VaultStats {
   conciergeUsedToday: boolean; // resets daily
   xpTotal: number;             // lifetime XP
   xpWeek: number;              // resets weekly
+  xpToday: number;             // resets daily — powers the vault-closed celebration
   weekStartScore: number | null; // velocity score snapshot at start of week
   lastKnownScore: number | null; // most recent velocity score seen (any day)
   prevDayScore: number | null;   // lastKnownScore as of the last day rollover
@@ -56,6 +57,7 @@ function fresh(): VaultStats {
     conciergeUsedToday: false,
     xpTotal: 0,
     xpWeek: 0,
+    xpToday: 0,
     weekStartScore: null,
     lastKnownScore: null,
     prevDayScore: null,
@@ -74,6 +76,7 @@ export async function loadStats(): Promise<VaultStats> {
     s.movesActedWeek  = toCount(s.movesActedWeek);
     s.xpTotal = toCount(s.xpTotal);
     s.xpWeek  = toCount(s.xpWeek);
+    s.xpToday = toCount(s.xpToday);
     if (s.weekStartScore !== null && !Number.isFinite(s.weekStartScore)) s.weekStartScore = null;
     if (s.lastKnownScore !== null && !Number.isFinite(s.lastKnownScore)) s.lastKnownScore = null;
     if (s.prevDayScore !== null && !Number.isFinite(s.prevDayScore)) s.prevDayScore = null;
@@ -84,6 +87,7 @@ export async function loadStats(): Promise<VaultStats> {
 
     if (s.dayStamp !== today) {
       s.movesActedToday = 0;
+      s.xpToday = 0;
       s.scoreVisitedToday = false;
       s.conciergeUsedToday = false;
       // Yesterday's closing score becomes today's comparison baseline.
@@ -118,6 +122,7 @@ export async function recordMove(xp = 0): Promise<VaultStats> {
   s.movesActedWeek += 1;
   s.xpTotal += xp;
   s.xpWeek += xp;
+  s.xpToday += xp;
   return save(s);
 }
 

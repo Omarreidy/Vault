@@ -10,6 +10,7 @@ const STUBS = {
   'react-native': path.join(__dirname, 'stubs', 'react-native.cjs'),
   'react-native-purchases': path.join(__dirname, 'stubs', 'react-native-purchases.cjs'),
   '@supabase/supabase-js': path.join(__dirname, 'stubs', 'supabase-js.cjs'),
+  'expo-image-manipulator': path.join(__dirname, 'stubs', 'expo-image-manipulator.cjs'),
 };
 
 const originalResolve = Module._resolveFilename;

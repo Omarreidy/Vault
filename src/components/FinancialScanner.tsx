@@ -7,8 +7,8 @@ import * as ImagePicker from 'expo-image-picker';
 import * as Haptics from 'expo-haptics';
 import { COLORS, FONTS, SPACING, RADIUS, CARD_SHADOW } from '../constants/theme';
 import {
-  scanDocument, getScanErrorResult, ScanResult, ScanVerdict,
-  VERDICT_COLORS, VERDICT_ICONS,
+  scanDocument, ScanError, ScanFailureReason, SCAN_ERROR_COPY,
+  ScanResult, ScanVerdict, VERDICT_COLORS, VERDICT_ICONS,
 } from '../services/financialScanner';
 
 const { width, height } = Dimensions.get('window');
@@ -417,6 +417,53 @@ const idleStyles = StyleSheet.create({
   libraryTxt: { fontSize: FONTS.sizes.xs, color: COLORS.textMuted, letterSpacing: 0.3, textDecorationLine: 'underline' },
 });
 
+// ─── Scan failure card ────────────────────────────────────────────────────────
+// One card per distinct failure reason (offline / auth / rate-limited / image
+// too large / image unreadable / analysis down) so the user always knows
+// whether the problem is their connection, their session, their photo, or us.
+
+function ScanErrorCard({
+  reason,
+  onRetry,
+  onReset,
+  onClose,
+}: {
+  reason: ScanFailureReason;
+  onRetry?: () => void;
+  onReset: () => void;
+  onClose: () => void;
+}) {
+  const copy = SCAN_ERROR_COPY[reason];
+
+  useEffect(() => {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
+  }, []);
+
+  return (
+    <View style={scanErrorStyles.wrap}>
+      <Text style={scanErrorStyles.glyph}>◉</Text>
+      <Text style={scanErrorStyles.title}>{copy.title}</Text>
+      <Text style={scanErrorStyles.body}>{copy.body}</Text>
+      {reason === 'auth' ? (
+        <TouchableOpacity style={scanErrorStyles.primaryBtn} onPress={onClose} activeOpacity={0.8}>
+          <Text style={scanErrorStyles.primaryBtnTxt}>Done</Text>
+        </TouchableOpacity>
+      ) : (
+        <>
+          {onRetry && (
+            <TouchableOpacity style={scanErrorStyles.primaryBtn} onPress={onRetry} activeOpacity={0.8}>
+              <Text style={scanErrorStyles.primaryBtnTxt}>Try Again</Text>
+            </TouchableOpacity>
+          )}
+          <TouchableOpacity style={scanErrorStyles.btn} onPress={onReset} activeOpacity={0.8}>
+            <Text style={scanErrorStyles.btnTxt}>{onRetry ? 'Scan something else' : 'Retake photo'}</Text>
+          </TouchableOpacity>
+        </>
+      )}
+    </View>
+  );
+}
+
 // ─── Root modal ───────────────────────────────────────────────────────────────
 
 interface Props {
@@ -428,23 +475,25 @@ export default function FinancialScanner({ visible, onClose }: Props) {
   const [stage, setStage]         = useState<Stage>('idle');
   const [imageUri, setImageUri]   = useState<string | null>(null);
   const [result, setResult]       = useState<ScanResult | null>(null);
-  const [scanError, setScanError] = useState(false);
+  const [scanError, setScanError] = useState<ScanFailureReason | null>(null);
 
   const reset = () => {
     setStage('idle');
     setImageUri(null);
     setResult(null);
-    setScanError(false);
+    setScanError(null);
   };
 
   const processImage = async (uri: string) => {
     setImageUri(uri);
+    setResult(null);
+    setScanError(null);
     setStage('scanning');
     try {
       const liveResult = await scanDocument(uri);
       setResult(liveResult);
-    } catch {
-      setResult(getScanErrorResult());
+    } catch (err) {
+      setScanError(err instanceof ScanError ? err.reason : 'unavailable');
     }
     setStage('result');
   };
@@ -499,7 +548,7 @@ export default function FinancialScanner({ visible, onClose }: Props) {
         <View style={rootStyles.header}>
           <View style={rootStyles.headerLeft}>
             <Text style={rootStyles.headerTitle}>
-              {stage === 'idle' ? 'Scan' : stage === 'scanning' ? 'Analyzing...' : 'Verdict'}
+              {stage === 'idle' ? 'Scan' : stage === 'scanning' ? 'Analyzing...' : scanError ? 'Scan' : 'Verdict'}
             </Text>
             {stage === 'result' && result && (
               <View style={[rootStyles.verdictMini, { backgroundColor: VERDICT_COLORS[result.verdict] + '20', borderColor: VERDICT_COLORS[result.verdict] + '50' }]}>
@@ -527,25 +576,21 @@ export default function FinancialScanner({ visible, onClose }: Props) {
             <ResultCard
               result={result}
               imageUri={imageUri}
-              onScanAgain={() => { setStage('idle'); setImageUri(null); setResult(null); setScanError(false); }}
+              onScanAgain={() => { setStage('idle'); setImageUri(null); setResult(null); setScanError(null); }}
               onClose={handleClose}
             />
           )}
           {stage === 'result' && scanError && (
-            <View style={scanErrorStyles.wrap}>
-              <Text style={scanErrorStyles.glyph}>◉</Text>
-              <Text style={scanErrorStyles.title}>The scanner couldn't read this document.</Text>
-              <Text style={scanErrorStyles.body}>
-                Concierge only analyzes what it can see clearly. Try a higher-contrast image, or upload a bank statement, pay stub, or investment summary.
-              </Text>
-              <TouchableOpacity
-                style={scanErrorStyles.btn}
-                onPress={() => { setStage('idle'); setImageUri(null); setScanError(false); }}
-                activeOpacity={0.8}
-              >
-                <Text style={scanErrorStyles.btnTxt}>Try another document</Text>
-              </TouchableOpacity>
-            </View>
+            <ScanErrorCard
+              reason={scanError}
+              onRetry={
+                SCAN_ERROR_COPY[scanError].canRetrySameImage && imageUri
+                  ? () => processImage(imageUri)
+                  : undefined
+              }
+              onReset={() => { setStage('idle'); setImageUri(null); setScanError(null); }}
+              onClose={handleClose}
+            />
           )}
         </View>
       </View>
@@ -610,8 +655,20 @@ const scanErrorStyles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 22,
   },
-  btn: {
+  primaryBtn: {
     marginTop: SPACING.lg,
+    paddingHorizontal: SPACING.xl,
+    paddingVertical: SPACING.md,
+    backgroundColor: COLORS.text,
+    borderRadius: RADIUS.full,
+  },
+  primaryBtnTxt: {
+    fontSize: FONTS.sizes.sm,
+    fontWeight: FONTS.weights.bold,
+    color: COLORS.background,
+    letterSpacing: 0.3,
+  },
+  btn: {
     paddingHorizontal: SPACING.xl,
     paddingVertical: SPACING.md,
     backgroundColor: COLORS.card,

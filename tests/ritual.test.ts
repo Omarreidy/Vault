@@ -8,6 +8,7 @@ import assert from 'node:assert/strict';
 import {
   xpForMove, XP_BY_EFFORT, XP_PERSONALIZED_BONUS,
   buildBriefState, formatDelta, buildWeeklyRecapBody, DAILY_MOVES_TARGET,
+  VAULT_CLOSED_HEADLINES, pickVaultClosedHeadline,
 } from '../src/services/ritual';
 import { loadStats, recordDailyScore, dailyDelta } from '../src/services/progressStats';
 import { recordActionStreak, getStreak } from '../src/services/streak';
@@ -59,10 +60,20 @@ test('brief state clamps garbage move counts', () => {
   assert.equal(buildBriefState({ delta: 0, movesToday: 1.9 }).movesToday, 1);
 });
 
-test('formatDelta signs correctly', () => {
+test('formatDelta signs correctly, ASCII only (no glyphs that can render as tofu on-device)', () => {
   assert.equal(formatDelta(12), '+12');
-  assert.equal(formatDelta(-4), '−4');
-  assert.equal(formatDelta(0), '±0');
+  assert.equal(formatDelta(-4), '-4');
+  assert.equal(formatDelta(0), '0');
+  for (const s of [formatDelta(12), formatDelta(-4), formatDelta(0)]) {
+    assert.match(s, /^[\x00-\x7F]*$/, `"${s}" must be pure ASCII`);
+  }
+});
+
+test('vault-closed headline always comes from the known set', () => {
+  assert.ok(VAULT_CLOSED_HEADLINES.length > 0);
+  for (let i = 0; i < 25; i++) {
+    assert.ok(VAULT_CLOSED_HEADLINES.includes(pickVaultClosedHeadline()));
+  }
 });
 
 test('weekly recap copy leads with the gain, degrades gracefully', () => {
