@@ -1,0 +1,188 @@
+@import 'tailwindcss';
+
+@theme inline {
+  --font-display: var(--font-cormorant), 'Cormorant Garamond', Didot, 'Bodoni MT', Georgia, serif;
+  --font-sans: var(--font-inter), -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+@theme {
+  /* Light — the app's warm-white world */
+  --color-cream: #fafaf7;
+  --color-cream-deep: #f4f1ec;
+  --color-ink: #0d0c0a;
+  --color-ink-sub: #3a3830;
+  --color-ink-dim: #8a8478;
+  --color-ink-muted: #c4beb4;
+
+  /* Dark — the vault's night world (matches existing getsvault.com pages) */
+  --color-night: #08080c;
+  --color-night-soft: #111010;
+  --color-night-border: #1e1c1a;
+  --color-parchment: #e8e0d5;
+  --color-parchment-dim: #b0a99f;
+  --color-parchment-faint: #6b6560;
+
+  /* Gold — the hero color */
+  --color-gold: #c9a96e;
+  --color-gold-light: #e8c98a;
+  --color-gold-dark: #9a7a3a;
+  --color-gold-deep: #b8934a;
+
+  /* Status */
+  --color-rise: #00a878;
+  --color-fall: #c0392b;
+
+  /* Tiers */
+  --color-tier-bronze: #9b6a2f;
+  --color-tier-silver: #8a8a9a;
+  --color-tier-gold: #c9a96e;
+  --color-tier-platinum: #7a7a9a;
+  --color-tier-black: #1a1a1a;
+}
+
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 80px;
+}
+
+:focus-visible {
+  outline: 2px solid #c9a96e;
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+.skip-link {
+  position: fixed;
+  top: -100px;
+  left: 16px;
+  z-index: 100;
+  padding: 10px 18px;
+  border-radius: 999px;
+  background: #c9a96e;
+  color: #08080c;
+  font-weight: 700;
+  font-size: 13px;
+  transition: top 0.2s ease;
+}
+
+.skip-link:focus {
+  top: 16px;
+}
+
+html.lenis {
+  height: auto;
+  scroll-behavior: auto;
+}
+
+.lenis.lenis-smooth {
+  scroll-behavior: auto !important;
+}
+
+body {
+  background: var(--color-night);
+  color: var(--color-parchment);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: rgba(201, 169, 110, 0.35);
+  color: inherit;
+}
+
+@keyframes drift {
+  0%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.2;
+  }
+  50% {
+    transform: translateY(-26px);
+    opacity: 0.7;
+  }
+}
+
+@keyframes spin-slow {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Cream ↔ night transitions routed through warm bronze so the midpoint
+   never turns muddy gray — dusk descends into dark, dawn rises into light. */
+.dusk-band {
+  background: linear-gradient(
+    to bottom,
+    #fafaf7 0%,
+    #e8dfc9 22%,
+    #9a815a 48%,
+    #40331f 72%,
+    #14100b 88%,
+    #08080c 100%
+  );
+}
+
+.dawn-band {
+  background: linear-gradient(
+    to bottom,
+    #08080c 0%,
+    #14100b 12%,
+    #40331f 28%,
+    #9a815a 52%,
+    #e8dfc9 78%,
+    #fafaf7 100%
+  );
+}
+
+@keyframes shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+
+.waterline {
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(201, 169, 110, 0.7) 35%,
+    rgba(232, 201, 138, 0.9) 50%,
+    rgba(201, 169, 110, 0.7) 65%,
+    transparent
+  );
+  background-size: 200% 100%;
+  animation: shimmer 6s linear infinite;
+}
+
+@keyframes scroll-cue {
+  0% {
+    transform: scaleY(0);
+    transform-origin: top;
+  }
+  45% {
+    transform: scaleY(1);
+    transform-origin: top;
+  }
+  55% {
+    transform: scaleY(1);
+    transform-origin: bottom;
+  }
+  100% {
+    transform: scaleY(0);
+    transform-origin: bottom;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
