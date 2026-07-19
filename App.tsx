@@ -8,9 +8,11 @@ import { Session } from '@supabase/supabase-js';
 import AppNavigator from './src/navigation/AppNavigator';
 import OnboardingScreen from './src/screens/OnboardingScreen';
 import AuthScreen from './src/screens/AuthScreen';
+import LegalAcknowledgementScreen from './src/screens/LegalAcknowledgementScreen';
+import { hasCurrentAcceptance } from './src/services/legalConsent';
 import { supabase } from './src/services/supabase';
 import { PlaidProvider } from './src/context/PlaidContext';
-import { initPushNotifications } from './src/services/push';
+import { initPushNotifications, teardownPushForSignOut } from './src/services/push';
 import { syncPremiumStatus } from './src/services/premium';
 
 const RC_API_KEY = 'appl_iHfaWTgWajGmNhQValXNlUdqwxI';
@@ -53,7 +55,7 @@ class ErrorBoundary extends React.Component<
   }
 }
 
-type AppState = 'loading' | 'auth' | 'onboarding' | 'main';
+type AppState = 'loading' | 'auth' | 'onboarding' | 'legal' | 'main';
 
 function AppContent() {
   const [appState, setAppState] = useState<AppState>('loading');
@@ -104,7 +106,10 @@ function AppContent() {
       .single();
 
     if (data?.onboarding_complete) {
-      setAppState('main');
+      // Everyone — including users onboarded before this gate existed — must
+      // have accepted the current legal document versions to enter the app.
+      const accepted = await hasCurrentAcceptance(session.user.id);
+      setAppState(accepted ? 'main' : 'legal');
     } else {
       setAppState('onboarding');
     }
@@ -116,11 +121,17 @@ function AppContent() {
         .from('profiles')
         .update({ onboarding_complete: true })
         .eq('id', session.user.id);
+      const accepted = await hasCurrentAcceptance(session.user.id);
+      setAppState(accepted ? 'main' : 'legal');
+      return;
     }
     setAppState('main');
   };
 
   const handleSignOut = async () => {
+    // Runs before signOut: clearing profiles.push_token needs the live
+    // session, and a signed-out device must not keep firing streak reminders.
+    await teardownPushForSignOut();
     if (Platform.OS !== 'web') {
       try {
         const Purchases = require('react-native-purchases').default;
@@ -135,12 +146,18 @@ function AppContent() {
 
   return (
     <GestureHandlerRootView style={styles.root}>
-      <StatusBar style={appState === 'auth' || appState === 'onboarding' ? 'light' : 'dark'} />
+      <StatusBar style={appState === 'main' ? 'dark' : 'light'} />
       {appState === 'auth' && (
         <AuthScreen onAuth={() => setAppState('onboarding')} />
       )}
       {appState === 'onboarding' && (
         <OnboardingScreen onComplete={handleOnboardingComplete} />
+      )}
+      {appState === 'legal' && session && (
+        <LegalAcknowledgementScreen
+          userId={session.user.id}
+          onComplete={() => setAppState('main')}
+        />
       )}
       {appState === 'main' && (
         <PlaidProvider>

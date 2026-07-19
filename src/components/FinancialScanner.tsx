@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as Haptics from 'expo-haptics';
+import InlineDisclaimer from './InlineDisclaimer';
 import { COLORS, FONTS, SPACING, RADIUS, CARD_SHADOW } from '../constants/theme';
 import {
   scanDocument, ScanError, ScanFailureReason, SCAN_ERROR_COPY,
@@ -207,6 +208,8 @@ function ResultCard({
             {result.tip}
           </Text>
         </View>
+
+        <InlineDisclaimer text="Automated educational estimate — not an appraisal, a guarantee, or financial advice." />
 
         {/* XP badge */}
         <Animated.View style={[resStyles.xpBadge, { transform: [{ scale: xpScale }] }]}>

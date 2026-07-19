@@ -299,7 +299,7 @@ export default function ScoreScreen() {
                     </View>
                     <Text style={[styles.nextBigNum, { color: TIERS[nextTier].color }]}>{TIERS[nextTier].minScore}</Text>
                   </View>
-                  <Text style={styles.nextPerks}>Premium concierge · Exclusive rates · Partner perks</Text>
+                  <Text style={styles.nextPerks}>New tier badge · Elevated cohort · Milestone celebration</Text>
                 </View>
               </View>
             )}

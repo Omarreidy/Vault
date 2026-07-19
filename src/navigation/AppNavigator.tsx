@@ -8,6 +8,7 @@ import ScoreScreen from '../screens/ScoreScreen';
 import InsightsScreen from '../screens/InsightsScreen';
 import TrajectoryScreen from '../screens/TrajectoryScreen';
 import ProfileScreen from '../screens/ProfileScreen';
+import { navigationRef, flushPendingNavigation } from './navigationRef';
 import { COLORS, FONTS } from '../constants/theme';
 
 const Tab = createBottomTabNavigator();
@@ -29,7 +30,7 @@ interface Props { onResetOnboarding: () => void; }
 export default function AppNavigator({ onResetOnboarding }: Props) {
   const insets = useSafeAreaInsets();
   return (
-    <NavigationContainer theme={NAV_THEME}>
+    <NavigationContainer theme={NAV_THEME} ref={navigationRef} onReady={flushPendingNavigation}>
       <Tab.Navigator
         screenOptions={({ route }) => ({
           headerShown: false,

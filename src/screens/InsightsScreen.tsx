@@ -5,49 +5,12 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
-import { INSIGHTS, Insight } from '../services/insights';
+import { INSIGHTS, Insight, fetchLiveInsights } from '../services/insights';
 import { COLORS, FONTS, SPACING, RADIUS, CARD_SHADOW, CARD_SHADOW_STRONG } from '../constants/theme';
 import MarketSignal from '../components/MarketSignal';
 import CompanyResearch from '../components/CompanyResearch';
-import { fetchMarketData, fetchMarketNews, NewsItem, timeAgoNews } from '../services/marketSignal';
+import { fetchMarketData } from '../services/marketSignal';
 import { saveInsight } from '../services/savedInsights';
-
-// Map news categories to Pulse tags
-const NEWS_TO_TAG: Record<string, string> = {
-  FED: 'MACRO', TECH: 'MARKETS', ENERGY: 'MARKETS',
-  CRYPTO: 'MARKETS', EARNINGS: 'MARKETS', MACRO: 'MACRO', LEGAL: 'ECONOMY',
-};
-
-// Short "what this means for you" pill driven by sentiment + category
-function buildImpactPill(sentiment: string, category: string): string {
-  if (sentiment === 'bullish') {
-    if (category === 'FED')      return 'Lock in HYSA rates — the window may be short';
-    if (category === 'EARNINGS') return 'Strong earnings season — your portfolio may benefit';
-    return 'Positive market signal for wealth builders';
-  }
-  if (sentiment === 'bearish') {
-    if (category === 'FED')  return 'HYSA yields may decline — consider longer-term vehicles';
-    if (category === 'TECH') return 'Tech exposure may face short-term pressure';
-    return 'Defensive positioning may protect your wealth';
-  }
-  return 'Monitor this for impact on your financial plan';
-}
-
-function newsToInsight(news: NewsItem, idx: number): Insight {
-  const tag        = NEWS_TO_TAG[news.category] ?? 'MACRO';
-  const impactType = news.sentiment === 'bullish' ? 'positive'
-                   : news.sentiment === 'bearish' ? 'negative' : 'neutral';
-  return {
-    id:         `live-${news.id ?? idx}`,
-    headline:   news.headline,
-    body:       news.impact,
-    impact:     buildImpactPill(news.sentiment, news.category),
-    impactType: impactType as Insight['impactType'],
-    tag,
-    timeAgo:    timeAgoNews(news.minutesAgo),
-    saved:      false,
-  };
-}
 
 const { width } = Dimensions.get('window');
 const SWIPE_THRESHOLD = 80;
@@ -124,10 +87,8 @@ export default function InsightsScreen() {
   // Fetch real market news for Pulse cards + preload Signal cache
   useEffect(() => {
     fetchMarketData().catch(() => {});
-    fetchMarketNews().then(items => {
-      if (items && items.length >= 3) {
-        setInsights(items.map(newsToInsight));
-      }
+    fetchLiveInsights().then(live => {
+      if (live) setInsights(live);
     }).catch(() => {});
   }, []);
 
@@ -473,25 +434,24 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.full,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: COLORS.border,
-    padding: 3,
-    alignSelf: 'flex-start',
+    padding: 4,
   },
   tabToggleBtn: {
     flex: 1,
-    paddingHorizontal: SPACING.lg,
-    paddingVertical: 7,
+    paddingVertical: 9,
     borderRadius: RADIUS.full,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   tabToggleBtnActive: { backgroundColor: COLORS.text },
-  tabToggleTxt: { fontSize: FONTS.sizes.xs, fontWeight: FONTS.weights.semibold, color: COLORS.textMuted, letterSpacing: 0.3 },
+  tabToggleTxt: { fontSize: FONTS.sizes.md, fontWeight: FONTS.weights.semibold, color: COLORS.textDim, letterSpacing: 0.3 },
   tabToggleTxtActive: { color: COLORS.background },
 
   // Underline tab filter
   filterSection: { height: 40 },
   filterRow: { paddingHorizontal: SPACING.lg, gap: SPACING.xl, flexDirection: 'row', alignItems: 'stretch', height: 40 },
   filterTab: { alignItems: 'center', justifyContent: 'center', height: 40, position: 'relative', paddingHorizontal: 2 },
-  filterTxt: { fontSize: FONTS.sizes.xs, color: COLORS.textMuted, fontWeight: FONTS.weights.medium, letterSpacing: FONTS.tracking.widest },
+  filterTxt: { fontSize: FONTS.sizes.sm, color: COLORS.textDim, fontWeight: FONTS.weights.medium, letterSpacing: FONTS.tracking.widest },
   filterTxtActive: { color: COLORS.text, fontWeight: FONTS.weights.bold },
   filterUnderline: { position: 'absolute', bottom: 0, left: 0, right: 0, height: 2, backgroundColor: COLORS.gold, borderRadius: 1 },
 

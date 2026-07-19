@@ -11,13 +11,13 @@ import PolicyModal from '../components/PolicyModal';
 import { PRIVACY_POLICY, TERMS_OF_SERVICE } from '../constants/legal';
 import { syncPremiumStatus } from '../services/premium';
 
+// Only perks that exist in the shipping app. Premium's real gate today is the
+// Concierge message limit — sell that honestly, not features we haven't built.
 const PERKS = [
-  { icon: '◈', title: 'Unlimited AI Concierge', sub: 'Ask anything, any time — no limits' },
-  { icon: '◆', title: 'Priority wealth moves', sub: 'First access to high-impact opportunities' },
-  { icon: '◉', title: 'Advanced Signal tab', sub: 'Real-time alerts when your stocks move' },
-  { icon: '◇', title: 'Exclusive partner rates', sub: 'Better rates on loans, cards, and accounts' },
-  { icon: '○', title: 'Premium tier badge', sub: 'Platinum status in your cohort' },
-  { icon: '✦', title: 'Monthly wealth report', sub: 'Deep analysis of your financial progress' },
+  { icon: '◈', title: 'Unlimited AI Concierge', sub: 'The 5-message daily limit disappears entirely' },
+  { icon: '◆', title: 'Deep-dive advisory sessions', sub: 'Long conversations: debt payoff plans, investing, negotiation prep' },
+  { icon: '◉', title: 'Advice grounded in your accounts', sub: 'Connect your bank and every answer uses your real numbers' },
+  { icon: '✦', title: 'Every future Premium feature', sub: 'New Premium capabilities are included as they ship' },
 ];
 
 interface Props {
@@ -128,7 +128,7 @@ export default function UpgradeScreen({ visible, onClose, onSuccess }: Props) {
             <Text style={styles.heroEye}>VAULT PREMIUM</Text>
             <Text style={styles.heroTitle}>Wealth without limits.</Text>
             <Text style={styles.heroSub}>
-              Everything in VAULT — unlocked. The tools that actually move the needle.
+              Your private AI wealth advisor — no daily limits, no waiting.
             </Text>
             <View style={styles.priceRow}>
               <Text style={styles.price}>{priceString}</Text>
@@ -155,12 +155,12 @@ export default function UpgradeScreen({ visible, onClose, onSuccess }: Props) {
             ))}
           </View>
 
-          {/* Stat callout */}
+          {/* Value framing — no invented statistics */}
           <View style={[styles.proofCard, CARD_SHADOW, { shadowOpacity: 0.07 }]}>
             <Text style={styles.proofQuote}>
-              VAULT members who connect their accounts identify an average of $600–$1,200/year in optimizable spending within the first 30 days.
+              One good money decision — a fee you cancel, a rate you negotiate, a contribution you automate — can cover a year of Premium on its own.
             </Text>
-            <Text style={styles.proofAuthor}>◆  Based on connected account analysis</Text>
+            <Text style={styles.proofAuthor}>◆  Cancel anytime · No lock-in</Text>
           </View>
 
           {!!error && <Text style={styles.error}>{error}</Text>}

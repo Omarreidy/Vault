@@ -6,6 +6,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import { supabase } from '../services/supabase';
+import PolicyModal from '../components/PolicyModal';
+import { PRIVACY_POLICY, TERMS_OF_SERVICE } from '../constants/legal';
 import { COLORS, FONTS, SPACING, RADIUS, CARD_SHADOW } from '../constants/theme';
 
 type Mode = 'signin' | 'signup';
@@ -19,6 +21,7 @@ export default function AuthScreen({ onAuth }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [awaitingConfirm, setAwaitingConfirm] = useState(false);
+  const [policyModal, setPolicyModal] = useState<null | 'terms' | 'privacy'>(null);
 
   const handleSubmit = async () => {
     if (!email.trim() || !password.trim()) {
@@ -177,13 +180,42 @@ export default function AuthScreen({ onAuth }: Props) {
 
             {mode === 'signup' && (
               <Text style={styles.legal}>
-                By continuing you agree to our Terms of Service and Privacy Policy.
+                By continuing you agree to our{' '}
+                <Text
+                  style={styles.legalLink}
+                  onPress={() => setPolicyModal('terms')}
+                  accessibilityRole="link"
+                >
+                  Terms of Service
+                </Text>
+                {' '}and{' '}
+                <Text
+                  style={styles.legalLink}
+                  onPress={() => setPolicyModal('privacy')}
+                  accessibilityRole="link"
+                >
+                  Privacy Policy
+                </Text>
+                .
               </Text>
             )}
           </View>
 
         </View>
       </KeyboardAvoidingView>
+
+      <PolicyModal
+        visible={policyModal === 'terms'}
+        title="Terms of Service"
+        content={TERMS_OF_SERVICE}
+        onClose={() => setPolicyModal(null)}
+      />
+      <PolicyModal
+        visible={policyModal === 'privacy'}
+        title="Privacy Policy"
+        content={PRIVACY_POLICY}
+        onClose={() => setPolicyModal(null)}
+      />
     </SafeAreaView>
   );
 }
@@ -284,6 +316,10 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 16,
     letterSpacing: FONTS.tracking.normal,
+  },
+  legalLink: {
+    color: COLORS.gold,
+    textDecorationLine: 'underline',
   },
 
   confirmBox: {

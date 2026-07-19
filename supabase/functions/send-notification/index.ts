@@ -1,5 +1,6 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { requireUser, corsHeaders as cors } from '../_shared/auth.ts';
+import { allowRequest, tooManyRequests } from '../_shared/ratelimit.ts';
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
@@ -8,6 +9,8 @@ Deno.serve(async (req) => {
   // would be a phishing/spam vector (arbitrary content to arbitrary users).
   let user: { id: string };
   try { user = await requireUser(req); } catch (r) { return r as Response; }
+  // Self-sends are for device testing/diagnostics — never a spam channel.
+  if (!(await allowRequest(user.id, 'send-notification', 5, 900))) return tooManyRequests(900);
 
   try {
     const { title, body, data } = await req.json();

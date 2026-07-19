@@ -16,6 +16,7 @@ import UpgradeScreen from './UpgradeScreen';
 import { COLORS, FONTS, SPACING, TIERS, RADIUS, CARD_SHADOW, CARD_SHADOW_STRONG } from '../constants/theme';
 import { WealthWin } from '../types';
 import { fetchLeaderboardStats, LeaderboardStats } from '../services/leaderboard';
+import { XP_PER_REFERRAL } from '../services/referral';
 import { ACHIEVEMENTS, getAchievements, buildAchievementContext, Achievement } from '../services/achievements';
 import { getStreak } from '../services/streak';
 import { loadStats } from '../services/progressStats';
@@ -406,16 +407,21 @@ export default function ProfileScreen({ onResetOnboarding }: ProfileProps = {}) 
                   </View>
                 </View>
 
-                {/* Invite CTA */}
+                {/* Invite CTA — jumps to the real referral flow on the Invite tab */}
                 <TouchableOpacity
                   style={styles.inviteBtn}
-                  onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {})}
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+                    setActiveTab('Invite');
+                  }}
                   activeOpacity={0.85}
+                  accessibilityRole="button"
+                  accessibilityLabel="Invite a friend to VAULT"
                 >
                   <Text style={styles.inviteIcon}>+</Text>
                   <View>
                     <Text style={styles.inviteTxt}>Invite a friend to VAULT</Text>
-                    <Text style={styles.inviteSub}>You both get +50 XP when they join</Text>
+                    <Text style={styles.inviteSub}>You both get +{XP_PER_REFERRAL} XP when they join</Text>
                   </View>
                 </TouchableOpacity>
 

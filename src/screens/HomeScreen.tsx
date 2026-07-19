@@ -9,7 +9,7 @@ import * as Haptics from 'expo-haptics';
 import { buildFeed, composeFeed, fetchPersonalizedMoves, FeedItem } from '../services/feed';
 import { track, EVENTS } from '../services/analytics';
 import { ALL_MOVES } from '../services/mockData';
-import { INSIGHTS, Insight } from '../services/insights';
+import { INSIGHTS, Insight, fetchLiveInsights } from '../services/insights';
 import { useRealProfile } from '../services/userProfile';
 import { WealthMove, WealthWin } from '../types';
 
@@ -37,6 +37,7 @@ import DailyBriefCard from '../components/DailyBriefCard';
 import VaultClosedCelebration from '../components/VaultClosedCelebration';
 import { usePlaid } from '../context/PlaidContext';
 import { getUnreadCount } from '../services/notifications';
+import { navigateToTab } from '../navigation/navigationRef';
 
 import { COLORS, FONTS, SPACING, RADIUS, CARD_SHADOW } from '../constants/theme';
 
@@ -74,11 +75,15 @@ function EndOfFeedCard({ streakDays, onBackToTop }: { streakDays: number; onBack
         <Text style={eofStyles.mark}>VAULT</Text>
         <Text style={eofStyles.title}>You're all caught up.</Text>
         <Text style={eofStyles.sub}>
-          New moves drop daily. Come back tomorrow{'\n'}to keep your {streakDays}-day streak alive.
+          {streakDays > 0
+            ? `New moves drop daily. Come back tomorrow\nto keep your ${streakDays}-day streak alive.`
+            : 'New moves drop daily. Complete one move\nto start your streak.'}
         </Text>
         <View style={eofStyles.streakRow}>
           <Text style={eofStyles.streakEmoji}>🔥</Text>
-          <Text style={eofStyles.streakTxt}>{streakDays} day streak · Keep it going</Text>
+          <Text style={eofStyles.streakTxt}>
+            {streakDays > 0 ? `${streakDays} day streak · Keep it going` : 'Start your streak today'}
+          </Text>
         </View>
         <TouchableOpacity style={eofStyles.btn} onPress={onBackToTop} activeOpacity={0.85}>
           <Text style={eofStyles.btnTxt}>↑  Back to top</Text>
@@ -205,9 +210,15 @@ export default function HomeScreen() {
 
   const loadPersonalizedFeed = useCallback((connected: boolean) => {
     const requestId = ++feedRequestRef.current;
-    fetchPersonalizedMoves().then(personalizedMoves => {
+    // Live market news backs the pulse cards; the evergreen set is the
+    // no-network fallback — never fake timestamps in the feed.
+    Promise.all([
+      fetchPersonalizedMoves(),
+      fetchLiveInsights().catch(() => null),
+    ]).then(([personalizedMoves, liveInsights]) => {
       if (requestId !== feedRequestRef.current) return;
-      const next = composeFeed(buildFeed(ALL_MOVES, INSIGHTS, []), personalizedMoves, connected);
+      const next = composeFeed(
+        buildFeed(ALL_MOVES, liveInsights ?? INSIGHTS, []), personalizedMoves, connected);
       setFeed(next);
       const variant = personalizedMoves && personalizedMoves.length > 0
         ? 'personalized' : connected ? 'default' : 'connect';
@@ -526,6 +537,7 @@ export default function HomeScreen() {
               style={styles.bellBtn}
               onPress={() => {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+                track(EVENTS.NOTIF_CENTER_OPENED, { unread: notifCount });
                 setShowNotifs(true);
               }}
               activeOpacity={0.75}
@@ -693,7 +705,15 @@ export default function HomeScreen() {
       />
 
       <Modal visible={showNotifs} animationType="slide" presentationStyle="pageSheet">
-        <NotificationsScreen onClose={() => { setShowNotifs(false); getUnreadCount().then(setNotifCount).catch(() => {}); }} />
+        <NotificationsScreen
+          onClose={() => { setShowNotifs(false); getUnreadCount().then(setNotifCount).catch(() => {}); }}
+          onNavigate={tab => {
+            setShowNotifs(false);
+            getUnreadCount().then(setNotifCount).catch(() => {});
+            // Home lives on the Feed tab — only jump when the story is elsewhere.
+            if (tab !== 'Feed') navigateToTab(tab);
+          }}
+        />
       </Modal>
     </View>
   );

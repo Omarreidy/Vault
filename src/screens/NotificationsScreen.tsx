@@ -9,6 +9,8 @@ import {
   VaultNotification, timeAgo, NotifType,
   loadNotifications, markNotificationRead, dismissNotification,
 } from '../services/notifications';
+import { routeForNotifType, TabName } from '../services/notificationRouting';
+import { track, EVENTS } from '../services/analytics';
 import { COLORS, FONTS, SPACING, RADIUS, CARD_SHADOW } from '../constants/theme';
 import { getSavedInsights, SavedInsight, removeSavedInsight } from '../services/savedInsights';
 
@@ -26,11 +28,11 @@ const TYPE_COLORS: Record<NotifType, string> = {
 
 function NotifRow({
   notif,
-  onRead,
+  onOpen,
   onDismiss,
 }: {
   notif: VaultNotification;
-  onRead: (id: string) => void;
+  onOpen: (notif: VaultNotification) => void;
   onDismiss: (id: string) => void;
 }) {
   const accentColor = TYPE_COLORS[notif.type];
@@ -38,14 +40,14 @@ function NotifRow({
   const heightAnim = useRef(new Animated.Value(1)).current;
   const scale = useRef(new Animated.Value(1)).current;
 
+  // Every card is tappable — read or unread — and lands on the screen its
+  // story lives on, mirroring how a push for the same event would deep-link.
   const handlePress = () => {
-    if (!notif.read) {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-      Animated.sequence([
-        Animated.timing(scale, { toValue: 0.98, duration: 80, useNativeDriver: false }),
-        Animated.timing(scale, { toValue: 1, duration: 80, useNativeDriver: false }),
-      ]).start(() => onRead(notif.id));
-    }
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    Animated.sequence([
+      Animated.timing(scale, { toValue: 0.98, duration: 80, useNativeDriver: false }),
+      Animated.timing(scale, { toValue: 1, duration: 80, useNativeDriver: false }),
+    ]).start(() => onOpen(notif));
   };
 
   const handleDismiss = () => {
@@ -109,9 +111,11 @@ function NotifRow({
 
 interface Props {
   onClose: () => void;
+  /** Close the sheet and jump to a tab — how a tapped card deep-links. */
+  onNavigate?: (tab: TabName) => void;
 }
 
-export default function NotificationsScreen({ onClose }: Props) {
+export default function NotificationsScreen({ onClose, onNavigate }: Props) {
   const [notifs, setNotifs] = useState<VaultNotification[]>([]);
   const [savedInsights, setSavedInsights] = useState<SavedInsight[]>([]);
   const unreadCount = notifs.filter(n => !n.read).length;
@@ -121,14 +125,19 @@ export default function NotificationsScreen({ onClose }: Props) {
     getSavedInsights().then(setSavedInsights).catch(() => {});
   }, []);
 
-  const markRead = (id: string) => {
-    setNotifs(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
-    markNotificationRead(id).catch(() => {});
+  const open = (notif: VaultNotification) => {
+    setNotifs(prev => prev.map(n => n.id === notif.id ? { ...n, read: true } : n));
+    markNotificationRead(notif.id).catch(() => {});
+    const tab = routeForNotifType(notif.type);
+    track(EVENTS.NOTIF_OPENED, { source: 'center', type: notif.type, screen: tab }).catch(() => {});
+    onNavigate?.(tab);
   };
 
   const dismiss = (id: string) => {
+    const dismissed = notifs.find(n => n.id === id);
     setNotifs(prev => prev.filter(n => n.id !== id));
     dismissNotification(id).catch(() => {});
+    track(EVENTS.NOTIF_DISMISSED, { type: dismissed?.type ?? 'unknown' }).catch(() => {});
   };
 
   const markAllRead = () => {
@@ -227,7 +236,7 @@ export default function NotificationsScreen({ onClose }: Props) {
           <>
             <Text style={styles.sectionLabel}>NEW</Text>
             {unread.map(n => (
-              <NotifRow key={n.id} notif={n} onRead={markRead} onDismiss={dismiss} />
+              <NotifRow key={n.id} notif={n} onOpen={open} onDismiss={dismiss} />
             ))}
           </>
         )}
@@ -236,7 +245,7 @@ export default function NotificationsScreen({ onClose }: Props) {
           <>
             <Text style={styles.sectionLabel}>EARLIER</Text>
             {read.map(n => (
-              <NotifRow key={n.id} notif={n} onRead={markRead} onDismiss={dismiss} />
+              <NotifRow key={n.id} notif={n} onOpen={open} onDismiss={dismiss} />
             ))}
           </>
         )}

@@ -145,8 +145,10 @@ async function checkAuthEnforced() {
   const protectedFns = [
     'plaid-link-token', 'plaid-exchange', 'plaid-refresh',
     'calculate-score', 'concierge', 'financial-scanner', 'send-notification',
+    'push-dispatch', // cron-secret only — anon must always bounce
   ];
   const leaks: string[] = [];
+  const missing: string[] = [];
   await Promise.all(protectedFns.map(async fn => {
     try {
       const res = await fetch(`${SUPABASE_URL}/functions/v1/${fn}`, {
@@ -154,11 +156,14 @@ async function checkAuthEnforced() {
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${ANON}`, 'apikey': ANON },
         body: JSON.stringify({}),
       });
-      if (res.status !== 401) leaks.push(`${fn} (${res.status})`);
+      // 404 = not deployed yet — an ops gap, not an auth leak.
+      if (res.status === 404) missing.push(fn);
+      else if (res.status !== 401) leaks.push(`${fn} (${res.status})`);
     } catch { /* network flake — ignore, not a security signal */ }
   }));
   if (leaks.length > 0) fail(`auth-enforcement: these accept anon key without a session → ${leaks.join(', ')}`);
-  else pass('auth-enforcement: all 7 protected functions reject anon key (401)');
+  else pass(`auth-enforcement: ${protectedFns.length - missing.length}/${protectedFns.length} protected functions reject anon key (401)`);
+  if (missing.length > 0) warn(`not deployed yet: ${missing.join(', ')} — run: supabase functions deploy ${missing.join(' ')}`);
 }
 
 async function checkMarketData() {

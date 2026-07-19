@@ -22,6 +22,11 @@ export const EVENTS = {
   DAILY_BRIEF_CTA:        'daily_brief_cta_tapped',
   STREAK_EXTENDED:        'streak_extended',
   VAULT_CLOSED:           'vault_closed',
+  PUSH_PERMISSION_RESULT: 'push_permission_result',
+  PUSH_TOKEN_REGISTERED:  'push_token_registered',
+  NOTIF_OPENED:           'notif_opened',
+  NOTIF_DISMISSED:        'notif_dismissed',
+  NOTIF_CENTER_OPENED:    'notif_center_opened',
 } as const;
 
 export type EventName = (typeof EVENTS)[keyof typeof EVENTS];

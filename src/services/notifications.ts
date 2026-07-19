@@ -1,6 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getStreak } from './streak';
 import { getTierFromScore, getNextTier, getPointsToNextTier } from './velocity';
+import { DAILY_MOVES_TARGET } from './ritual';
+import { getNotifPrefs } from './notificationPrefs';
 import { TierName } from '../types';
 
 export type NotifType =
@@ -51,31 +53,43 @@ function toVaultNotification(s: StoredNotif): VaultNotification {
   return { ...s, timestamp: new Date(s.timestamp) };
 }
 
-async function buildFreshNotifications(): Promise<VaultNotification[]> {
-  const now = Date.now();
+// Streak copy tiers on the real count — no invented comparisons to other
+// members (we don't have cohort streak distribution data on-device).
+function streakBody(streak: number): string {
+  if (streak >= 7) return `${streak} days of real moves in a row. This is how the habit compounds.`;
+  if (streak >= 3) return `${streak} days straight — don't break the chain.`;
+  return `Day ${streak}. One move today keeps it alive.`;
+}
+
+/**
+ * Builds today's notification cards from real on-device state: the action
+ * streak, the onboarding/live score, and the daily moves ritual. Every number
+ * shown comes from stored data — nothing here is invented (see the no-fake-data
+ * rule in qa/FINANCIAL_SPEC.md). Timestamps are the actual generation time.
+ * Exported for tests.
+ */
+export async function buildFreshNotifications(): Promise<VaultNotification[]> {
+  const prefs = await getNotifPrefs();
   const notifs: VaultNotification[] = [];
+  const now = new Date();
 
   // Streak
   const streak = await getStreak().catch(() => 0);
-  if (streak >= 1) {
-    const streakBody = streak >= 7
-      ? `${streak} days in a row. You're in the top habit tier of VAULT members.`
-      : streak >= 3
-      ? `${streak} days straight. Building a wealth habit is how tiers get crossed.`
-      : `Day ${streak}. Every day you open VAULT you're ahead of most people.`;
+  if (streak >= 1 && prefs.streak) {
     notifs.push({
       id: `streak_${todayString()}`,
       type: 'streak',
-      title: streak >= 7 ? `🔥 ${streak}-day streak — elite territory` : `🔥 Day ${streak} streak · Keep going`,
-      body: streakBody,
-      timestamp: new Date(now - 1000 * 60 * 5),
+      title: streak >= 7 ? `🔥 ${streak}-day streak` : `🔥 Day ${streak} streak`,
+      body: streakBody(streak),
+      timestamp: now,
       read: false,
       icon: '🔥',
       value: `${streak}d`,
     });
   }
 
-  // Onboarding score → tier progress and score notification
+  // Score + tier progress from the onboarding result
+  let hasScore = false;
   try {
     const raw = await AsyncStorage.getItem('@vault_onboarding_result');
     if (raw) {
@@ -84,28 +98,33 @@ async function buildFreshNotifications(): Promise<VaultNotification[]> {
       const tier = getTierFromScore(score) as TierName;
       const nextTier = getNextTier(tier);
       const pts = getPointsToNextTier(score);
+      hasScore = score > 0;
 
-      if (score > 0) {
+      if (hasScore && prefs.score) {
+        // Percentile is only mentioned when the score engine actually
+        // computed one — never derived from a made-up formula.
+        const percentile = typeof result.percentile === 'number'
+          ? `You're in the ${result.percentile}th percentile. `
+          : '';
         notifs.push({
           id: `score_${todayString()}`,
           type: 'score_up',
           title: `Your Vault score: ${score}`,
-          body: `You're in the ${result.percentile ?? Math.round(score / 10)}th percentile. ${nextTier ? `${pts} points from ${nextTier} tier.` : "You’ve reached the top tier."}`,
-          timestamp: new Date(now - 1000 * 60 * 30),
+          body: `${percentile}${nextTier ? `${pts} points from ${nextTier} tier.` : 'You’ve reached the top tier.'}`,
+          timestamp: now,
           read: false,
           icon: '◉',
           value: `${score}`,
         });
       }
 
-      if (nextTier && pts > 0) {
-        const daysEstimate = Math.ceil(pts / 15);
+      if (nextTier && pts > 0 && prefs.score) {
         notifs.push({
           id: `tier_${todayString()}`,
           type: 'tier_progress',
-          title: `${nextTier} tier is ${pts} pts away`,
-          body: `At your current pace, you'll hit ${nextTier} in roughly ${daysEstimate} day${daysEstimate !== 1 ? 's' : ''}. Stay consistent.`,
-          timestamp: new Date(now - 1000 * 60 * 60 * 2),
+          title: `${nextTier} tier: ${pts} pts away`,
+          body: 'Every completed move adds Wealth Velocity. Close the gap one move at a time.',
+          timestamp: now,
           read: false,
           icon: '◇',
         });
@@ -113,26 +132,30 @@ async function buildFreshNotifications(): Promise<VaultNotification[]> {
     }
   } catch {}
 
-  // New moves — always available (feed refreshes daily)
-  notifs.push({
-    id: `moves_${todayString()}`,
-    type: 'new_moves',
-    title: 'Fresh wealth moves loaded',
-    body: "Today's moves are ready. One could be worth $1,200+ to your bottom line this year.",
-    timestamp: new Date(now - 1000 * 60 * 60 * 6),
-    read: false,
-    icon: '◈',
-    actionLabel: 'See moves',
-  });
+  // New moves — the feed refreshes daily; the target count is the real
+  // vault-close mechanic (three moves closes today's vault).
+  if (prefs.moves) {
+    notifs.push({
+      id: `moves_${todayString()}`,
+      type: 'new_moves',
+      title: 'Fresh wealth moves loaded',
+      body: `Today's moves are ready. ${DAILY_MOVES_TARGET} completed actions close your vault for the day.`,
+      timestamp: now,
+      read: false,
+      icon: '◈',
+      actionLabel: 'See moves',
+    });
+  }
 
-  // Welcome for brand-new users (no streak, no score yet)
-  if (streak === 0 && notifs.length === 1) {
+  // Welcome for brand-new users (no streak, no score yet). Not gated by any
+  // toggle — it's onboarding guidance, not an alert category.
+  if (streak === 0 && !hasScore) {
     notifs.push({
       id: `welcome_${todayString()}`,
       type: 'insight',
       title: 'Welcome to VAULT',
       body: 'Your wealth intelligence feed is ready. Complete onboarding to unlock your Vault score and personalized moves.',
-      timestamp: new Date(now - 1000 * 60 * 60 * 1),
+      timestamp: now,
       read: false,
       icon: '◈',
     });

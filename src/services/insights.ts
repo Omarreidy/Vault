@@ -1,3 +1,8 @@
+// Type-only: a runtime import of marketSignal would construct the Supabase
+// client at module load, which breaks Node-side consumers of INSIGHTS (the
+// health check). fetchLiveInsights loads it lazily instead.
+import type { NewsItem } from './marketSignal';
+
 export interface Insight {
   id: string;
   headline: string;
@@ -9,125 +14,196 @@ export interface Insight {
   saved: boolean;
 }
 
+// Fallback pulse cards shown when live market news is unavailable. These are
+// evergreen principles, not news: no dates, no "current" market numbers, no
+// claims about the member's own accounts. Anything time-sensitive comes only
+// from the live market-news feed (fetchLiveInsights below).
+const EVERGREEN = 'Evergreen';
+
 export const INSIGHTS: Insight[] = [
   {
     id: 'i1',
-    headline: 'Fed held rates steady. Your HYSA is still winning.',
-    body: 'The Federal Reserve held interest rates at 5.25%–5.50% today. For VAULT members with high-yield savings accounts, this means you\'re still earning 4.8–5.1% on idle cash — 50x what a standard checking account pays.',
-    impact: 'HYSA earns 50x more, zero added risk',
+    headline: 'Idle cash in checking quietly loses to inflation.',
+    body: 'Standard checking accounts pay near-zero interest while high-yield savings accounts typically pay many times more with the same FDIC protection. Cash you won\'t spend this month is usually working harder in a HYSA.',
+    impact: 'Same protection, far higher yield on idle cash',
     impactType: 'negative',
     tag: 'MACRO',
-    timeAgo: '2h ago',
+    timeAgo: EVERGREEN,
     saved: false,
   },
   {
     id: 'i2',
-    headline: 'S&P 500 up 1.4% this week. Are you invested?',
-    body: 'Markets rallied on strong jobs data. If you\'re not in the market, you\'re watching returns happen for other people. The historical average return is 10.7%/year — your HYSA earns 5%. The gap is the cost of staying on the sidelines.',
-    impact: 'Sitting out: -10.7%/yr in missed returns',
+    headline: 'Time in the market beats timing the market.',
+    body: 'The S&P 500 has averaged roughly 10% per year over the long run, but the gains cluster in a handful of days. Missing the best days by sitting out is one of the most expensive habits in investing. Consistent contributions beat clever entry points.',
+    impact: 'Sitting out has a real, compounding cost',
     impactType: 'neutral',
     tag: 'MARKETS',
-    timeAgo: '5h ago',
-    saved: true,
+    timeAgo: EVERGREEN,
+    saved: false,
   },
   {
     id: 'i3',
-    headline: 'The salary negotiation window is open. Most miss it.',
-    body: 'Data from 40,000 salary negotiations shows the highest success rate (73%) comes at the 9–12 month mark in a role. You\'re in that window right now. The average successful negotiation added $11,400 to annual comp.',
-    impact: 'Optimal window: avg +$11,400/yr',
+    headline: 'Salary negotiation compounds like an investment.',
+    body: 'A raise negotiated once repeats every year and lifts every future raise, bonus, and 401k match calculated from it. Preparation matters more than nerve: document your wins, know the market rate for your role, and ask with a specific number.',
+    impact: 'One conversation can move every future paycheck',
     impactType: 'positive',
     tag: 'CAREER',
-    timeAgo: '1d ago',
+    timeAgo: EVERGREEN,
     saved: false,
   },
   {
     id: 'i4',
-    headline: 'Credit card APRs hit 22.8% average. Carry no balance.',
-    body: 'The average credit card APR in the US hit a record 22.8%. Carrying even a $1,000 balance costs $228/year in interest alone. At VAULT Gold tier, you qualify for partner cards at 17.9% — a 27% lower rate.',
-    impact: 'Gold perk: 17.9% APR partner cards',
+    headline: 'Carrying a credit card balance is a wealth emergency.',
+    body: 'Credit card APRs routinely sit above 20%. No mainstream investment reliably beats that, which makes paying off a carried balance one of the highest-return moves available. Pay the statement in full and the rate stops mattering.',
+    impact: 'Paying off a balance beats most investments',
     impactType: 'positive',
     tag: 'CREDIT',
-    timeAgo: '2d ago',
+    timeAgo: EVERGREEN,
     saved: false,
   },
   {
     id: 'i5',
-    headline: 'Inflation cooling. Your purchasing power is recovering.',
-    body: 'CPI came in at 2.4% — the lowest in 3 years. In real terms, your salary has more purchasing power today than it did 18 months ago. This is also a signal that the Fed may cut rates, which could slightly lower HYSA yields in Q3.',
-    impact: 'Lock in today\'s 5%+ rates before Q3 cuts',
+    headline: 'Inflation is the tax nobody invoices you for.',
+    body: 'Even moderate inflation erodes uninvested cash year after year. The defense is simple: keep an emergency fund liquid, keep long-term money invested, and make sure large cash balances are at least earning a competitive savings rate.',
+    impact: 'Uninvested cash needs a reason to stay cash',
     impactType: 'neutral',
     tag: 'ECONOMY',
-    timeAgo: '3d ago',
+    timeAgo: EVERGREEN,
     saved: false,
   },
   {
     id: 'i6',
-    headline: 'Tech layoffs hit 60,000 workers this month. Your emergency fund matters now.',
-    body: 'Major tech firms announced 60,000 layoffs in the past 30 days. Across all sectors, the average job search takes 5.1 months. Financial advisors recommend 5–6 months of expenses saved — most people are under that threshold. One more month of buffer changes everything.',
-    impact: '1–2 months short of the 5-month safety zone',
+    headline: 'Your emergency fund is what makes every other plan real.',
+    body: 'The average job search takes several months, and advisors commonly recommend 5–6 months of expenses in reserve. Without that buffer, one bad month converts into high-interest debt and undoes years of progress.',
+    impact: 'A funded buffer keeps setbacks from compounding',
     impactType: 'negative',
     tag: 'ECONOMY',
-    timeAgo: '4h ago',
+    timeAgo: EVERGREEN,
     saved: false,
   },
   {
     id: 'i7',
-    headline: 'Treasury yields at 4.9%. Bonds are worth looking at again.',
-    body: '10-year Treasury yields hit 4.9% — the highest since 2007. For the first time in 15 years, risk-free government bonds offer a competitive return. If you\'re holding cash beyond your emergency fund, a Treasury ladder deserves a look.',
-    impact: 'Risk-free 4.9% on cash above $10K',
+    headline: 'Treasuries: the risk-free benchmark worth knowing.',
+    body: 'US Treasury yields set the baseline every other investment competes with. When yields are high, cash beyond your emergency fund can earn a genuinely competitive risk-free return through T-bills or a Treasury ladder. Check the current yield before letting cash idle.',
+    impact: 'Know the risk-free rate before taking risk',
     impactType: 'positive',
     tag: 'MARKETS',
-    timeAgo: '6h ago',
+    timeAgo: EVERGREEN,
     saved: false,
   },
   {
     id: 'i8',
-    headline: 'Median new car price hits $48,000. The math on buying is brutal.',
-    body: 'The median new car is now $48,000 — up 28% since 2020. At 7.4% auto loan rates, a 5-year loan costs $18,400 in interest alone. The average car loses 50% of its value in 3 years. This is one of the most expensive decisions most people make.',
-    impact: '3-year-old car saves ~$22K vs. new',
+    headline: 'New cars are one of the most expensive habits in personal finance.',
+    body: 'A typical new car loses around half its value in the first three years, and financing adds thousands in interest on top. Buying a lightly used car and driving it for years is one of the largest single savings levers most people control.',
+    impact: 'A 3-year-old car skips the steepest depreciation',
     impactType: 'negative',
     tag: 'MACRO',
-    timeAgo: '8h ago',
+    timeAgo: EVERGREEN,
     saved: false,
   },
   {
     id: 'i9',
-    headline: 'Your credit score is worth $50,000 over a lifetime.',
-    body: 'Going from a 650 to a 750 credit score saves an average of 1.5% on mortgage rates. On a $350,000 home, that\'s $52,500 in total interest saved. The two biggest levers: payment history (35%) and utilization (30%). Both are in your control.',
-    impact: '+50 pts on your score = thousands saved',
+    headline: 'Your credit score is worth real money over a lifetime.',
+    body: 'Moving from a fair score to an excellent one can save meaningfully on mortgage and loan rates — often tens of thousands of dollars of interest over a mortgage. The two biggest levers: payment history (35%) and utilization (30%). Both are in your control.',
+    impact: 'Higher score = cheaper money, for decades',
     impactType: 'positive',
     tag: 'CREDIT',
-    timeAgo: '12h ago',
+    timeAgo: EVERGREEN,
     saved: false,
   },
   {
     id: 'i10',
-    headline: 'The average American retires with $87,000. That lasts 4 years.',
-    body: 'Social Security replaces only 40% of pre-retirement income. The gap must come from savings. Someone retiring at 65 with $87,000 runs out of money by 69. The rule of thumb: 25x your annual expenses. At $60K/year spend, you need $1.5M.',
-    impact: 'Need $1.5M at $60K/yr — most fall short',
+    headline: 'Retirement math: 25x your annual spending.',
+    body: 'Social Security replaces only part of pre-retirement income; the rest must come from savings. The common rule of thumb is 25x your annual expenses — at $60K/year of spending, that\'s $1.5M. The earlier the compounding starts, the smaller the required monthly number.',
+    impact: 'Know your number: 25x annual expenses',
     impactType: 'neutral',
     tag: 'MACRO',
-    timeAgo: '1d ago',
+    timeAgo: EVERGREEN,
     saved: false,
   },
   {
     id: 'i11',
-    headline: 'Remote work premium is evaporating. In-office pays more now.',
-    body: 'New data shows fully remote workers earn 7.5% less than in-office peers in the same role. Hybrid workers earn 3.2% less. The gap is widening. If you\'re remote by choice, quantify what it\'s costing you — and whether the trade-off is worth it.',
-    impact: 'Remote costs $6K–$15K/yr vs. in-office',
+    headline: 'Total compensation is more than the salary line.',
+    body: 'Remote flexibility, employer 401k match, equity, health premiums, and commute costs all change what a job actually pays. When comparing offers or negotiating, price the whole package — a higher salary with a worse match and commute can be a pay cut.',
+    impact: 'Compare offers on total comp, not salary',
     impactType: 'neutral',
     tag: 'CAREER',
-    timeAgo: '2d ago',
+    timeAgo: EVERGREEN,
     saved: false,
   },
   {
     id: 'i12',
-    headline: 'Roth conversions are cheapest during market dips.',
-    body: 'When markets are down 15–20%, converting traditional IRA funds to Roth costs less in taxes — you pay tax on a lower account value, but your gains after recovery are tax-free forever. Market dips are the best time to make this move.',
-    impact: '$10K conversion saves $4,200 in taxes',
+    headline: 'Market dips are Roth conversion season.',
+    body: 'Converting traditional IRA funds to Roth during a downturn means paying tax on a temporarily lower account value — and the recovery then compounds tax-free forever. If a conversion is on your list, a dip is when it\'s cheapest.',
+    impact: 'Downturns cut the tax bill on conversions',
     impactType: 'positive',
     tag: 'MARKETS',
-    timeAgo: '3d ago',
+    timeAgo: EVERGREEN,
     saved: false,
   },
 ];
+
+// ── Live pulse cards from real market news ───────────────────────────────────
+
+// Map news categories to Pulse tags
+const NEWS_TO_TAG: Record<string, string> = {
+  FED: 'MACRO', TECH: 'MARKETS', ENERGY: 'MARKETS',
+  CRYPTO: 'MARKETS', EARNINGS: 'MARKETS', MACRO: 'MACRO', LEGAL: 'ECONOMY',
+};
+
+// Short "what this means for you" pill driven by sentiment + category
+export function buildImpactPill(sentiment: string, category: string): string {
+  if (sentiment === 'bullish') {
+    if (category === 'FED')      return 'Lock in HYSA rates — the window may be short';
+    if (category === 'EARNINGS') return 'Strong earnings season — your portfolio may benefit';
+    return 'Positive market signal for wealth builders';
+  }
+  if (sentiment === 'bearish') {
+    if (category === 'FED')  return 'HYSA yields may decline — consider longer-term vehicles';
+    if (category === 'TECH') return 'Tech exposure may face short-term pressure';
+    return 'Defensive positioning may protect your wealth';
+  }
+  return 'Monitor this for impact on your financial plan';
+}
+
+// Same output as marketSignal's timeAgoNews, duplicated here so this module
+// stays importable without loading the Supabase client (see import note above).
+function formatMinutesAgo(minutes: number): string {
+  if (minutes < 60)   return `${minutes}m ago`;
+  if (minutes < 1440) return `${Math.floor(minutes / 60)}h ago`;
+  return `${Math.floor(minutes / 1440)}d ago`;
+}
+
+export function newsToInsight(news: NewsItem, idx: number): Insight {
+  const tag        = NEWS_TO_TAG[news.category] ?? 'MACRO';
+  const impactType = news.sentiment === 'bullish' ? 'positive'
+                   : news.sentiment === 'bearish' ? 'negative' : 'neutral';
+  return {
+    id:         `live-${news.id ?? idx}`,
+    headline:   news.headline,
+    body:       news.impact,
+    impact:     buildImpactPill(news.sentiment, news.category),
+    impactType: impactType as Insight['impactType'],
+    tag,
+    timeAgo:    formatMinutesAgo(news.minutesAgo),
+    saved:      false,
+  };
+}
+
+// Pure mapping step, exposed for tests: only a real batch of news (3+) is
+// worth replacing the evergreen set — one stray headline isn't a feed.
+export function liveNewsToInsights(items: NewsItem[] | null | undefined): Insight[] | null {
+  if (!items || items.length < 3) return null;
+  return items.map(newsToInsight);
+}
+
+// Live pulse cards for the feed + Pulse tab. Returns null when the news feed
+// is unavailable so callers fall back to the evergreen INSIGHTS above.
+export async function fetchLiveInsights(): Promise<Insight[] | null> {
+  try {
+    const { fetchMarketNews } = await import('./marketSignal');
+    return liveNewsToInsights(await fetchMarketNews());
+  } catch {
+    return null;
+  }
+}

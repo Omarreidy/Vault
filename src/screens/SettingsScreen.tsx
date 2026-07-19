@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView,
-  TouchableOpacity, Switch, Alert, Linking, Share, Platform, Modal,
+  TouchableOpacity, Switch, Alert, Linking, Share, Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -11,7 +11,13 @@ import PolicyModal from '../components/PolicyModal';
 import { COLORS, FONTS, SPACING, RADIUS, TIERS, CARD_SHADOW } from '../constants/theme';
 import { PRIVACY_POLICY, TERMS_OF_SERVICE } from '../constants/legal';
 import { resetOnboarding } from '../services/onboarding';
-import { syncDailyReminder, syncWeeklyRecap } from '../services/push';
+import { syncDailyReminder, syncWeeklyRecap, getPushPermission, PushPermission, teardownPushForSignOut } from '../services/push';
+import {
+  getNotifPrefs, setNotifPrefs, NOTIF_PREFS_KEY,
+  getNotifMeta, setNotifMeta, isPausedNow, DEFAULT_NOTIF_META, NOTIF_META_KEY,
+  syncPrefsToServer, fetchServerPrefs, DEFAULT_NOTIF_PREFS,
+} from '../services/notificationPrefs';
+import { CURRENCY_KEY, LANGUAGE_KEY, SUPPORTED_CURRENCIES, SUPPORTED_LANGUAGES } from '../services/locale';
 import { useRealProfile } from '../services/userProfile';
 import { usePlaid } from '../context/PlaidContext';
 import { supabase } from '../services/supabase';
@@ -19,13 +25,20 @@ import { syncPremiumStatus } from '../services/premium';
 import PlaidLinkScreen from './PlaidLinkScreen';
 import UpgradeScreen from './UpgradeScreen';
 
-const NOTIF_PREFS_KEY  = '@vault_notif_prefs';
-const CURRENCY_KEY     = '@vault_currency';
-const LANGUAGE_KEY     = '@vault_language';
 const DARK_MODE_KEY    = '@vault_dark_mode';
 
-const CURRENCIES = ['USD', 'EUR', 'GBP', 'CAD', 'AUD'];
-const LANGUAGES  = ['English', 'Spanish', 'French', 'German', 'Portuguese'];
+const CURRENCIES = [...SUPPORTED_CURRENCIES];
+const LANGUAGES  = [...SUPPORTED_LANGUAGES];
+
+// "Pause" is indefinite until the member resumes — a far-future instant the
+// server dispatcher compares against, not a countdown we'd have to refresh.
+const PAUSE_INDEFINITE = '2099-12-31T00:00:00.000Z';
+
+const HOUR_LABELS = Array.from({ length: 24 }, (_, h) => {
+  const twelve = h % 12 === 0 ? 12 : h % 12;
+  return `${twelve} ${h < 12 ? 'AM' : 'PM'}`;
+});
+const fmtHour = (h: number) => HOUR_LABELS[((h % 24) + 24) % 24];
 
 const APP_STORE_URL  = 'https://apps.apple.com/app/id6740384574';
 const PLAY_STORE_URL = 'https://play.google.com/store/apps/details?id=com.getvault.app';
@@ -107,6 +120,10 @@ function Divider() {
   return <View style={styles.rowDivider} />;
 }
 
+// Rendered as an inline absolute overlay, NOT a nested <Modal>. SettingsScreen
+// itself is presented inside a pageSheet Modal (ProfileScreen), and iOS
+// silently drops a second Modal presented from within one — that was the
+// "tapping Currency/Language does nothing" bug.
 function PickerSheet({ visible, title, options, selected, onSelect, onClose }: {
   visible: boolean;
   title: string;
@@ -115,13 +132,21 @@ function PickerSheet({ visible, title, options, selected, onSelect, onClose }: {
   onSelect: (v: string) => void;
   onClose: () => void;
 }) {
+  if (!visible) return null;
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <View style={pickerStyles.root}>
-        <TouchableOpacity style={pickerStyles.backdrop} activeOpacity={1} onPress={onClose} />
-        <View style={pickerStyles.sheet}>
-          <View style={pickerStyles.handle} />
-          <Text style={pickerStyles.title}>{title}</Text>
+    <View style={pickerStyles.root}>
+      <TouchableOpacity
+        style={pickerStyles.backdrop}
+        activeOpacity={1}
+        onPress={onClose}
+        accessibilityRole="button"
+        accessibilityLabel="Close picker"
+      />
+      <View style={pickerStyles.sheet}>
+        <View style={pickerStyles.handle} />
+        <Text style={pickerStyles.title}>{title}</Text>
+        {/* Scrolls because the 24-hour quiet-hours list is taller than the screen */}
+        <ScrollView style={pickerStyles.optionList} bounces={false}>
           {options.map(opt => (
             <TouchableOpacity
               key={opt}
@@ -135,12 +160,12 @@ function PickerSheet({ visible, title, options, selected, onSelect, onClose }: {
               {opt === selected && <Text style={pickerStyles.check}>✓</Text>}
             </TouchableOpacity>
           ))}
-          <TouchableOpacity style={pickerStyles.cancel} onPress={onClose} activeOpacity={0.7}>
-            <Text style={pickerStyles.cancelTxt}>Cancel</Text>
-          </TouchableOpacity>
-        </View>
+        </ScrollView>
+        <TouchableOpacity style={pickerStyles.cancel} onPress={onClose} activeOpacity={0.7}>
+          <Text style={pickerStyles.cancelTxt}>Cancel</Text>
+        </TouchableOpacity>
       </View>
-    </Modal>
+    </View>
   );
 }
 
@@ -152,8 +177,8 @@ interface Props {
 }
 
 export default function SettingsScreen({ onClose, onResetOnboarding }: Props) {
-  const { tier, name } = useRealProfile();
-  const { hardRefresh: refreshPlaid } = usePlaid();
+  const { tier, name, isPremium } = useRealProfile();
+  const { plaidConnected, plaidSummary, hardRefresh: refreshPlaid } = usePlaid();
   const info = TIERS[tier];
 
   // Notification toggles
@@ -162,6 +187,16 @@ export default function SettingsScreen({ onClose, onResetOnboarding }: Props) {
   const [notifScore,   setNotifScore]   = useState(true);
   const [notifWeekly,  setNotifWeekly]  = useState(true);
   const [notifInsight, setNotifInsight] = useState(false);
+  const [paused,       setPaused]       = useState(false);
+  const [quietStart,   setQuietStart]   = useState(DEFAULT_NOTIF_META.quietStart);
+  const [quietEnd,     setQuietEnd]     = useState(DEFAULT_NOTIF_META.quietEnd);
+  const [showQuietStart, setShowQuietStart] = useState(false);
+  const [showQuietEnd,   setShowQuietEnd]   = useState(false);
+  // Gate persisting until stored prefs have loaded, so the mount render can't
+  // clobber saved settings with the defaults above.
+  const [prefsLoaded,  setPrefsLoaded]  = useState(false);
+  // Real OS permission — shown so the toggles never claim pushes that iOS blocks.
+  const [pushPermission, setPushPermission] = useState<PushPermission>('unavailable');
 
   // Preferences
   const [currency,  setCurrency]  = useState('USD');
@@ -176,20 +211,31 @@ export default function SettingsScreen({ onClose, onResetOnboarding }: Props) {
   const [showCurrency,   setShowCurrency]   = useState(false);
   const [showLanguage,   setShowLanguage]   = useState(false);
 
-  // ── Load persisted prefs on mount ─────────────────────────────────────────
+  // ── Load persisted prefs on mount (server copy wins — cross-device sync) ──
   useEffect(() => {
-    AsyncStorage.multiGet([NOTIF_PREFS_KEY, CURRENCY_KEY, LANGUAGE_KEY])
+    (async () => {
+      try {
+        const server = await fetchServerPrefs();
+        const prefs = server?.prefs ?? await getNotifPrefs();
+        const meta  = server?.meta  ?? await getNotifMeta();
+        setNotifMoves(prefs.moves);
+        setNotifStreak(prefs.streak);
+        setNotifScore(prefs.score);
+        setNotifWeekly(prefs.weekly);
+        setNotifInsight(prefs.insight);
+        setQuietStart(meta.quietStart);
+        setQuietEnd(meta.quietEnd);
+        setPaused(isPausedNow(meta));
+      } catch {}
+      setPrefsLoaded(true);
+    })();
+
+    getPushPermission().then(setPushPermission).catch(() => {});
+
+    AsyncStorage.multiGet([CURRENCY_KEY, LANGUAGE_KEY])
       .then(pairs => {
         for (const [key, val] of pairs) {
           if (!val) continue;
-          if (key === NOTIF_PREFS_KEY) {
-            const p = JSON.parse(val);
-            if (p.moves   !== undefined) setNotifMoves(p.moves);
-            if (p.streak  !== undefined) setNotifStreak(p.streak);
-            if (p.score   !== undefined) setNotifScore(p.score);
-            if (p.weekly  !== undefined) setNotifWeekly(p.weekly);
-            if (p.insight !== undefined) setNotifInsight(p.insight);
-          }
           if (key === CURRENCY_KEY)  setCurrency(val);
           if (key === LANGUAGE_KEY)  setLanguage(val);
         }
@@ -197,16 +243,40 @@ export default function SettingsScreen({ onClose, onResetOnboarding }: Props) {
       .catch(() => {});
   }, []);
 
-  // ── Persist notification prefs whenever any toggle changes ────────────────
+  // ── Persist notification prefs whenever anything changes ──────────────────
+  // Write-through: AsyncStorage (offline truth) + notification_prefs table
+  // (what the server dispatcher enforces), then re-sync local schedules.
   useEffect(() => {
-    AsyncStorage.setItem(NOTIF_PREFS_KEY, JSON.stringify({
+    if (!prefsLoaded) return;
+    const prefs = {
       moves: notifMoves, streak: notifStreak, score: notifScore,
       weekly: notifWeekly, insight: notifInsight,
-    }))
-      // streak toggle controls the daily reminder; weekly toggle the recap
-      .then(() => Promise.all([syncDailyReminder(), syncWeeklyRecap()]))
+    };
+    const meta = {
+      quietStart, quietEnd,
+      pausedUntil: paused ? PAUSE_INDEFINITE : null,
+    };
+    Promise.all([setNotifPrefs(prefs), setNotifMeta(meta)])
+      .then(() => Promise.all([
+        syncPrefsToServer(prefs, meta),
+        // streak toggle controls the daily reminder; weekly toggle the recap
+        syncDailyReminder(),
+        syncWeeklyRecap(),
+      ]))
       .catch(() => {});
-  }, [notifMoves, notifStreak, notifScore, notifWeekly, notifInsight]);
+  }, [prefsLoaded, notifMoves, notifStreak, notifScore, notifWeekly, notifInsight, paused, quietStart, quietEnd]);
+
+  const handleResetNotifs = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+    setNotifMoves(DEFAULT_NOTIF_PREFS.moves);
+    setNotifStreak(DEFAULT_NOTIF_PREFS.streak);
+    setNotifScore(DEFAULT_NOTIF_PREFS.score);
+    setNotifWeekly(DEFAULT_NOTIF_PREFS.weekly);
+    setNotifInsight(DEFAULT_NOTIF_PREFS.insight);
+    setQuietStart(DEFAULT_NOTIF_META.quietStart);
+    setQuietEnd(DEFAULT_NOTIF_META.quietEnd);
+    setPaused(false);
+  };
 
   // ── Handlers ──────────────────────────────────────────────────────────────
 
@@ -315,6 +385,9 @@ export default function SettingsScreen({ onClose, onResetOnboarding }: Props) {
           text: 'Sign Out',
           style: 'destructive',
           onPress: async () => {
+            // Before signOut — clearing profiles.push_token needs the live
+            // session, and local reminders must not outlive the account.
+            await teardownPushForSignOut();
             await supabase.auth.signOut().catch(() => {});
             await AsyncStorage.multiRemove([
               '@vault_onboarding_result',
@@ -406,22 +479,6 @@ export default function SettingsScreen({ onClose, onResetOnboarding }: Props) {
         content={TERMS_OF_SERVICE}
         onClose={() => setShowTerms(false)}
       />
-      <PickerSheet
-        visible={showCurrency}
-        title="Currency"
-        options={CURRENCIES}
-        selected={currency}
-        onSelect={v => { setCurrency(v); AsyncStorage.setItem(CURRENCY_KEY, v).catch(() => {}); }}
-        onClose={() => setShowCurrency(false)}
-      />
-      <PickerSheet
-        visible={showLanguage}
-        title="Language"
-        options={LANGUAGES}
-        selected={language}
-        onSelect={v => { setLanguage(v); AsyncStorage.setItem(LANGUAGE_KEY, v).catch(() => {}); }}
-        onClose={() => setShowLanguage(false)}
-      />
       <PlaidLinkScreen
         visible={showPlaid}
         onClose={() => setShowPlaid(false)}
@@ -460,53 +517,112 @@ export default function SettingsScreen({ onClose, onResetOnboarding }: Props) {
           <TouchableOpacity
             style={[styles.upgradePill, { borderColor: info.color + '50' }]}
             onPress={() => {
-              if (tier !== 'BLACK') {
+              if (!isPremium) {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
                 setShowUpgrade(true);
               }
             }}
-            activeOpacity={tier === 'BLACK' ? 1 : 0.7}
+            activeOpacity={isPremium ? 1 : 0.7}
           >
             <Text style={[styles.upgradeTxt, { color: info.color }]}>
-              {tier === 'BLACK' ? 'Max tier' : 'Upgrade →'}
+              {isPremium ? '✦ Premium' : 'Upgrade →'}
             </Text>
           </TouchableOpacity>
         </View>
 
-        {/* Membership */}
+        {/* Membership — the plan row must reflect the real entitlement; a
+            paying subscriber should never read "Free" or be sold an upgrade. */}
         <Section title="MEMBERSHIP">
-          <LinkRow
-            label="Current plan"
-            value="Free"
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-              setShowUpgrade(true);
-            }}
-          />
-          <Divider />
-          <LinkRow
-            label="Upgrade to Premium"
-            sub="$9.99/mo · Unlimited concierge · All features"
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
-              setShowUpgrade(true);
-            }}
-          />
+          {isPremium ? (
+            <>
+              <LinkRow label="Current plan" value="Premium" />
+              <Divider />
+              <LinkRow
+                label="Manage subscription"
+                sub="Billed by Apple · Change or cancel anytime"
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+                  Linking.openURL('https://apps.apple.com/account/subscriptions').catch(() => {});
+                }}
+              />
+            </>
+          ) : (
+            <>
+              <LinkRow
+                label="Current plan"
+                value="Free"
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+                  setShowUpgrade(true);
+                }}
+              />
+              <Divider />
+              <LinkRow
+                label="Upgrade to Premium"
+                sub="$9.99/mo · Unlimited AI Concierge"
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+                  setShowUpgrade(true);
+                }}
+              />
+            </>
+          )}
           <Divider />
           <LinkRow label="Restore purchase" onPress={handleRestorePurchase} />
         </Section>
 
         {/* Notifications */}
         <Section title="NOTIFICATIONS">
+          {pushPermission === 'denied' && (
+            <>
+              <TouchableOpacity
+                style={styles.permBanner}
+                onPress={() => Linking.openSettings().catch(() => {})}
+                activeOpacity={0.8}
+                accessibilityRole="button"
+                accessibilityLabel="Open device notification settings"
+              >
+                <Text style={styles.permBannerTxt}>
+                  Notifications are turned off for VAULT in your device Settings.
+                  These preferences take effect once they're re-enabled.
+                </Text>
+                <Text style={styles.permBannerCta}>Open Settings →</Text>
+              </TouchableOpacity>
+              <Divider />
+            </>
+          )}
           <ToggleRow label="New wealth moves"   sub="Daily personalised moves"     value={notifMoves}   onChange={setNotifMoves} />
           <Divider />
-          <ToggleRow label="Streak reminder"    sub="Before your streak breaks"    value={notifStreak}  onChange={setNotifStreak} />
+          <ToggleRow label="Streak reminder"    sub="Daily at 5pm, before your streak breaks" value={notifStreak}  onChange={setNotifStreak} />
           <Divider />
           <ToggleRow label="Score updates"      sub="Weekly velocity change"       value={notifScore}   onChange={setNotifScore} />
           <Divider />
-          <ToggleRow label="Weekly report"      sub="Every Monday morning"         value={notifWeekly}  onChange={setNotifWeekly} />
+          <ToggleRow label="Weekly report"      sub="Sunday evening recap"         value={notifWeekly}  onChange={setNotifWeekly} />
           <Divider />
           <ToggleRow label="Market insights"    sub="When news affects your money" value={notifInsight} onChange={setNotifInsight} />
+          <Divider />
+          <ToggleRow
+            label="Pause all"
+            sub={paused ? 'Paused — nothing sends until you resume' : 'Temporarily silence every VAULT notification'}
+            value={paused}
+            onChange={setPaused}
+          />
+          <Divider />
+          <LinkRow
+            label="Quiet hours"
+            sub="No pushes during this window, your local time"
+            value={`${fmtHour(quietStart)} – ${fmtHour(quietEnd)}`}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+              setShowQuietStart(true);
+            }}
+          />
+          <Divider />
+          <LinkRow
+            label="Reset notification settings"
+            sub="Back to the defaults"
+            onPress={handleResetNotifs}
+          />
         </Section>
 
         {/* Preferences */}
@@ -516,19 +632,27 @@ export default function SettingsScreen({ onClose, onResetOnboarding }: Props) {
           <LinkRow label="Language" value={language} onPress={handleLanguage} />
         </Section>
 
-        {/* Connected accounts */}
+        {/* Connected accounts — read the live Plaid state, not just what was
+            linked this session, so an already-connected member sees the truth. */}
         <Section title="CONNECTED ACCOUNTS">
-          <LinkRow
-            label="Bank accounts"
-            sub={connectedBanks > 0
-              ? `${connectedBanks} account${connectedBanks !== 1 ? 's' : ''} connected`
-              : 'Connect via Plaid'}
-            value={connectedBanks > 0 ? '✓' : ''}
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-              setShowPlaid(true);
-            }}
-          />
+          {(() => {
+            const accountCount = plaidConnected
+              ? (plaidSummary?.accountCount ?? Math.max(connectedBanks, 1))
+              : connectedBanks;
+            return (
+              <LinkRow
+                label="Bank accounts"
+                sub={accountCount > 0
+                  ? `${accountCount} account${accountCount !== 1 ? 's' : ''} connected`
+                  : 'Connect via Plaid'}
+                value={accountCount > 0 ? '✓' : ''}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+                  setShowPlaid(true);
+                }}
+              />
+            );
+          })()}
         </Section>
 
         {/* Account — sign out lives here, easy to find */}
@@ -564,6 +688,40 @@ export default function SettingsScreen({ onClose, onResetOnboarding }: Props) {
         <Text style={styles.footer}>VAULT · Building wealth differently</Text>
 
       </ScrollView>
+
+      {/* Inline overlays — rendered last so they stack above the scroll content */}
+      <PickerSheet
+        visible={showCurrency}
+        title="Currency"
+        options={CURRENCIES}
+        selected={currency}
+        onSelect={v => { setCurrency(v); AsyncStorage.setItem(CURRENCY_KEY, v).catch(() => {}); }}
+        onClose={() => setShowCurrency(false)}
+      />
+      <PickerSheet
+        visible={showLanguage}
+        title="Language"
+        options={LANGUAGES}
+        selected={language}
+        onSelect={v => { setLanguage(v); AsyncStorage.setItem(LANGUAGE_KEY, v).catch(() => {}); }}
+        onClose={() => setShowLanguage(false)}
+      />
+      <PickerSheet
+        visible={showQuietStart}
+        title="Quiet hours begin"
+        options={HOUR_LABELS}
+        selected={fmtHour(quietStart)}
+        onSelect={v => setQuietStart(HOUR_LABELS.indexOf(v))}
+        onClose={() => { setShowQuietStart(false); setShowQuietEnd(true); }}
+      />
+      <PickerSheet
+        visible={showQuietEnd}
+        title="Quiet hours end"
+        options={HOUR_LABELS}
+        selected={fmtHour(quietEnd)}
+        onSelect={v => setQuietEnd(HOUR_LABELS.indexOf(v))}
+        onClose={() => setShowQuietEnd(false)}
+      />
     </SafeAreaView>
   );
 }
@@ -622,6 +780,15 @@ const styles = StyleSheet.create({
   chevron: { fontSize: 20, color: COLORS.textMuted, lineHeight: 22 },
   rowDivider: { height: StyleSheet.hairlineWidth, backgroundColor: COLORS.border, marginLeft: SPACING.md },
 
+  permBanner: {
+    paddingHorizontal: SPACING.md,
+    paddingVertical: 14,
+    gap: 6,
+    backgroundColor: COLORS.goldGlow,
+  },
+  permBannerTxt: { fontSize: FONTS.sizes.xs, color: COLORS.textDim, lineHeight: 17 },
+  permBannerCta: { fontSize: FONTS.sizes.xs, color: COLORS.gold, fontWeight: FONTS.weights.semibold, letterSpacing: FONTS.tracking.wide },
+
   footer: {
     fontSize: FONTS.sizes.xs, color: COLORS.textMuted,
     textAlign: 'center', letterSpacing: FONTS.tracking.widest,
@@ -629,10 +796,20 @@ const styles = StyleSheet.create({
   },
 });
 
+// Spreading StyleSheet.absoluteFill yields {} (it's a registered style ref,
+// not an object) — the original backdrop had no positioning at all. Literal
+// fill values sidestep that and the stale @types/react-native pin.
+const ABSOLUTE_FILL = { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0 } as const;
+
 const pickerStyles = StyleSheet.create({
-  root: { flex: 1, justifyContent: 'flex-end' },
+  root: {
+    ...ABSOLUTE_FILL,
+    justifyContent: 'flex-end',
+    zIndex: 1000,
+    elevation: 1000,
+  },
   backdrop: {
-    ...StyleSheet.absoluteFill,
+    ...ABSOLUTE_FILL,
     backgroundColor: 'rgba(0,0,0,0.4)',
   },
   sheet: {
@@ -659,6 +836,7 @@ const pickerStyles = StyleSheet.create({
     letterSpacing: FONTS.tracking.widest,
     marginBottom: SPACING.sm,
   },
+  optionList: { maxHeight: 360 },
   option: {
     flexDirection: 'row',
     alignItems: 'center',

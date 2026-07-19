@@ -5,13 +5,24 @@ function fmt(n: number) {
   return '$' + n.toLocaleString('en-US');
 }
 
+// Settings → Language options. Allowlisted here so a tampered request body
+// can't smuggle arbitrary instructions into the system prompt via this field.
+const SUPPORTED_LANGUAGES = ['English', 'Spanish', 'French', 'German', 'Portuguese'];
+
+function languageDirective(ctx: any): string {
+  const lang = ctx?.language;
+  if (typeof lang !== 'string' || lang === 'English') return '';
+  if (!SUPPORTED_LANGUAGES.includes(lang)) return '';
+  return `\nThe member's app language is ${lang} — respond in ${lang}, keeping financial terms precise. If they write to you in a different language, follow their lead.`;
+}
+
 export function buildSystemPrompt(ctx: any): string {
   const base = `You are VAULT Concierge — a private, elite AI wealth advisor inside the VAULT app.
 You speak like a sharp, experienced financial advisor who gets straight to the point.
 Keep responses concise and actionable. Short paragraphs. No bullet overload. Sound human, not robotic.
-Responses are for informational purposes only — not official financial advice.`;
+Responses are for informational purposes only — not official financial advice.${languageDirective(ctx)}`;
 
-  if (!ctx) return base;
+  if (!ctx || typeof ctx.name !== 'string') return base;
 
   const { name, tier, score, percentile, plaidConnected } = ctx;
 

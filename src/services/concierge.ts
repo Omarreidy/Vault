@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
 import { dedupeAccounts, categorizeAccounts, sumBalances } from './plaidMath';
+import { getPreferredLanguage } from './locale';
 
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? 'https://gvdfypehwmemootjizmd.supabase.co';
 const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? 'sb_publishable_tHoiSHF-49L1_p0OLRPeKw_5mfSi0fs';
@@ -15,6 +16,8 @@ export interface UserContext {
   score: number;
   percentile: number;
   plaidConnected: boolean;
+  /** Settings → Language: the concierge answers in this language. */
+  language?: string;
   totalChecking?: number;
   totalSavings?: number;
   totalInvesting?: number;
@@ -71,10 +74,12 @@ export async function askConcierge(
   messages: ConversationMessage[],
   onChunk: (text: string) => void,
 ): Promise<void> {
-  const [userContext, { data: { session } }] = await Promise.all([
+  const [userContext, language, { data: { session } }] = await Promise.all([
     fetchUserContext(),
+    getPreferredLanguage(),
     supabase.auth.getSession(),
   ]);
+  if (userContext) userContext.language = language;
 
   const authToken = session?.access_token ?? SUPABASE_ANON_KEY;
 

@@ -4,6 +4,7 @@ import {
   TextInput, Animated, Dimensions, ActivityIndicator,
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
+import InlineDisclaimer from './InlineDisclaimer';
 import { COLORS, FONTS, SPACING, RADIUS, CARD_SHADOW } from '../constants/theme';
 import {
   fetchCompanyResearch, POPULAR_TICKERS, CompanyReport,
@@ -110,6 +111,10 @@ function ReportView({ report, onBack }: { report: CompanyReport; onBack: () => v
               <Text style={[rStyles.moatScore, { color: verdictColor }]}>{report.moatScore}/10</Text>
             </View>
           </View>
+        </View>
+
+        <View style={{ marginHorizontal: SPACING.lg, marginBottom: SPACING.md }}>
+          <InlineDisclaimer text="Educational research only — not investment advice or a recommendation to buy, sell, or hold any security." />
         </View>
 
         {/* VAULT Verdict */}
