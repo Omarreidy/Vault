@@ -47,7 +47,7 @@ export default function PlaidNudge({ trigger, streakDays, movesCompleted, onConn
         <Text style={styles.sub}>{sub}</Text>
 
         <View style={styles.trustRow}>
-          {['Read-only', 'Bank-level encryption', 'Used by Venmo & Robinhood'].map(t => (
+          {['Read-only', '256-bit encryption', 'Plaid — used by Venmo'].map(t => (
             <View key={t} style={styles.trustPill}>
               <Text style={styles.trustCheck}>✓</Text>
               <Text style={styles.trustTxt}>{t}</Text>

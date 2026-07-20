@@ -157,13 +157,13 @@ export async function fetchPersonalizedMoves(): Promise<WealthMove[] | null> {
       moves.push({
         id: 'p-idle-cash',
         title: `$${Math.round(checkingBal).toLocaleString()} sitting idle in checking`,
-        description: `You have $${Math.round(checkingBal).toLocaleString()} in checking earning near 0%. Moving even half to a high-yield savings account earns 50x more with zero risk.`,
+        description: `You have $${Math.round(checkingBal).toLocaleString()} in checking earning near 0%. Moving even half to a high-yield savings account earns far more, with FDIC-insured safety.`,
         impact: `+$${Math.round(checkingBal * 0.045).toLocaleString()}/yr`,
         impactValue: Math.round(checkingBal * 0.045),
         category: 'savings',
         effort: 'quick',
         actionLabel: 'Move to HYSA',
-        lesson: { headline: 'Your checking account is losing money', body: 'Inflation at 3%/yr means idle cash loses real value every day. A HYSA at 4.5% turns your waiting money into working money overnight.', xp: 10 },
+        lesson: { headline: 'Your checking account is losing money', body: 'Inflation means idle cash loses real value every day. A high-yield savings account turns your waiting money into working money.', xp: 10 },
       });
     }
 
@@ -173,7 +173,7 @@ export async function fetchPersonalizedMoves(): Promise<WealthMove[] | null> {
         id: 'p-credit-util',
         title: `Credit utilization at ${Math.round(creditUtil * 100)}% — hurting your score`,
         description: `You're using ${Math.round(creditUtil * 100)}% of your $${Math.round(creditLimit).toLocaleString()} credit limit. Above 30% hurts your credit score. Paying down $${Math.round(creditDebt * 0.3).toLocaleString()} brings you to the safe zone.`,
-        impact: '+40 credit score pts',
+        impact: 'Back under 30%',
         impactValue: Math.round(creditDebt * 0.3),
         category: 'debt',
         effort: 'quick',
@@ -203,7 +203,7 @@ export async function fetchPersonalizedMoves(): Promise<WealthMove[] | null> {
         id: 'p-no-savings',
         title: 'No dedicated savings account detected',
         description: 'Your checking balance suggests you could be saving, but there\'s no HYSA linked. Separating savings from spending is the single most effective habit change in personal finance.',
-        impact: 'Earn 50x more on idle cash',
+        impact: 'Put idle cash to work',
         impactValue: 500,
         category: 'savings',
         effort: 'quick',

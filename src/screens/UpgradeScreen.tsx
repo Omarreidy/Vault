@@ -15,7 +15,7 @@ import { syncPremiumStatus } from '../services/premium';
 // Concierge message limit — sell that honestly, not features we haven't built.
 const PERKS = [
   { icon: '◈', title: 'Unlimited AI Concierge', sub: 'The 5-message daily limit disappears entirely' },
-  { icon: '◆', title: 'Deep-dive advisory sessions', sub: 'Long conversations: debt payoff plans, investing, negotiation prep' },
+  { icon: '◆', title: 'Deep-dive sessions', sub: 'Long conversations: debt payoff plans, investing, negotiation prep' },
   { icon: '◉', title: 'Advice grounded in your accounts', sub: 'Connect your bank and every answer uses your real numbers' },
   { icon: '✦', title: 'Every future Premium feature', sub: 'New Premium capabilities are included as they ship' },
 ];
@@ -30,7 +30,10 @@ export default function UpgradeScreen({ visible, onClose, onSuccess }: Props) {
   const [loading, setLoading] = useState(false);
   const [restoring, setRestoring] = useState(false);
   const [error, setError] = useState('');
-  const [priceString, setPriceString] = useState('$9.99');
+  // No hardcoded fallback price: RevenueCat / the App Store is the only source
+  // of truth. Until the offering loads (or on web, where it never does), the
+  // UI shows neutral copy instead of a number that could be wrong.
+  const [priceString, setPriceString] = useState('');
   const [showPrivacy, setShowPrivacy] = useState(false);
   const [showTerms, setShowTerms] = useState(false);
   const scale = useRef(new Animated.Value(0.95)).current;
@@ -128,15 +131,19 @@ export default function UpgradeScreen({ visible, onClose, onSuccess }: Props) {
             <Text style={styles.heroEye}>VAULT PREMIUM</Text>
             <Text style={styles.heroTitle}>Wealth without limits.</Text>
             <Text style={styles.heroSub}>
-              Your private AI wealth advisor — no daily limits, no waiting.
+              Unlimited Concierge access — no daily limits, no waiting.
             </Text>
-            <View style={styles.priceRow}>
-              <Text style={styles.price}>{priceString}</Text>
-              <View>
-                <Text style={styles.pricePer}>/month</Text>
-                <Text style={styles.priceSub}>Cancel anytime</Text>
+            {priceString ? (
+              <View style={styles.priceRow}>
+                <Text style={styles.price}>{priceString}</Text>
+                <View>
+                  <Text style={styles.pricePer}>/month</Text>
+                  <Text style={styles.priceSub}>Cancel anytime</Text>
+                </View>
               </View>
-            </View>
+            ) : (
+              <Text style={styles.priceSub}>Monthly subscription · Price shown at checkout · Cancel anytime</Text>
+            )}
           </Animated.View>
 
           {/* Perks */}
@@ -178,7 +185,7 @@ export default function UpgradeScreen({ visible, onClose, onSuccess }: Props) {
               style={styles.cta}
             >
               <Text style={styles.ctaTxt}>
-                {loading ? 'Processing…' : `Start Premium — ${priceString}/mo →`}
+                {loading ? 'Processing…' : priceString ? `Start Premium — ${priceString}/mo →` : 'Start Premium →'}
               </Text>
             </LinearGradient>
           </TouchableOpacity>
@@ -190,7 +197,7 @@ export default function UpgradeScreen({ visible, onClose, onSuccess }: Props) {
           </TouchableOpacity>
 
           <Text style={styles.legal}>
-            {priceString}/month, billed by Apple. Cancel anytime in your iPhone Settings.{'\n'}
+            {priceString ? `${priceString}/month, billed by Apple.` : 'Billed monthly by Apple at the price shown at checkout.'} Cancel anytime in your iPhone Settings.{'\n'}
             Payment processed securely by Apple. Subscription auto-renews unless canceled at least 24 hours before the end of the period.
           </Text>
 

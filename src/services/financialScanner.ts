@@ -114,7 +114,7 @@ export const MOCK_SCAN_RESULTS: ScanResult[] = [
     monthlyCost: 'One-time: $200–2,000+',
     annualImpact: '−60–80% value within 1 year',
     wealthScoreImpact: '−4 pts if impulse purchase',
-    insight: 'Luxury goods depreciate faster than most people realize. A $500 designer item resells for $150 within a year. You\'re paying a premium to borrow status you don\'t own.',
+    insight: 'Luxury goods depreciate faster than most people realize — resale values often drop to a fraction within a year. You\'re paying a premium to borrow status you don\'t own.',
     tip: 'If you want luxury, buy pre-owned (60% off) or wait for it as a reward milestone. Let your net worth be your status signal, not your shoes.',
     xp: 15,
   },

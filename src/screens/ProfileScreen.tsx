@@ -195,7 +195,7 @@ export default function ProfileScreen({ onResetOnboarding }: ProfileProps = {}) 
             <TierBadge tier={tier} size="lg" showLabel={false} />
           </View>
           <View style={styles.cardStatsRow}>
-            {[{ v: score.total.toString(), l: 'SCORE' }, { v: `${score.percentile}%`, l: 'PCTILE' }, { v: `${months}mo`, l: 'MEMBER' }].map(({ v, l }, i) => (
+            {[{ v: score.total.toString(), l: 'SCORE' }, { v: `${streak}d`, l: 'STREAK' }, { v: `${months}mo`, l: 'MEMBER' }].map(({ v, l }, i) => (
               <React.Fragment key={l}>
                 {i > 0 && <View style={styles.statDiv} />}
                 <View style={styles.stat}>
@@ -302,7 +302,7 @@ export default function ProfileScreen({ onResetOnboarding }: ProfileProps = {}) 
                   </View>
                   <View>
                     <Text style={styles.conciergeTitle}>VAULT Concierge</Text>
-                    <Text style={styles.conciergeSub}>Your private AI wealth advisor · Ask anything</Text>
+                    <Text style={styles.conciergeSub}>Answers grounded in your accounts · Ask anything</Text>
                   </View>
                 </View>
                 <Text style={styles.conciergeArrow}>→</Text>
@@ -457,7 +457,6 @@ export default function ProfileScreen({ onResetOnboarding }: ProfileProps = {}) 
                   name={name}
                   tier={tier}
                   score={score.total}
-                  percentile={score.percentile}
                   streakDays={streak}
                   actionsCompleted={0}
                   memberSince={joinedAt ? joinedAt.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }).toUpperCase() : 'VAULT MEMBER'}

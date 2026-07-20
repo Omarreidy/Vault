@@ -46,7 +46,7 @@ We do not sell your personal information. We share data only with:
 
 ## 5. Data Security
 
-We implement bank-grade security measures including:
+We implement industry-standard security measures including:
 - AES-256 encryption for data at rest
 - TLS 1.3 for data in transit
 - Read-only financial data access via Plaid
@@ -113,7 +113,7 @@ The information provided by VAULT, including AI Concierge responses, Wealth Feed
 
 ## 7. Subscription and Payments
 
-- VAULT offers a free tier and a premium subscription at $12.99/month (or current pricing as displayed in the App).
+- VAULT offers a free tier and an auto-renewing monthly premium subscription, billed at the price displayed in the App at the time of purchase.
 - Subscriptions are billed through the App Store (iOS) or Google Play (Android).
 - You may cancel at any time. No refunds are provided for partial billing periods.
 
@@ -150,7 +150,7 @@ For questions about these Terms: legal@getvault.app`;
 // Bump a version whenever its document materially changes; every user is then
 // re-gated through the acknowledgement screen on next launch.
 export const LEGAL_VERSIONS = {
-  terms: '2026-06-08',
+  terms: '2026-07-19',
   privacy: '2026-06-08',
   disclosures: '1.0',
 } as const;

@@ -2,7 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, Animated } from 'react-native';
 import { COLORS, FONTS, SPACING } from '../constants/theme';
 import { VelocityScore } from '../types';
-import { getPointsToNextTier } from '../services/velocity';
+import { getPointsToNextTier, getNextTier } from '../services/velocity';
 
 function SubBar({ label, value, color, delay }: { label: string; value: number; color: string; delay: number }) {
   const anim = useRef(new Animated.Value(0)).current;
@@ -67,10 +67,16 @@ export default function ScoreMeter({ score }: Props) {
 
       <View style={styles.divider} />
 
+      {/* Real, personal framing — never an invented population comparison */}
       <Text style={styles.percentile}>
-        Building wealth faster than{' '}
-        <Text style={styles.highlight}>{score.percentile}%</Text>
-        {' '}of people your age
+        {getNextTier(score.tier) ? (
+          <>
+            <Text style={styles.highlight}>{pointsToNext} points</Text>
+            {' '}from {getNextTier(score.tier)} — built from how you save, spend, and invest
+          </>
+        ) : (
+          <>Top tier — built from how you save, spend, and invest</>
+        )}
       </Text>
 
       {/* Progress bar */}

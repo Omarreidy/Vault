@@ -141,7 +141,7 @@ export default function ConciergeScreen({ onClose, initialPrompt }: Props = {}) 
         <View style={styles.onlineDot} />
         <View style={styles.headerText}>
           <Text style={styles.headerTitle}>Concierge</Text>
-          <Text style={styles.headerSub}>VAULT PRIVATE ADVISORY</Text>
+          <Text style={styles.headerSub}>VAULT CONCIERGE</Text>
         </View>
         {!isPremium && (
           <TouchableOpacity style={styles.upgradeChip} onPress={() => setShowUpgrade(true)} activeOpacity={0.8}>
@@ -176,8 +176,8 @@ export default function ConciergeScreen({ onClose, initialPrompt }: Props = {}) 
         {messages.length === 0 ? (
           <View style={styles.empty}>
             <Text style={styles.emptyGlyph}>◈</Text>
-            <Text style={styles.emptyTitle}>Private Advisory</Text>
-            <Text style={styles.emptySub}>Your personal wealth advisor.{'\n'}Ask me anything about your money.</Text>
+            <Text style={styles.emptyTitle}>Your Concierge</Text>
+            <Text style={styles.emptySub}>Answers grounded in your accounts.{'\n'}Ask anything about your money.</Text>
 
             {!plaidConnected && (
               <TouchableOpacity
@@ -282,12 +282,12 @@ export default function ConciergeScreen({ onClose, initialPrompt }: Props = {}) 
         <View style={styles.consentOverlay}>
           <View style={styles.consentCard}>
             <Text style={styles.consentGlyph}>◈</Text>
-            <Text style={styles.consentTitle}>AI Advisory</Text>
+            <Text style={styles.consentTitle}>AI Concierge</Text>
             <Text style={styles.consentBody}>
               Your messages and financial context will be processed by{' '}
               <Text style={styles.consentBrand}>Anthropic's Claude AI</Text>
               {' '}to generate personalized responses.{'\n\n'}
-              Anthropic does not retain your financial data beyond the API call. VAULT never shares your banking credentials.
+              Anthropic does not use your data to train its models. VAULT never shares your banking credentials.
             </Text>
             <Text style={styles.consentNote}>
               Responses are for informational purposes only — not financial advice.

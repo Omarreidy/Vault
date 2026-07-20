@@ -32,7 +32,7 @@ export const ALL_MOVES: WealthMove[] = [
   {
     id: 's2',
     title: 'Build a real emergency fund',
-    description: 'Financial advisors recommend 5–6 months of expenses saved before investing aggressively. Without it, one unexpected event sends you into debt at 20%+ APR.',
+    description: 'A common rule of thumb is 5–6 months of expenses saved before investing aggressively. Without it, one unexpected event sends you into debt at 20%+ APR.',
     impact: 'Risk eliminated',
     impactValue: 5000,
     category: 'savings',
@@ -86,15 +86,15 @@ export const ALL_MOVES: WealthMove[] = [
     effort: 'quick',
     actionLabel: 'Check your rate',
     lesson: {
-      headline: 'A 100% return, guaranteed',
-      body: 'There is no investment on earth with a 100% instant return. Your employer match is exactly that — every dollar you contribute up to the match threshold is doubled immediately.',
+      headline: 'The match doubles your dollar',
+      body: 'There is no investment on earth with a 100% instant return. An employer match is exactly that — every dollar you contribute up to the match threshold is doubled immediately (check your vesting schedule).',
       xp: 10,
     },
   },
   {
     id: 'i2',
     title: 'Open a Roth IRA',
-    description: 'A Roth IRA grows 100% tax-free. The 2026 max is $7,000/yr. Starting at 30, that\'s worth $500K+ at retirement — all untaxed. Every year you wait is permanent compounding lost.',
+    description: 'A Roth IRA grows 100% tax-free, up to the annual IRS contribution limit. Started early and funded consistently, it could be worth hundreds of thousands by retirement — all untaxed. Every year you wait is compounding lost.',
     impact: '$500K+ at 65',
     impactValue: 7000,
     category: 'investment',
@@ -156,8 +156,8 @@ export const ALL_MOVES: WealthMove[] = [
   {
     id: 'd1',
     title: 'Attack high-interest credit card debt',
-    description: 'Credit cards average 22%+ APR. Every $1,000 carried costs $220/yr in interest — guaranteed, risk-free losses. No investment consistently beats paying off high-interest debt first.',
-    impact: '22%+ guaranteed return',
+    description: 'Credit card APRs routinely top 20%. Every $1,000 carried at 22% costs $220/yr in interest — a certain, contractual loss. No investment consistently beats paying off high-interest debt first.',
+    impact: 'Stop 20%+ APR losses',
     impactValue: 280,
     category: 'debt',
     effort: 'quick',
@@ -179,7 +179,7 @@ export const ALL_MOVES: WealthMove[] = [
     actionLabel: 'Check offers',
     lesson: {
       headline: '0% APR is legal arbitrage',
-      body: 'If you owe money at 22% and can move it to 0%, you\'re not just saving interest — you\'re recapturing 22% guaranteed. That beats any stock market return, risk-free.',
+      body: 'If you owe money at 22% and can move it to 0%, you\'re not just saving interest — you\'re recapturing that 22% with certainty, no market required. Watch for transfer fees and the promo end date.',
       xp: 10,
     },
   },
@@ -310,7 +310,7 @@ export const ALL_MOVES: WealthMove[] = [
   {
     id: 'o1',
     title: 'Negotiate your salary',
-    description: '73% of people who ask for a raise get one. The average raise from negotiation is 7–10%. A single successful negotiation compounds through every future raise, bonus, and retirement contribution for the rest of your career.',
+    description: 'Raises disproportionately go to the people who ask for them. A single successful negotiation compounds through every future raise, bonus, and retirement contribution for the rest of your career.',
     impact: 'Up to +$10,000+/yr',
     impactValue: 12000,
     category: 'opportunity',
@@ -318,7 +318,7 @@ export const ALL_MOVES: WealthMove[] = [
     actionLabel: 'See the strategy',
     lesson: {
       headline: 'Every salary dollar compounds for life',
-      body: 'A $5K raise at 30 isn\'t just $5K/yr. It\'s the base for every future raise, bonus percentage, and 401k match. A single successful negotiation is worth $200K+ over a career.',
+      body: 'A $5K raise at 30 isn\'t just $5K/yr. It\'s the base for every future raise, bonus percentage, and 401k match — one successful negotiation can compound to six figures over a career.',
       xp: 10,
     },
   },
@@ -475,13 +475,13 @@ export const ALL_MOVES: WealthMove[] = [
   {
     id: 's13',
     title: 'Buy I-Bonds as an inflation hedge',
-    description: 'Series I Savings Bonds from TreasuryDirect pay a rate tied to inflation — currently above 4%. They\'re state-tax free, federally guaranteed, and have no market risk. Limit is $10,000/yr per person.',
+    description: 'Series I Savings Bonds from TreasuryDirect pay a rate tied to inflation. They\'re state-tax free, backed by the U.S. Treasury, and have no market risk. Limit is $10,000/yr per person.',
     impact: 'Inflation-proof, $10K/yr max',
     impactValue: 400,
     category: 'savings',
     effort: 'medium',
     actionLabel: 'Buy I-Bonds',
-    lesson: { headline: 'I-Bonds: risk-free and inflation-adjusted', body: 'No investment guarantees you keep up with inflation — except I-Bonds, which are indexed to CPI. The $10K annual limit is the only catch.', xp: 10 },
+    lesson: { headline: 'I-Bonds: built to track inflation', body: 'I-Bonds are the rare asset designed to keep pace with inflation — their rate is indexed to CPI. The $10K annual limit is the main catch.', xp: 10 },
   },
   {
     id: 's14',
@@ -1042,13 +1042,13 @@ export const ALL_MOVES: WealthMove[] = [
   {
     id: 'sp21',
     title: 'Set a monthly eating-out budget',
-    description: 'The average American spends $3,000/yr eating out — often without realizing it. Setting a specific monthly restaurant budget and tracking it in real-time reduces food spending by 25–35% without going to extremes.',
-    impact: 'Save $750–1,000/yr',
+    description: 'Restaurant spending adds up faster than almost any category — often thousands a year without feeling like it. A specific monthly cap makes it visible and trims the excess without going to extremes.',
+    impact: 'Cut a stealth expense',
     impactValue: 900,
     category: 'spending',
     effort: 'quick',
     actionLabel: 'Set your limit',
-    lesson: { headline: '$3,000/yr in restaurants often feels like nothing', body: 'Restaurant spending is invisible because it happens in small amounts. A $60 dinner doesn\'t feel like much. Twelve of them is $720 — before drinks or extras.', xp: 10 },
+    lesson: { headline: 'Restaurant spending hides in small amounts', body: 'A $60 dinner doesn\'t feel like much. Twelve of them is $720 — before drinks or extras. Small, frequent, invisible: that\'s what makes it the classic stealth expense.', xp: 10 },
   },
 
   // ── OPPORTUNITY (continued) ──────────────────────────────────────────────
@@ -1234,7 +1234,7 @@ export const MOCK_WINS: WealthWin[] = [
   {
     id: '2',
     title: 'Gold tier unlocked',
-    subtitle: 'Top 29% of wealth builders',
+    subtitle: 'Velocity crossed 450',
     value: 'Gold',
     date: new Date(2026, 4, 1),
     category: 'tier',

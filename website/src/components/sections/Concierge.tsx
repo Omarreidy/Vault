@@ -38,15 +38,15 @@ export default function Concierge() {
             variants={fadeUp}
             className="mt-4 font-display text-5xl leading-[1.05] font-light tracking-tight text-ink md:text-6xl"
           >
-            Advice that knows <em className="text-gold-dark italic">your numbers.</em>
+            Answers that know <em className="text-gold-dark italic">your numbers.</em>
           </motion.h2>
           <motion.p
             variants={fadeUp}
             className="mt-6 max-w-md text-[16px] leading-relaxed text-ink-sub"
           >
             Every money question you&rsquo;ve ever Googled returned advice written for someone
-            else. Your concierge answers with your balances, your bills, your pace — like a
-            private banker who never sleeps.
+            else. Your concierge answers with your balances, your spending, your pace — not
+            somebody else&rsquo;s situation.
           </motion.p>
           <motion.p variants={fadeUp} className="mt-4 text-[13px] text-ink-dim">
             Informational insights, not licensed financial advice.
@@ -61,7 +61,7 @@ export default function Concierge() {
           className="rounded-[28px] border border-black/[0.07] bg-white p-6 shadow-[0_24px_80px_rgba(154,128,96,0.18)]"
         >
           <p className="mb-5 text-[9px] font-bold tracking-[0.3em] text-gold-dark">
-            VAULT CONCIERGE
+            VAULT CONCIERGE · ILLUSTRATIVE EXAMPLE
           </p>
 
           <motion.div variants={fadeUp} className="flex justify-end">
@@ -73,9 +73,9 @@ export default function Concierge() {
           <motion.div variants={fadeUp} className="mt-4 flex justify-start">
             <div className="max-w-[85%] rounded-2xl rounded-bl-md bg-gold/10 px-4 py-3">
               <p className="text-[14px] leading-relaxed text-ink">
-                Yes — comfortably. You&rsquo;re <strong>$1,240 ahead</strong> of your savings pace
-                this quarter. Keep dining under <strong>$480</strong> this month and the trip fits
-                without touching your emergency fund.
+                Yes — comfortably. Your checking and savings are <strong>$1,240 ahead</strong> of
+                your usual monthly pace. Keep dining under <strong>$480</strong> this month and the
+                trip fits without touching your emergency fund.
               </p>
             </div>
           </motion.div>
@@ -83,8 +83,8 @@ export default function Concierge() {
           <motion.div variants={fadeUp} className="mt-4 flex justify-start">
             <div className="max-w-[85%] rounded-2xl rounded-bl-md bg-gold/10 px-4 py-3">
               <p className="text-[14px] leading-relaxed text-ink">
-                Want me to set a <strong>Lisbon fund</strong> and route $95/week into it starting
-                Friday?
+                Want the math on a <strong>Lisbon fund</strong>? Setting aside $95/week gets you
+                there — I can map it against your cash flow.
               </p>
             </div>
           </motion.div>

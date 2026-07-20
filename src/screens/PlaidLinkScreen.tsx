@@ -204,7 +204,7 @@ export default function PlaidLinkScreen({ visible, onClose, onSuccess }: Props) 
 
             {/* Trust badges */}
             <View style={styles.badges}>
-              {['256-bit encryption', 'Read-only access', 'Bank-level security'].map(b => (
+              {['256-bit encryption', 'Read-only access', 'Credentials never stored'].map(b => (
                 <View key={b} style={[styles.badge, CARD_SHADOW, { shadowOpacity: 0.06 }]}>
                   <Text style={styles.badgeCheck}>✓</Text>
                   <Text style={styles.badgeTxt}>{b}</Text>

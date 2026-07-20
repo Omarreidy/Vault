@@ -86,13 +86,13 @@ export function buildGaps(goal: string, income: string): Gap[] {
           icon: '📈',
           text: isLowIncome
             ? 'You may be missing employer match — even small contributions compound fast'
-            : `You may be leaving ${isHighIncome ? '$3,000+' : '$1,200+'}/yr in unclaimed employer match`,
+            : 'If your employer offers a 401(k) match you aren\'t maxing, that\'s free compensation going unclaimed',
         },
         {
           icon: '💤',
           text: isLowIncome
             ? 'Cash sitting idle in checking is losing value to inflation every day'
-            : `Cash sitting idle in checking is likely earning near zero — a HYSA earns 50x more`,
+            : `Cash sitting idle in checking is likely earning near zero — a HYSA earns many times more`,
         },
         { icon: '🔍', text: 'Subscription charges you\'ve forgotten are quietly draining your account' },
       ];
@@ -100,8 +100,8 @@ export function buildGaps(goal: string, income: string): Gap[] {
     case 'Get out of debt':
       return [
         { icon: '⛓', text: 'High-interest debt is costing you more annually than most investments earn' },
-        { icon: '💳', text: 'You may qualify for a balance transfer at 0% APR — most people never check' },
-        { icon: '📉', text: 'Minimum payments keep you in debt 4x longer than a targeted paydown plan' },
+        { icon: '💳', text: 'A 0% balance-transfer offer could pause your interest entirely — worth a five-minute check' },
+        { icon: '📉', text: 'Minimum payments are designed to stretch payoff for years — a targeted plan cuts that dramatically' },
       ];
 
     case 'Save more':
@@ -110,10 +110,10 @@ export function buildGaps(goal: string, income: string): Gap[] {
           icon: '💤',
           text: isLowIncome
             ? 'Cash in checking earns near zero — a high-yield account costs nothing to open'
-            : 'Cash sitting in checking is losing purchasing power while HYSA rates sit above 4%',
+            : 'Cash sitting in checking is losing purchasing power while high-yield accounts pay many times more',
         },
         { icon: '🔍', text: 'Forgotten subscriptions are likely costing more than you think per year' },
-        { icon: '🛡', text: 'Most people are 1–2 months short of a real emergency fund cushion' },
+        { icon: '🛡', text: 'A real emergency cushion is what keeps one surprise bill from becoming debt' },
       ];
 
     case 'Grow investments':
@@ -122,7 +122,7 @@ export function buildGaps(goal: string, income: string): Gap[] {
           icon: '📈',
           text: isLowIncome
             ? 'Even small employer match contributions are a 100% instant return — easy to miss'
-            : `You may be leaving ${isHighIncome ? '$3,000+' : '$1,200+'}/yr in unclaimed employer match`,
+            : 'If your employer offers a 401(k) match you aren\'t maxing, that\'s free compensation going unclaimed',
         },
         { icon: '💡', text: 'Your current allocation may be more conservative than your age and timeline warrant' },
         {

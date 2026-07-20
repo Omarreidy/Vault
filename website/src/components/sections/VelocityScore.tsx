@@ -76,9 +76,8 @@ export default function VelocityScore() {
           viewport={VIEWPORT_ONCE}
           className="mx-auto mt-10 max-w-xl text-[16px] leading-relaxed text-ink-sub"
         >
-          One number, 0 to 1,000, built from how you actually behave with money. It doesn&rsquo;t
-          care what you inherited. It cares what you did this week — which means it can climb from
-          any starting point.
+          One number, 0 to 1,000, built from how you save, spend, invest, and handle debt.
+          Habits weigh more than headlines — which means it can climb from any starting point.
         </motion.p>
 
         <motion.div

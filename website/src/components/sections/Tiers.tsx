@@ -8,7 +8,7 @@ const TIER_COPY: Record<string, string> = {
   Bronze: 'Everyone starts here. Nowhere to go but up.',
   Silver: 'Consistency, unlocked.',
   Gold: 'The habits are compounding now.',
-  Platinum: 'Rarefied air. Few sustain this pace.',
+  Platinum: 'Rarefied air. Sustained, compounding discipline.',
   Black: 'Reserved for the relentless.',
 };
 
@@ -42,8 +42,8 @@ export default function Tiers() {
             variants={fadeUp}
             className="mx-auto mt-6 max-w-xl text-[16px] leading-relaxed text-parchment-dim"
           >
-            Five tiers, earned by behavior — never by balance. A trust-fund can&rsquo;t buy
-            Platinum. A barista can out-climb a banker.
+            Five tiers, scored on how you handle money — saving, spending, debt, and
+            investing — not just the size of the pile. Habits move the needle at every income.
           </motion.p>
         </motion.div>
 

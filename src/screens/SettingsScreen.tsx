@@ -324,7 +324,7 @@ export default function SettingsScreen({ onClose, onResetOnboarding }: Props) {
         `New wealth moves: ${notifMoves ? 'On' : 'Off'}`,
         `Streak reminder: ${notifStreak ? 'On' : 'Off'}`,
         `Score updates: ${notifScore ? 'On' : 'Off'}`,
-        `Weekly report: ${notifWeekly ? 'On' : 'Off'}`,
+        `Weekly recap: ${notifWeekly ? 'On' : 'Off'}`,
         `Market insights: ${notifInsight ? 'On' : 'Off'}`,
         '',
         'VAULT · Building wealth differently',
@@ -559,7 +559,7 @@ export default function SettingsScreen({ onClose, onResetOnboarding }: Props) {
               <Divider />
               <LinkRow
                 label="Upgrade to Premium"
-                sub="$9.99/mo · Unlimited AI Concierge"
+                sub="Unlimited AI Concierge · billed monthly via the App Store"
                 onPress={() => {
                   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
                   setShowUpgrade(true);
@@ -597,7 +597,7 @@ export default function SettingsScreen({ onClose, onResetOnboarding }: Props) {
           <Divider />
           <ToggleRow label="Score updates"      sub="Weekly velocity change"       value={notifScore}   onChange={setNotifScore} />
           <Divider />
-          <ToggleRow label="Weekly report"      sub="Sunday evening recap"         value={notifWeekly}  onChange={setNotifWeekly} />
+          <ToggleRow label="Weekly recap"       sub="Sunday evening summary"       value={notifWeekly}  onChange={setNotifWeekly} />
           <Divider />
           <ToggleRow label="Market insights"    sub="When news affects your money" value={notifInsight} onChange={setNotifInsight} />
           <Divider />

@@ -18,7 +18,7 @@ const UNLOCKS = [
   { icon: '◬', text: 'A financial independence date from your real net worth' },
 ];
 
-const TRUST = ['Read-only access', 'Bank-level encryption', 'Powered by Plaid'];
+const TRUST = ['Read-only access', '256-bit encryption', 'Powered by Plaid'];
 
 // Full-height feed card shown once, early, when no bank is connected.
 // This is the activation moment: everything personal in VAULT unlocks here.

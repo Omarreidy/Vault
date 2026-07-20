@@ -74,7 +74,7 @@ export const INSIGHTS: Insight[] = [
   {
     id: 'i6',
     headline: 'Your emergency fund is what makes every other plan real.',
-    body: 'The average job search takes several months, and advisors commonly recommend 5–6 months of expenses in reserve. Without that buffer, one bad month converts into high-interest debt and undoes years of progress.',
+    body: 'A job search can take several months, and the common rule of thumb is 5–6 months of expenses in reserve. Without that buffer, one bad month converts into high-interest debt and undoes years of progress.',
     impact: 'A funded buffer keeps setbacks from compounding',
     impactType: 'negative',
     tag: 'ECONOMY',

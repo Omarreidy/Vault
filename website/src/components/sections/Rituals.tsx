@@ -7,13 +7,13 @@ const RITUALS = [
   {
     eyebrow: 'THE DAILY OPEN',
     title: 'One tap. Every morning.',
-    body: 'Your overnight change, your streak, your move of the day — served in the time it takes your coffee to brew. The ritual that quietly rebuilds your relationship with money.',
+    body: 'Your change since yesterday, your streak, your moves for the day — served in the time it takes your coffee to brew. The ritual that quietly rebuilds your relationship with money.',
     stat: '21-day streak',
   },
   {
     eyebrow: 'INSIGHTS',
     title: 'Leaks, spotted for you.',
-    body: 'The subscription you forgot. The category creeping up. The fee that shouldn’t exist. VAULT finds where money slips and shows you — before it compounds against you.',
+    body: 'The subscriptions you forgot. The cash earning nothing. The balance quietly hurting your credit. VAULT flags where money slips and shows you — before it compounds against you.',
     stat: 'Automatic · Always watching',
   },
 ];

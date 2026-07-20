@@ -25,16 +25,15 @@ export const TIER_REQUIREMENTS: Record<string, TierRequirement> = {
     fromTier: 'BRONZE',
     toTier: 'SILVER',
     tagline: 'Prove you\'re serious about money',
-    unlockReward: 'Silver unlocks advanced Pulse cards and your first wealth benchmark',
+    unlockReward: 'Silver marks your first stretch of consistent momentum',
     moves: [
       {
         id: 'prog_s1',
         title: 'Open a High-Yield Savings Account',
-        description: 'Move idle checking cash to earn 50x more interest',
+        description: 'Move idle checking cash to earn far more interest',
         category: 'savings',
         xpReward: 150,
-        completed: true,
-        completedAt: new Date(2026, 1, 3),
+        completed: false,
       },
       {
         id: 'prog_s2',
@@ -42,8 +41,7 @@ export const TIER_REQUIREMENTS: Record<string, TierRequirement> = {
         description: 'Automate at least $100/month to savings — remove the decision',
         category: 'savings',
         xpReward: 120,
-        completed: true,
-        completedAt: new Date(2026, 1, 14),
+        completed: false,
       },
       {
         id: 'prog_s3',
@@ -51,8 +49,7 @@ export const TIER_REQUIREMENTS: Record<string, TierRequirement> = {
         description: 'Eliminate at least one revolving balance completely',
         category: 'debt',
         xpReward: 200,
-        completed: true,
-        completedAt: new Date(2026, 2, 1),
+        completed: false,
       },
       {
         id: 'prog_s4',
@@ -77,7 +74,7 @@ export const TIER_REQUIREMENTS: Record<string, TierRequirement> = {
     fromTier: 'SILVER',
     toTier: 'GOLD',
     tagline: 'Start building real wealth',
-    unlockReward: 'Gold unlocks the Member Card, FI trajectory, and partner rates',
+    unlockReward: 'Gold marks momentum across saving, investing, and debt at once',
     moves: [
       {
         id: 'prog_g1',
@@ -98,7 +95,7 @@ export const TIER_REQUIREMENTS: Record<string, TierRequirement> = {
       {
         id: 'prog_g3',
         title: 'Negotiate your salary or land a raise',
-        description: '73% of people who ask, get something. The window is now.',
+        description: 'Your income is your biggest wealth lever — prepare the case and ask.',
         category: 'career',
         xpReward: 400,
         completed: false,
@@ -125,21 +122,21 @@ export const TIER_REQUIREMENTS: Record<string, TierRequirement> = {
   'GOLD_TO_PLATINUM': {
     fromTier: 'GOLD',
     toTier: 'PLATINUM',
-    tagline: 'Compound your way into the top 5%',
-    unlockReward: 'Platinum unlocks the inner circle, exclusive partner access, and concierge priority',
+    tagline: 'Compound your way to the top tiers',
+    unlockReward: 'Platinum marks the habits that make wealth feel inevitable',
     moves: [
       {
         id: 'prog_p1',
         title: 'Max your 401(k) contributions',
-        description: 'Hit the $23,500 annual limit — or get as close as possible',
+        description: 'Hit the annual IRS limit — or get as close as possible',
         category: 'investment',
         xpReward: 500,
         completed: false,
       },
       {
         id: 'prog_p2',
-        title: 'Max your Roth IRA ($7,000)',
-        description: 'Full annual contribution — every dollar grows tax-free forever',
+        title: 'Max your Roth IRA',
+        description: 'Contribute the full annual IRS limit — every dollar grows tax-free forever',
         category: 'investment',
         xpReward: 400,
         completed: false,

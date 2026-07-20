@@ -7,13 +7,16 @@ import { fadeUp, stagger, VIEWPORT_ONCE } from '@/lib/motion';
 
 // Mirrors the app's FeedMoveCard: tag pill + dot, effort, counter,
 // title, POTENTIAL VALUE, Ask Concierge, Skip / action buttons.
+// Illustrative examples — each mirrors a real VAULT detector (idle cash,
+// subscription creep, credit utilization). Never show a detector that
+// doesn't exist in src/services/feed.ts.
 const MOVES = [
   {
     tag: 'SPENDING',
-    title: 'Cancel the gym you haven’t used since March.',
-    impact: '+$648/yr',
+    title: '$132/mo of subscriptions detected. Keep only the ones you use.',
+    impact: '+$475/yr',
     effort: '5 min',
-    action: 'Cancel it',
+    action: 'Review them',
   },
   {
     tag: 'SAVINGS',
@@ -23,18 +26,18 @@ const MOVES = [
     action: 'Move it',
   },
   {
-    tag: 'OPPORTUNITY',
-    title: 'Annual fee posts Friday — call for a retention offer first.',
-    impact: '$95 saved',
-    effort: '5 min',
-    action: 'Get the script',
+    tag: 'DEBT',
+    title: 'Credit utilization at 42% — pay $610 to get back under 30%.',
+    impact: 'Score-safe zone',
+    effort: '2 min',
+    action: 'Pay it down',
   },
 ];
 
 const BEATS = [
   {
     title: 'Every morning, VAULT deals you a hand.',
-    body: 'Three to five moves, generated from your actual accounts overnight. Not tips. Not articles. Moves.',
+    body: 'A fresh hand of moves each day, drawn from your connected accounts. Not tips. Not articles. Moves.',
   },
   {
     title: 'Each one specific. Each one doable.',

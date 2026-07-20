@@ -137,9 +137,9 @@ export default function Hero() {
           </motion.p>
 
           <h1 className="font-display text-[52px] leading-[1.02] font-light tracking-tight text-parchment sm:text-7xl md:text-[92px]">
-            <HeadlineLine words={['Wealth', 'has', 'a', 'new']} />
+            <HeadlineLine words={['Your', 'money', 'has']} />
             <HeadlineLine
-              words={['operating', 'system.']}
+              words={['a', 'next', 'move.']}
               className="text-gold-light italic"
             />
           </h1>
@@ -148,8 +148,8 @@ export default function Hero() {
             variants={wordReveal}
             className="mt-8 max-w-xl text-[17px] leading-relaxed text-parchment-dim"
           >
-            VAULT reads your real accounts, scores your momentum, and hands you tomorrow&rsquo;s
-            money move — every morning. Private-bank intelligence, in your pocket.
+            VAULT reads your connected accounts, scores your momentum, and hands you your
+            next money moves — every morning. Specific, doable, yours.
           </motion.p>
 
           <motion.div
@@ -172,7 +172,7 @@ export default function Hero() {
             variants={wordReveal}
             className="mt-8 text-[12px] tracking-wide text-parchment-faint"
           >
-            Bank-grade encryption&ensp;·&ensp;Read-only access&ensp;·&ensp;Your data is never sold
+            Read-only via Plaid&ensp;·&ensp;Encrypted in transit &amp; at rest&ensp;·&ensp;Your data is never sold
           </motion.p>
         </motion.div>
 

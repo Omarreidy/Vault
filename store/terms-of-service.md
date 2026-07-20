@@ -30,7 +30,7 @@ The information provided by VAULT, including AI Concierge responses, Wealth Feed
 
 ## 7. Subscription and Payments
 
-- VAULT offers a free tier and a premium subscription at $12.99/month (or current pricing as displayed in the App).
+- VAULT offers a free tier and an auto-renewing monthly premium subscription, billed at the price displayed in the App at the time of purchase.
 - Subscriptions are billed through the App Store (iOS) or Google Play (Android).
 - You may cancel at any time. No refunds are provided for partial billing periods.
 

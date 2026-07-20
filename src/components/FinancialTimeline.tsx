@@ -313,7 +313,7 @@ export default function FinancialTimeline({ onConnectBank, plaidConnected }: { o
         {plaidConnected && <View style={styles.syncDot} />}
         <Text style={[styles.syncTxt, plaidConnected ? styles.syncTxtLive : styles.syncTxtLocal]}>
           {plaidConnected
-            ? 'Live · Synced with your accounts'
+            ? 'Synced with your connected accounts'
             : 'In-app activity · Connect bank for account history'}
         </Text>
       </View>

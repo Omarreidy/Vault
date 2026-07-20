@@ -168,7 +168,7 @@ export default function WealthWrapped({ visible, onClose }: Props) {
                 <Text style={styles.notReadyGlyph}>◈</Text>
                 <Text style={styles.notReadyTitle}>Your first recap isn't ready yet</Text>
                 <Text style={styles.notReadySub}>
-                  Connect your bank accounts and build for a full month. VAULT will generate your personalized Wealth Recap — score changes, net worth growth, moves completed, and your percentile ranking.
+                  Connect your bank accounts and build for a full month. VAULT will generate your personalized Wealth Recap — score changes, net worth growth, and moves completed.
                 </Text>
               </View>
             )}

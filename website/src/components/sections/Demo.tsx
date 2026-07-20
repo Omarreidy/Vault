@@ -6,6 +6,9 @@ import PhoneMock, { AppTabBar } from '@/components/PhoneMock';
 import { TIERS } from '@/lib/brand';
 import { fadeUp, stagger, VIEWPORT_ONCE } from '@/lib/motion';
 
+// Illustrative examples — each mirrors a real VAULT detector (idle cash,
+// subscription creep, credit utilization). Never show a detector that
+// doesn't exist in src/services/feed.ts.
 const DEMO_MOVES = [
   {
     tag: 'SAVINGS',
@@ -17,18 +20,18 @@ const DEMO_MOVES = [
   },
   {
     tag: 'SPENDING',
-    text: 'Cancel the gym membership you haven’t used since March.',
-    impact: '+$648/yr',
+    text: '$132/mo of subscriptions detected. Keep only the ones you use.',
+    impact: '+$475/yr',
     effort: '5 min',
-    action: 'Cancel it',
+    action: 'Review them',
     pts: 6,
   },
   {
-    tag: 'OPPORTUNITY',
-    text: 'Annual fee posts Friday — call for a retention offer first.',
-    impact: '$95 saved',
-    effort: '5 min',
-    action: 'Get the script',
+    tag: 'DEBT',
+    text: 'Credit utilization at 42% — pay $610 to get back under 30%.',
+    impact: 'Score-safe zone',
+    effort: '2 min',
+    action: 'Pay it down',
     pts: 4,
   },
 ];
@@ -314,8 +317,8 @@ export default function Demo() {
             <em className="mt-1 block text-gold-light italic">Feel it.</em>
           </motion.h2>
           <motion.p variants={fadeUp} className="mx-auto mt-6 max-w-md text-[16px] text-parchment-dim">
-            A live taste of the Wealth Feed. Drag a card right to execute — or tap the gold
-            button. Watch what happens at 700.
+            An interactive taste of the Wealth Feed, with illustrative example moves. Drag a
+            card right to act — or tap the gold button. Watch what happens at 700.
           </motion.p>
         </motion.div>
 

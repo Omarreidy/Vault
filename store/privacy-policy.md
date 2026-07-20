@@ -46,7 +46,7 @@ We do not sell your personal information. We share data only with:
 
 ## 5. Data Security
 
-We implement bank-grade security measures including:
+We implement industry-standard security measures including:
 - AES-256 encryption for data at rest
 - TLS 1.3 for data in transit
 - Read-only financial data access via Plaid
@@ -79,4 +79,4 @@ We will notify you of material changes to this Privacy Policy via in-app notific
 
 **VAULT**
 Email: privacy@getvault.app
-Support: https://getvault.app/support
+Support: https://getsvault.com/support

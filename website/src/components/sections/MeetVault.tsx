@@ -6,13 +6,13 @@ import { useRef } from 'react';
 const PILLARS = [
   {
     n: '01',
-    title: 'It sees everything.',
-    body: 'VAULT connects to your real accounts — read-only, bank-grade encrypted — and understands where your money actually stands. No spreadsheets. No manual entry.',
+    title: 'It sees where you stand.',
+    body: 'VAULT connects to your accounts — read-only, encrypted — and understands where your money actually stands. No spreadsheets. No manual entry.',
   },
   {
     n: '02',
     title: 'It scores your momentum.',
-    body: 'The Wealth Velocity Score: 0 to 1,000. It measures direction, not net worth — so progress is possible from any starting point.',
+    body: 'The Wealth Velocity Score: 0 to 1,000. It weighs how you save, spend, and handle debt — not just what you have — so progress is possible from any starting point.',
   },
   {
     n: '03',

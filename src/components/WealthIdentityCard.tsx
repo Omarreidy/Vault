@@ -74,14 +74,13 @@ interface Props {
   name: string;
   tier: TierName;
   score: number;
-  percentile: number;
   streakDays: number;
   actionsCompleted?: number;
   memberSince: string;
 }
 
 export default function WealthIdentityCard({
-  name, tier, score, percentile, streakDays, actionsCompleted = 7, memberSince,
+  name, tier, score, streakDays, actionsCompleted = 7, memberSince,
 }: Props) {
   const theme = CARD_THEME[tier];
   const tierInfo = TIERS[tier];
@@ -129,8 +128,8 @@ export default function WealthIdentityCard({
       message:
         `VAULT ${tierInfo.name} Member\n` +
         `${name.toUpperCase()}\n\n` +
-        `Wealth Velocity: ${score}/1000 · Top ${100 - percentile}%\n` +
-        `FI Age: ${trajectory.fiAge} · ${trajectory.yearsToFI} years away\n` +
+        `Wealth Velocity: ${score}/1000 · ${tierInfo.name} tier\n` +
+        `Projected FI age: ${trajectory.fiAge} · ${trajectory.yearsToFI} years away\n` +
         `Streak: ${streakDays} days\n\n` +
         `Building wealth with VAULT →`,
     });
@@ -178,16 +177,16 @@ export default function WealthIdentityCard({
           </View>
           <View style={[styles.dividerVert, { backgroundColor: theme.line + '50' }]} />
           <View>
-            <Text style={[styles.scoreLabel, { color: theme.textSub }]}>FI DATE</Text>
+            <Text style={[styles.scoreLabel, { color: theme.textSub }]}>PROJ. FI AGE</Text>
             <Text style={[styles.scoreVal, { color: theme.text, fontFamily: FONTS.display }]}>
               {trajectory.fiAge}
             </Text>
           </View>
           <View style={[styles.dividerVert, { backgroundColor: theme.line + '50' }]} />
           <View>
-            <Text style={[styles.scoreLabel, { color: theme.textSub }]}>PERCENTILE</Text>
+            <Text style={[styles.scoreLabel, { color: theme.textSub }]}>TIER</Text>
             <Text style={[styles.scoreVal, { color: theme.text, fontFamily: FONTS.display }]}>
-              {percentile}%
+              {tierInfo.name}
             </Text>
           </View>
         </View>
@@ -218,10 +217,10 @@ export default function WealthIdentityCard({
         <Text style={styles.shareTxt}>Share this card ↑</Text>
       </TouchableOpacity>
 
-      {/* Percentile callout */}
+      {/* Momentum callout — real streak, no invented population comparisons */}
       <View style={styles.callout}>
         <Text style={styles.calloutTxt}>
-          ◆ Top {100 - percentile}% of wealth builders your age
+          ◆ {streakDays > 0 ? `${streakDays}-day move streak and climbing` : 'Momentum, measured from real moves'}
         </Text>
       </View>
     </Animated.View>

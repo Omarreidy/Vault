@@ -1,66 +1,67 @@
 # VAULT — Google Play Listing
 
+> Claims policy: every line here must comply with `docs/marketing/MARKETING_SOURCE_OF_TRUTH.md`.
+> Price is configured in Play Console / RevenueCat — never hardcode a price in this copy.
+
 ## App Name (50 chars max)
-VAULT: Wealth Score & AI Finance
+VAULT: Daily Money Moves
 
 ## Short Description (80 chars max)
-Your financial status, scored. Daily wealth moves powered by real account data.
+VAULT tells you your next money move — from your real accounts. Daily.
 
 ## Full Description (4000 chars max)
 
-VAULT is the first app that makes building wealth feel like a game you're actually winning.
+Every finance app shows you your money. VAULT tells you what to do with it.
 
-Connect your bank accounts and VAULT transforms your real financial data into a personalized daily feed of money moves — exactly what to do today, based on your actual numbers. Not generic tips. Your moves.
+Connect your accounts (read-only, via Plaid) and VAULT turns your real financial data into specific money moves — exactly what to do next and why it's worth doing. Not generic tips. Moves drawn from your actual accounts: idle cash that could be earning more, credit utilization quietly hurting your score, a savings or retirement account you're missing, subscription creep worth reviewing.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📈 THE DAILY OPEN
+
+Open the vault each morning: see how your score moved since yesterday, make three moves, close the vault. A finance app with a finish line — most days it takes minutes.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 🏦 WEALTH VELOCITY SCORE
 
-Forget net worth. VAULT tracks momentum. Your Wealth Velocity Score (0–1000) measures how fast your financial habits are improving — and updates in real time as you take action.
+A 0–1000 score built from how you save, spend, invest, and handle debt — not just how much you have. Computed on our servers from your real data; it updates as your accounts refresh. It is not a credit score and never affects one.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-🥇 YOUR TIER. YOUR STATUS.
+🥇 TIERS THAT MARK PROGRESS
 
-Bronze → Silver → Gold → Platinum → Black
-
-Your tier isn't about how much you have. It's about how you move. Execute smart financial moves and you climb — regardless of where you start.
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-📱 DAILY WEALTH FEED
-
-A swipeable feed of personalized financial moves built from your actual account data. Refinancing opportunities. Hidden surpluses. Tax optimizations. Rate arbitrage. It shows up in your feed before you even think to look.
+Bronze → Silver → Gold → Platinum → Black. Tiers mark milestones in your momentum as you climb.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 🤖 AI CONCIERGE
 
-Ask anything. Your AI advisor knows your accounts, your score, your tier, and your trajectory. It doesn't give generic answers — it gives yours.
+Ask anything about your money. The Concierge answers with your actual balances — educational guidance, straight answers, and when it doesn't have the data, it says so. Five free messages a day; unlimited with Premium.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 🏆 WEALTH WINS
 
-Hit a milestone? VAULT generates a shareable card. First $10k saved. Score crossing 700. Tier upgrade. Share the win.
+Milestones become shareable cards — your first $10K saved, a score threshold crossed, a tier unlocked.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-🔒 BANK-GRADE SECURITY
+🔒 PRIVATE BY DESIGN
 
-Read-only access via Plaid — the same infrastructure used by Chase, Venmo, and Coinbase. We never see or store your banking credentials. AES-256 encryption. TLS 1.3 in transit.
+Read-only access via Plaid — VAULT can see balances and transactions, never move money. We never see or store your banking credentials. AES-256 encryption at rest. TLS 1.3 in transit. Your data is never sold.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-VAULT is for people who are serious about building wealth — and want to feel the progress every day.
+VAULT is educational — it is not a bank or a financial adviser, and it never guarantees financial outcomes.
 
-The vault is open. Are you in?
+Your money has a next move. Find it.
 
 ## Category
 Finance
 
 ## Tags
-personal finance, wealth, budgeting, savings, investment tracker, AI finance, net worth, money management
+personal finance, money moves, savings, net worth, money management, financial habits
 
 ## Content Rating
 Everyone
@@ -89,7 +90,7 @@ Everyone
 ### Data Sharing
 - We do not sell personal data
 - Financial data shared only with Plaid (bank connection) and Supabase (secure hosting)
-- AI queries processed by Anthropic — no financial data retained beyond the API call
+- AI queries processed by Anthropic — not used to train Anthropic's models
 
 ### Security
 - Data encrypted in transit (TLS 1.3)

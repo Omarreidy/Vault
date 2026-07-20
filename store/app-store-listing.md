@@ -1,10 +1,15 @@
 # VAULT — App Store Listing
 
+> Claims policy: every line here must comply with `docs/marketing/MARKETING_SOURCE_OF_TRUTH.md`.
+> Price is configured in App Store Connect / RevenueCat — never hardcode a price in this copy.
+
 ## Name (30 chars max)
-VAULT: Wealth Score & AI Money
+VAULT: Daily Money Moves
+
+*(previous: "VAULT: Wealth Score & AI Money" — retired; "AI Money" was vague and score-led)*
 
 ## Subtitle (30 chars max)
-Your financial status, ranked.
+Your next money move, daily
 
 ## Category
 Primary: Finance
@@ -12,49 +17,50 @@ Secondary: Lifestyle
 
 ## Description (4000 chars max)
 
-VAULT is the first app that makes growing your wealth as addictive as social media.
+Every finance app shows you your money. VAULT tells you what to do with it.
 
-Connect your bank accounts and VAULT turns your real financial data into a daily feed of personalized money moves — swipeable cards that show you exactly what to do today to build momentum. Not generic advice. Your advice, based on your actual accounts.
+Connect your accounts (read-only, via Plaid) and VAULT turns your real financial data into specific money moves — cards that show you what to do next and why it's worth doing. Not generic tips. Moves drawn from your actual accounts: idle cash that could be earning more, credit utilization quietly hurting your score, a savings or retirement account you're missing, subscription creep worth reviewing.
 
-**YOUR WEALTH VELOCITY SCORE**
-Forget net worth. VAULT tracks Wealth Velocity — a 0–1000 momentum score based on how fast your financial habits are improving. Watch it climb in real time as you make smarter moves.
+**THE DAILY OPEN**
+Open the vault each morning: see how your score moved since yesterday, make three moves, close the vault. A finance app with a finish line — most days it takes minutes.
 
-**YOUR TIER. YOUR STATUS.**
-Bronze → Silver → Gold → Platinum → Black.
-Your tier isn't based on how much you have. It's based on how you move. Make the right calls and you rise — regardless of your starting point.
+**YOUR WEALTH VELOCITY**
+A 0–1000 score built from how you save, spend, invest, and handle debt — not just how much you have. It's computed on our servers from your real data and updates as your accounts refresh. It is not a credit score and never affects one.
 
-**DAILY WEALTH FEED**
-A TikTok-style feed of financial moves personalized to your actual accounts. Refinance opportunity? Surplus you didn't know you had? Tax move you're missing? It surfaces in your feed before you even think to look.
+**TIERS THAT MARK PROGRESS**
+Bronze → Silver → Gold → Platinum → Black. Tiers mark milestones in your momentum as you climb.
 
 **AI CONCIERGE**
-Ask anything. Your AI advisor has full context on your accounts, your score, your tier, and your trajectory. It doesn't give generic answers — it knows your numbers.
+Ask anything about your money. The Concierge answers with your actual balances — educational guidance, straight answers, and when it doesn't have the data, it says so. Five free messages a day; unlimited with Premium.
 
 **WEALTH WINS**
-Hit a milestone? VAULT generates a shareable card. Your first $10k saved. Your score crossing 700. Your tier upgrade. Share the win, inspire the circle.
+Milestones become shareable cards — your first $10K saved, a score threshold crossed, a tier unlocked.
 
-**SECURE BY DESIGN**
-Bank-grade encryption. Read-only access to your accounts via Plaid — the same technology used by Chase, Venmo, and Coinbase. We never store your credentials.
+**PRIVATE BY DESIGN**
+Read-only access via Plaid: VAULT can see balances and transactions, never move money. We never see or store your bank credentials. Your data is encrypted in transit and at rest, and it is never sold.
 
----
+VAULT is educational — it is not a bank or a financial adviser, and it never guarantees financial outcomes.
 
-VAULT is for people who are serious about building wealth — and want to feel the progress every single day.
+Your money has a next move. Find it.
 
-The vault is open. Are you in?
+## Promotional text (170 chars max, optional)
+Connect your accounts and VAULT hands you specific money moves from your real data. Open the vault. Close it in minutes.
 
 ## Keywords (100 chars, comma-separated)
-wealth,money,finance,budget,savings,investment,net worth,score,AI,status,Plaid,bank,cash flow
+money moves,next move,money,finance,savings,net worth,score,AI,plaid,cash flow,habit,wealth
 
 ## Support URL
-https://getvault.app/support
+https://getsvault.com/support
 
 ## Marketing URL
-https://getvault.app
+https://getsvault.com
 
 ## Privacy Policy URL
-https://getvault.app/privacy
+https://getsvault.com/privacy
 
 ## Age Rating
 4+ (no objectionable content)
 
 ## Price
-Free (with $12.99/month premium)
+Free download with an auto-renewing monthly Premium subscription.
+⚠️ The price shown to users comes from App Store Connect / RevenueCat — verify the configured price there before submission and never state a number in metadata that hasn't been verified against that configuration.

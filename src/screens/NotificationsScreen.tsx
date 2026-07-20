@@ -226,7 +226,7 @@ export default function NotificationsScreen({ onClose, onNavigate }: Props) {
             <View style={styles.emptyHint}>
               <Text style={styles.emptyHintIcon}>🏦</Text>
               <Text style={styles.emptyHintTxt}>
-                Connect your bank from the Home screen to unlock real-time alerts based on your actual accounts.
+                Connect your bank from the Home screen to unlock alerts based on your actual accounts.
               </Text>
             </View>
           </View>

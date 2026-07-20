@@ -9,18 +9,21 @@ import { TIERS, FONTS, SPACING, RADIUS } from '../constants/theme';
 
 const { width, height } = Dimensions.get('window');
 
+// What each tier actually is: a Wealth Velocity range and what reaching it
+// says about the member's habits. Tiers mark progress — they gate no features
+// and carry no perks, so this copy must never promise any.
 const TIER_PERKS: Record<TierName, string[]> = {
-  BRONZE:   ['Daily wealth moves', 'Basic concierge (5/mo)', 'Velocity score'],
-  SILVER:   ['Unlimited moves', 'Concierge (20/mo)', 'Goals tracker', 'Weekly report'],
-  GOLD:     ['Priority concierge', 'Exclusive partner rates', 'Leaderboard access', 'Advanced insights'],
-  PLATINUM: ['Unlimited concierge', 'Premium partner rates', 'Personal wealth report', 'Early feature access'],
-  BLACK:    ['Dedicated advisor', 'Centurion-level perks', 'White-glove onboarding', 'Private community'],
+  BRONZE:   ['Velocity 0–199', 'Your baseline is set', 'Every move from here counts'],
+  SILVER:   ['Velocity 200–449', 'Consistent habits are showing', 'Gold is within reach'],
+  GOLD:     ['Velocity 450–699', 'Momentum across savings, debt & investing', 'Platinum is within reach'],
+  PLATINUM: ['Velocity 700–899', 'Habits most people never build', 'Black is within reach'],
+  BLACK:    ['Velocity 900–1000', 'The top of the ladder', 'Momentum, mastered'],
 };
 
 const TIER_HEADLINES: Record<TierName, string> = {
   BRONZE:   'Your journey begins.',
   SILVER:   'Moving up.',
-  GOLD:     'You\'re in the top 30%.',
+  GOLD:     'Real momentum.',
   PLATINUM: 'Elite territory.',
   BLACK:    'You\'ve arrived.',
 };
