@@ -11,11 +11,17 @@
 - 10" tablet (optional)
 
 ## Screens to capture (priority order)
-1. **Home / Wealth Feed** — swipeable cards, score visible at top
-2. **Score Screen** — large Wealth Velocity number + tier badge
-3. **AI Concierge** — conversation UI showing a real insight
-4. **Onboarding** — the "connect your accounts" step (aspirational)
-5. **Profile / Tier** — tier badge + progress to next level
+> ⚠️ Superseded 2026-07-19: the full creative system (order, copy, framing,
+> alternates) now lives in `store/screenshot-plan.md`. Capture list, in the
+> narrative's order:
+1. **Home / Wealth Feed** — one personalized move card front and center
+2. **Daily Open brief** — velocity delta + today's hand
+3. **Move card detail** — utilization detector with impact + effort
+4. **Vault Closed** — celebration + streak
+5. **AI Concierge** — grounded answer to "What should I tackle first?"
+6. **Score Screen** — score arc + tier badge (post-connect)
+7. **Settings / Plaid consent** — read-only + delete-account visible
+8. **Upgrade screen** — perks list, cropped above the price line
 
 ## How to take them
 ### Option A — Netlify web version (fastest)

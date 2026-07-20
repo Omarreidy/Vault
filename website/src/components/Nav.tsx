@@ -2,6 +2,8 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import { APP_STORE_URL } from '@/lib/brand';
+import { track } from '@/lib/track';
 
 const LINKS = [
   { label: 'Features', href: '#features' },
@@ -50,7 +52,8 @@ export default function Nav() {
         </div>
 
         <a
-          href="#download"
+          href={APP_STORE_URL ?? '#download'}
+          onClick={() => track('appstore_cta_click', { location: 'nav', live: APP_STORE_URL != null })}
           className="rounded-full bg-gradient-to-r from-[#D4AA70] via-gold to-gold-deep px-5 py-2 text-[13px] font-bold text-night transition-shadow duration-500 hover:shadow-[0_4px_24px_rgba(201,169,110,0.5)]"
         >
           Get VAULT

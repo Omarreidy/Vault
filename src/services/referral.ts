@@ -1,4 +1,5 @@
 import { Share } from 'react-native';
+import { EVENTS, track } from './analytics';
 import { supabase } from './supabase';
 
 /**
@@ -55,7 +56,9 @@ export async function redeemReferralCode(
       invite_code: code.trim(),
     });
     if (error || !data) return { ok: false, error: 'network' };
-    return data as { ok: boolean; error?: RedeemError; xp?: number };
+    const result = data as { ok: boolean; error?: RedeemError; xp?: number };
+    if (result.ok) track(EVENTS.REFERRAL_REDEEMED).catch(() => {});
+    return result;
   } catch {
     return { ok: false, error: 'network' };
   }
@@ -83,6 +86,7 @@ export async function shareInvite(prefetchedCode?: string): Promise<void> {
   const code = prefetchedCode || (await fetchReferralInfo())?.code;
   if (!code) return;
   try {
+    track(EVENTS.REFERRAL_SHARED).catch(() => {});
     await Share.share({ message: buildShareMessage(code) });
   } catch {}
 }

@@ -10,6 +10,7 @@ import {
   OnboardingAnswers, calculateOnboardingScore,
   markOnboardingComplete, storeOnboardingAnswers, OnboardingResult,
 } from '../services/onboarding';
+import { EVENTS, track } from '../services/analytics';
 import TierBadge from '../components/TierBadge';
 import { COLORS, FONTS, SPACING, RADIUS, CARD_SHADOW, CARD_SHADOW_STRONG } from '../constants/theme';
 import { TIERS } from '../constants/theme';
@@ -156,6 +157,14 @@ export default function OnboardingScreen({ onComplete }: Props) {
     return () => clearTimeout(t);
   }, [step]);
 
+  // First score reveal — the funnel moment the Plaid ask depends on.
+  // Coarse tier only; never raw financial answers.
+  useEffect(() => {
+    if (step === 'reveal' && result) {
+      track(EVENTS.SCORE_REVEALED, { tier: result.tier, source: 'onboarding' }).catch(() => {});
+    }
+  }, [step]);
+
   const handleGapStagger = () => {
     gapAnims.forEach((a, i) => {
       Animated.timing(a, { toValue: 1, duration: 400, delay: i * 180, useNativeDriver: false }).start();
@@ -167,6 +176,7 @@ export default function OnboardingScreen({ onComplete }: Props) {
     const answers: OnboardingAnswers = { name: name.trim(), age, income, goal };
     await storeOnboardingAnswers(answers);
     await markOnboardingComplete({ ...result, name: name.trim() }, answers);
+    track(EVENTS.ONBOARDING_COMPLETED, { tier: result.tier }).catch(() => {});
     onComplete();
   };
 

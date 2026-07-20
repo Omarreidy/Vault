@@ -6,6 +6,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import { supabase } from '../services/supabase';
+import { EVENTS, track } from '../services/analytics';
 import PolicyModal from '../components/PolicyModal';
 import { PRIVACY_POLICY, TERMS_OF_SERVICE } from '../constants/legal';
 import { COLORS, FONTS, SPACING, RADIUS, CARD_SHADOW } from '../constants/theme';
@@ -36,6 +37,8 @@ export default function AuthScreen({ onAuth }: Props) {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
     setLoading(true);
     setError('');
+    // Pre-auth: recorded once the anon-insert policy migration is applied.
+    if (mode === 'signup') track(EVENTS.SIGNUP_STARTED).catch(() => {});
 
     try {
       if (mode === 'signup') {
@@ -71,6 +74,7 @@ export default function AuthScreen({ onAuth }: Props) {
         if (err) throw err;
       }
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+      track(mode === 'signup' ? EVENTS.SIGNUP_COMPLETED : EVENTS.SIGNIN_COMPLETED).catch(() => {});
       onAuth();
     } catch (err: any) {
       setError(err.message ?? 'Something went wrong. Try again.');

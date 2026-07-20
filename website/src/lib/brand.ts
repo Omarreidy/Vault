@@ -44,6 +44,6 @@ export const APP_STORE_URL: string | null = null; // TODO: insert App Store link
 export const SITE = {
   name: 'VAULT',
   domain: 'https://getsvault.com',
-  tagline: 'Your Financial Operating System',
+  tagline: 'Your money has a next move.',
   supportEmail: 'support@getvault.app',
 } as const;

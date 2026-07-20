@@ -6,6 +6,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import { supabase, functionAuthHeaders } from '../services/supabase';
+import { EVENTS, track } from '../services/analytics';
 import { COLORS, FONTS, SPACING, RADIUS, CARD_SHADOW } from '../constants/theme';
 
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? 'https://gvdfypehwmemootjizmd.supabase.co';
@@ -62,6 +63,7 @@ export default function PlaidLinkScreen({ visible, onClose, onSuccess }: Props) 
 
   const handleOpenPlaid = () => {
     if (!linkToken) return;
+    track(EVENTS.PLAID_LINK_STARTED, { platform_flow: 'web_tab' }).catch(() => {});
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
     // On web, open Plaid Link in a new tab
     const url = `https://cdn.plaid.com/link/v2/stable/link.html?token=${linkToken}`;

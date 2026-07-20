@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Message } from '../types';
 import { askConcierge, ConversationMessage } from '../services/concierge';
+import { EVENTS, track } from '../services/analytics';
 import { recordConcierge } from '../services/progressStats';
 import { useRealProfile } from '../services/userProfile';
 import { usePlaid } from '../context/PlaidContext';
@@ -102,6 +103,8 @@ export default function ConciergeScreen({ onClose, initialPrompt }: Props = {}) 
 
     const count = await incrementDailyCount();
     setDailyCount(count);
+    // Message index within the day, never the message text.
+    track(EVENTS.CONCIERGE_MESSAGE_SENT, { daily_count: count, premium: isPremium }).catch(() => {});
 
     const aId = (Date.now() + 1).toString();
     setMessages(prev => [...prev, { id: aId, role: 'assistant', content: '', timestamp: new Date() }]);

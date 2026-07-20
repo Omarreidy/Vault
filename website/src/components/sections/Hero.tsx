@@ -13,6 +13,7 @@ import AppStoreButton from '@/components/AppStoreButton';
 import PhoneMock from '@/components/PhoneMock';
 import VaultRing from '@/components/VaultRing';
 import { stagger, wordReveal } from '@/lib/motion';
+import { track } from '@/lib/track';
 
 const PARTICLES = [
   { left: '12%', top: '22%', size: 3, dur: 9, delay: 0 },
@@ -148,17 +149,19 @@ export default function Hero() {
             variants={wordReveal}
             className="mt-8 max-w-xl text-[17px] leading-relaxed text-parchment-dim"
           >
-            VAULT reads your connected accounts, scores your momentum, and hands you your
-            next money moves — every morning. Specific, doable, yours.
+            VAULT reads your connected accounts — read-only, it can look, never touch — and
+            hands you specific money moves every morning, with the dollar amounts that make
+            them worth doing. Most take minutes.
           </motion.p>
 
           <motion.div
             variants={wordReveal}
             className="mt-10 flex flex-col items-center gap-4 sm:flex-row"
           >
-            <AppStoreButton />
+            <AppStoreButton location="hero" />
             <a
               href="#demo"
+              onClick={() => track('demo_cta_click', { location: 'hero' })}
               className="group flex items-center gap-3 rounded-full border border-white/15 px-7 py-4 text-[15px] font-semibold text-parchment transition-colors duration-500 hover:border-gold/50 hover:text-gold-light"
             >
               <svg viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor" aria-hidden="true">
@@ -170,7 +173,14 @@ export default function Hero() {
 
           <motion.p
             variants={wordReveal}
-            className="mt-8 text-[12px] tracking-wide text-parchment-faint"
+            className="mt-6 text-[14px] font-medium tracking-wide text-parchment-dim"
+          >
+            Your first score takes 60 seconds — no bank login needed.
+          </motion.p>
+
+          <motion.p
+            variants={wordReveal}
+            className="mt-4 text-[12px] tracking-wide text-parchment-faint"
           >
             Read-only via Plaid&ensp;·&ensp;Encrypted in transit &amp; at rest&ensp;·&ensp;Your data is never sold
           </motion.p>

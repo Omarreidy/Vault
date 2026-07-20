@@ -197,10 +197,13 @@ export default function WealthFeed() {
                 <Beat key={i} progress={scrollYProgress} index={i} {...beat} />
               ))}
             </div>
-            <div className="flex justify-center">
+            <div className="flex flex-col items-center gap-4">
               <PhoneMock>
                 <FeedScreen progress={scrollYProgress} />
               </PhoneMock>
+              <p className="text-[11px] tracking-wide text-ink-dim">
+                Illustrative examples — your moves come from your own accounts.
+              </p>
             </div>
           </div>
         </div>
@@ -226,6 +229,9 @@ export default function WealthFeed() {
           {MOVES.map((move, i) => (
             <MoveCard key={move.tag} move={move} index={i} total={MOVES.length} />
           ))}
+          <p className="pt-1 text-center text-[11px] tracking-wide text-ink-dim">
+            Illustrative examples — your moves come from your own accounts.
+          </p>
         </div>
       </div>
     </section>

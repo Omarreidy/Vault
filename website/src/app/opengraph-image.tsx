@@ -2,7 +2,7 @@ import { ImageResponse } from 'next/og';
 
 export const size = { width: 1200, height: 630 };
 export const contentType = 'image/png';
-export const alt = 'VAULT — Your Financial Operating System';
+export const alt = 'VAULT — Your money has a next move.';
 
 export default function OpenGraphImage() {
   return new ImageResponse(
@@ -44,7 +44,7 @@ export default function OpenGraphImage() {
             display: 'flex',
           }}
         >
-          Wealth has a new operating system.
+          Your money has a next move.
         </div>
         <div
           style={{
@@ -54,7 +54,7 @@ export default function OpenGraphImage() {
             display: 'flex',
           }}
         >
-          Real accounts · A daily feed of moves · A score that measures momentum
+          Specific money moves from your real accounts · Read-only via Plaid
         </div>
       </div>
     ),

@@ -1,5 +1,8 @@
+'use client';
+
 import MagneticButton from '@/components/MagneticButton';
 import { APP_STORE_URL } from '@/lib/brand';
+import { track } from '@/lib/track';
 
 function AppleLogo({ className }: { className?: string }) {
   return (
@@ -11,12 +14,20 @@ function AppleLogo({ className }: { className?: string }) {
 
 // Primary conversion CTA. Renders a live App Store link once APP_STORE_URL is set
 // in src/lib/brand.ts; until then it's a styled placeholder pointing at #download.
-export default function AppStoreButton({ light = false }: { light?: boolean }) {
+// `location` identifies which section's button was clicked in analytics.
+export default function AppStoreButton({
+  light = false,
+  location = 'unknown',
+}: {
+  light?: boolean;
+  location?: string;
+}) {
   const href = APP_STORE_URL ?? '#download';
   return (
     <MagneticButton>
       <a
         href={href}
+        onClick={() => track('appstore_cta_click', { location, live: APP_STORE_URL != null })}
         aria-label="Download VAULT on the App Store"
         className={`group flex items-center gap-3 rounded-full px-7 py-4 transition-shadow duration-500 ${
           light

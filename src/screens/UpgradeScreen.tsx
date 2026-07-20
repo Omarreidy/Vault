@@ -9,6 +9,7 @@ import * as Haptics from 'expo-haptics';
 import { COLORS, FONTS, SPACING, RADIUS, CARD_SHADOW } from '../constants/theme';
 import PolicyModal from '../components/PolicyModal';
 import { PRIVACY_POLICY, TERMS_OF_SERVICE } from '../constants/legal';
+import { EVENTS, track } from '../services/analytics';
 import { syncPremiumStatus } from '../services/premium';
 
 // Only perks that exist in the shipping app. Premium's real gate today is the
@@ -16,7 +17,7 @@ import { syncPremiumStatus } from '../services/premium';
 const PERKS = [
   { icon: '◈', title: 'Unlimited AI Concierge', sub: 'The 5-message daily limit disappears entirely' },
   { icon: '◆', title: 'Deep-dive sessions', sub: 'Long conversations: debt payoff plans, investing, negotiation prep' },
-  { icon: '◉', title: 'Advice grounded in your accounts', sub: 'Connect your bank and every answer uses your real numbers' },
+  { icon: '◉', title: 'Guidance grounded in your accounts', sub: 'Connect your bank and every answer uses your real numbers' },
   { icon: '✦', title: 'Every future Premium feature', sub: 'New Premium capabilities are included as they ship' },
 ];
 
@@ -41,6 +42,7 @@ export default function UpgradeScreen({ visible, onClose, onSuccess }: Props) {
 
   useEffect(() => {
     if (visible) {
+      track(EVENTS.UPGRADE_VIEWED).catch(() => {});
       Animated.parallel([
         Animated.spring(scale,   { toValue: 1, tension: 60, friction: 9, useNativeDriver: false }),
         Animated.timing(opacity, { toValue: 1, duration: 300, useNativeDriver: false }),
@@ -70,6 +72,7 @@ export default function UpgradeScreen({ visible, onClose, onSuccess }: Props) {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => {});
     setLoading(true);
     setError('');
+    track(EVENTS.PURCHASE_STARTED).catch(() => {});
     try {
       const Purchases = require('react-native-purchases').default;
       const offerings = await Purchases.getOfferings();
@@ -80,10 +83,12 @@ export default function UpgradeScreen({ visible, onClose, onSuccess }: Props) {
       if (customerInfo.entitlements.active['premium']) {
         // Persist the entitlement so premium survives app restarts.
         await syncPremiumStatus();
+        track(EVENTS.PURCHASE_COMPLETED).catch(() => {});
         onSuccess?.();
         onClose();
       }
     } catch (err: any) {
+      track(EVENTS.PURCHASE_FAILED, { cancelled: !!err?.userCancelled }).catch(() => {});
       if (!err.userCancelled) {
         setError('Purchase failed. Please try again.');
       }
@@ -101,6 +106,7 @@ export default function UpgradeScreen({ visible, onClose, onSuccess }: Props) {
       const customerInfo = await Purchases.restorePurchases();
       if (customerInfo.entitlements.active['premium']) {
         await syncPremiumStatus();
+        track(EVENTS.PURCHASE_RESTORED).catch(() => {});
         onSuccess?.();
         onClose();
       } else {

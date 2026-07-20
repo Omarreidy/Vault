@@ -13,8 +13,8 @@ const RITUALS = [
   {
     eyebrow: 'INSIGHTS',
     title: 'Leaks, spotted for you.',
-    body: 'The subscriptions you forgot. The cash earning nothing. The balance quietly hurting your credit. VAULT flags where money slips and shows you — before it compounds against you.',
-    stat: 'Automatic · Always watching',
+    body: 'The subscriptions you forgot. The cash earning nothing. The balance quietly hurting your credit. Every time your accounts refresh, VAULT flags where money slips — before it compounds against you.',
+    stat: 'Automatic · Every refresh',
   },
 ];
 

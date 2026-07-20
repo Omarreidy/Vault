@@ -14,6 +14,7 @@ import { supabase } from './src/services/supabase';
 import { PlaidProvider } from './src/context/PlaidContext';
 import { initPushNotifications, teardownPushForSignOut } from './src/services/push';
 import { syncPremiumStatus } from './src/services/premium';
+import { EVENTS, track } from './src/services/analytics';
 
 const RC_API_KEY = 'appl_iHfaWTgWajGmNhQValXNlUdqwxI';
 
@@ -62,6 +63,9 @@ function AppContent() {
   const [session, setSession] = useState<Session | null>(null);
 
   useEffect(() => {
+    // First funnel event of a session. Pre-auth opens are recorded once the
+    // anon-insert policy migration is applied; signed-in opens record today.
+    track(EVENTS.APP_OPENED).catch(() => {});
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       if (!session) {

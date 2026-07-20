@@ -2,6 +2,7 @@
 
 **Every future marketing prompt, ad, page, or store asset must comply with this file.**
 Full rationale: `docs/marketing/POSITIONING.md`. In any conflict, this file + `src/constants/legal.ts` win.
+Implementation: the launch system built on this file lives in `docs/marketing/launch/` (see its README); per-asset compliance runs through `docs/marketing/launch/12_CLAIMS_CHECKLIST.md`.
 Last verified against the product: 2026-07-19 (claims-consistency remediation pass; regression-guarded by `tests/claims.test.ts`).
 
 ## Who VAULT is for

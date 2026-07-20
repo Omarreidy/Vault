@@ -47,14 +47,15 @@ export default function FinalCTA() {
             variants={fadeUp}
             className="mx-auto mt-8 max-w-xl text-[17px] leading-relaxed text-parchment-dim"
           >
-            Download VAULT. Connect your accounts in minutes. Wake up tomorrow to a hand of moves
-            dealt from your real numbers — and a score only you can raise.
+            Download VAULT and get your starting score in 60 seconds — three questions, no bank
+            login. Connect your accounts when you&rsquo;re ready, and wake up tomorrow to moves
+            dealt from your real numbers.
           </motion.p>
 
           <motion.div variants={fadeUp} className="mt-12 flex flex-col items-center gap-4">
-            <AppStoreButton />
+            <AppStoreButton location="final_cta" />
             <p className="text-[12px] tracking-wide text-parchment-faint">
-              Free to download · iPhone
+              Free to download · iPhone · Read-only via Plaid
             </p>
           </motion.div>
         </motion.div>

@@ -11,6 +11,22 @@ import { supabase } from './supabase';
 // Every trackable event, in one place so names never drift between callers
 // and dashboards. snake_case, past tense for facts, imperative for intents.
 export const EVENTS = {
+  APP_OPENED:             'app_opened',
+  SIGNUP_STARTED:         'signup_started',
+  SIGNUP_COMPLETED:       'signup_completed',
+  SIGNIN_COMPLETED:       'signin_completed',
+  SCORE_REVEALED:         'score_revealed',
+  ONBOARDING_COMPLETED:   'onboarding_completed',
+  PLAID_LINK_STARTED:     'plaid_link_started',
+  PLAID_LINK_EXITED:      'plaid_link_exited',
+  CONCIERGE_MESSAGE_SENT: 'concierge_message_sent',
+  UPGRADE_VIEWED:         'upgrade_viewed',
+  PURCHASE_STARTED:       'purchase_started',
+  PURCHASE_COMPLETED:     'purchase_completed',
+  PURCHASE_FAILED:        'purchase_failed',
+  PURCHASE_RESTORED:      'purchase_restored',
+  REFERRAL_SHARED:        'referral_shared',
+  REFERRAL_REDEEMED:      'referral_redeemed',
   FEED_COMPOSED:          'feed_composed',
   MOVE_ACTED:             'move_acted',
   MOVE_SKIPPED:           'move_skipped',

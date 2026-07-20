@@ -244,12 +244,12 @@ export default function ScoreScreen() {
             {scoreSource === 'plaid' && (
               <View style={styles.liveDataBadge}>
                 <View style={styles.liveDot} />
-                <Text style={styles.liveDataTxt}>Live score from your connected accounts</Text>
+                <Text style={styles.liveDataTxt}>Score from your connected accounts</Text>
               </View>
             )}
             {scoreSource === 'profile' && (
               <View style={styles.estimatedBadge}>
-                <Text style={styles.estimatedTxt}>◇ Estimated score · Connect bank for live data</Text>
+                <Text style={styles.estimatedTxt}>◇ Estimated score · Connect accounts for your real score</Text>
               </View>
             )}
             {/* Monthly Recap banner */}

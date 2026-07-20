@@ -3,21 +3,27 @@
 import { motion, useReducedMotion, useScroll, useTransform } from 'framer-motion';
 import { useRef } from 'react';
 
+// The four-step mechanism: Connect → Open → Act → Momentum.
 const PILLARS = [
   {
     n: '01',
-    title: 'It sees where you stand.',
-    body: 'VAULT connects to your accounts — read-only, encrypted — and understands where your money actually stands. No spreadsheets. No manual entry.',
+    title: 'Connect.',
+    body: 'Answer three questions for your starting score — 60 seconds, no bank login. Then connect your accounts through Plaid when you’re ready: read-only, encrypted, credentials never stored.',
   },
   {
     n: '02',
-    title: 'It scores your momentum.',
-    body: 'The Wealth Velocity Score: 0 to 1,000. It weighs how you save, spend, and handle debt — not just what you have — so progress is possible from any starting point.',
+    title: 'Open the vault.',
+    body: 'Each morning, the Daily Open shows what changed since yesterday and deals your moves for the day — drawn from your actual accounts, sorted by dollar impact.',
   },
   {
     n: '03',
-    title: 'It hands you the next move.',
-    body: 'A daily feed of specific, doable money moves. And an AI concierge that answers with your numbers, not generic advice.',
+    title: 'Make your moves.',
+    body: 'Idle cash to relocate. Utilization to bring down. An account you’re missing. Specific and doable — most take minutes, and the Concierge can explain any of them with your numbers.',
+  },
+  {
+    n: '04',
+    title: 'Build momentum.',
+    body: 'Three moves closes your vault for the day. Streaks build, XP banks, and your Wealth Velocity score climbs on how you handle money — not just how much you have.',
   },
 ];
 
@@ -41,7 +47,7 @@ function RevealContent() {
 
 function Pillars() {
   return (
-    <div className="mx-auto grid max-w-5xl gap-12 px-6 pt-8 pb-36 md:grid-cols-3 md:gap-10">
+    <div className="mx-auto grid max-w-6xl gap-12 px-6 pt-8 pb-36 sm:grid-cols-2 md:gap-10 lg:grid-cols-4">
       {PILLARS.map((pillar, i) => (
         <motion.div
           key={pillar.n}

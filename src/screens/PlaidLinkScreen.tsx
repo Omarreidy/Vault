@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
 import * as Haptics from 'expo-haptics';
 import { supabase, functionAuthHeaders } from '../services/supabase';
+import { EVENTS, track } from '../services/analytics';
 import BankConnectedScreen from './BankConnectedScreen';
 import { COLORS, FONTS, SPACING, RADIUS, CARD_SHADOW } from '../constants/theme';
 
@@ -36,7 +37,10 @@ export default function PlaidLinkScreen({ visible, onClose, onSuccess }: Props) 
   const [connectedAccounts, setConnectedAccounts] = useState<PlaidAccount[]>([]);
 
   useEffect(() => {
-    if (visible) fetchLinkToken();
+    if (visible) {
+      track(EVENTS.PLAID_LINK_STARTED, { platform_flow: 'native_webview' }).catch(() => {});
+      fetchLinkToken();
+    }
   }, [visible]);
 
   const fetchLinkToken = async () => {
@@ -82,9 +86,11 @@ export default function PlaidLinkScreen({ visible, onClose, onSuccess }: Props) 
         setConnectedAccounts(data.accounts ?? []);
         setShowCelebration(true);
       } else if (msg.action === 'plaidError') {
+        track(EVENTS.PLAID_LINK_EXITED, { reason: 'error' }).catch(() => {});
         setError(msg.error || 'Could not open bank connection. Please try again.');
         setShowWebView(false);
       } else if (msg.action === 'plaidExit') {
+        track(EVENTS.PLAID_LINK_EXITED, { reason: 'user_exit' }).catch(() => {});
         setShowWebView(false);
       }
     } catch (err) {
