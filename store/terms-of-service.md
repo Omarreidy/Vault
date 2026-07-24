@@ -61,4 +61,4 @@ These Terms are governed by the laws of the State of Delaware, without regard to
 
 ## 13. Contact
 
-For questions about these Terms: legal@getvault.app
+For questions about these Terms: legal@getsvault.com

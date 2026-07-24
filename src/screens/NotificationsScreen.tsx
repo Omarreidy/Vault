@@ -10,6 +10,7 @@ import {
   loadNotifications, markNotificationRead, dismissNotification,
 } from '../services/notifications';
 import { routeForNotifType, TabName } from '../services/notificationRouting';
+import { reconcileBadge } from '../services/push';
 import { track, EVENTS } from '../services/analytics';
 import { COLORS, FONTS, SPACING, RADIUS, CARD_SHADOW } from '../constants/theme';
 import { getSavedInsights, SavedInsight, removeSavedInsight } from '../services/savedInsights';
@@ -127,7 +128,9 @@ export default function NotificationsScreen({ onClose, onNavigate }: Props) {
 
   const open = (notif: VaultNotification) => {
     setNotifs(prev => prev.map(n => n.id === notif.id ? { ...n, read: true } : n));
-    markNotificationRead(notif.id).catch(() => {});
+    markNotificationRead(notif.id)
+      .then(() => reconcileBadge())
+      .catch(() => {});
     const tab = routeForNotifType(notif.type);
     track(EVENTS.NOTIF_OPENED, { source: 'center', type: notif.type, screen: tab }).catch(() => {});
     onNavigate?.(tab);
@@ -136,14 +139,19 @@ export default function NotificationsScreen({ onClose, onNavigate }: Props) {
   const dismiss = (id: string) => {
     const dismissed = notifs.find(n => n.id === id);
     setNotifs(prev => prev.filter(n => n.id !== id));
-    dismissNotification(id).catch(() => {});
+    dismissNotification(id)
+      .then(() => reconcileBadge())
+      .catch(() => {});
     track(EVENTS.NOTIF_DISMISSED, { type: dismissed?.type ?? 'unknown' }).catch(() => {});
   };
 
   const markAllRead = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
     setNotifs(prev => prev.map(n => ({ ...n, read: true })));
-    notifs.forEach(n => { if (!n.read) markNotificationRead(n.id).catch(() => {}); });
+    // Persist every unread, then reconcile the app-icon badge to the new count.
+    Promise.all(notifs.filter(n => !n.read).map(n => markNotificationRead(n.id)))
+      .then(() => reconcileBadge())
+      .catch(() => {});
   };
 
   const unread  = notifs.filter(n => !n.read);

@@ -95,7 +95,7 @@ Everyone
 ### Security
 - Data encrypted in transit (TLS 1.3)
 - Data encrypted at rest (AES-256)
-- Users can request data deletion at any time: privacy@getvault.app
+- Users can request data deletion at any time: privacy@getsvault.com
 
 ### Data Deletion
-Users may delete their account and all associated data at any time from Settings → Delete Account, or by emailing privacy@getvault.app. Deletion is processed within 30 days.
+Users may delete their account and all associated data at any time from Settings → Delete Account, or by emailing privacy@getsvault.com. Deletion is processed within 30 days.

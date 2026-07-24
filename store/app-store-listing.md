@@ -78,7 +78,7 @@ Display name on device: **VAULT** (from `app.json`). Store name: **VAULT: Daily 
 Promotional text updates without review, so rotate it as a message test:
 
 1. (default, live above) "Connect your accounts and VAULT hands you specific money moves from your real data. Open the vault. Close it in minutes."
-2. "Your first score takes 60 seconds — three questions, no bank login. Connect when you're ready and your moves come from your real accounts."
+2. "Your first score takes about 60 seconds — three questions, no bank login. Connect when you're ready and your moves come from your real accounts."
 3. "Stop staring at charts. VAULT finds the idle cash, the creeping fees, the missing accounts — and shows you exactly what to do about them."
 
 ## Keyword strategy (100-char field)
@@ -115,7 +115,7 @@ VAULT Premium is a monthly auto-renewing subscription purchased through Apple. F
 
 ## Support copy (getsvault.com/support + ASC support URL)
 
-> **Need a hand?** Email support@getvault.app and a human reads it — usually the founder.
+> **Need a hand?** Email support@getsvault.com and a human reads it — usually the founder.
 > Before you write: VAULT is read-only (it can never move your money), your bank login goes to Plaid (we never see it), and you can disconnect accounts or delete everything in Settings at any time.
 > Include your account email and what you expected to happen — screenshots help.
 
@@ -133,7 +133,7 @@ Never gate features on a review, never re-ask within the same version, never ask
 > Thank you — glad the daily moves are landing. [Feature] is a fair ask; it's on our list and your note just moved it up. — VAULT
 
 **Critical: "moves got repetitive":**
-> Fair criticism. Move variety is where we're investing most right now — new detectors ship regularly, and your feedback tells us which gaps matter. If you reconnect in a few weeks, I'd genuinely like to know if it feels different: support@getvault.app. — VAULT
+> Fair criticism. Move variety is where we're investing most right now — new detectors ship regularly, and your feedback tells us which gaps matter. If you reconnect in a few weeks, I'd genuinely like to know if it feels different: support@getsvault.com. — VAULT
 
 **Critical: privacy/bank-connection concern:**
 > Completely reasonable concern. VAULT's access is read-only through Plaid — we can see balances and transactions to find your moves, and we cannot move money, ever. Your bank login goes to Plaid, not us, and you can disconnect or delete everything in Settings. Details: getsvault.com/privacy. — VAULT
@@ -142,6 +142,6 @@ Never gate features on a review, never re-ask within the same version, never ask
 > That's on us for not being clearer: VAULT surfaces what deserves action — like subscription creep — and gives you exact steps, but it never acts on your accounts. Read-only is a deliberate safety choice. If you want a done-for-you service, VAULT may not be the fit; if you want to stay in control, we've got you. — VAULT
 
 **Critical: bug report:**
-> Thank you for the specifics — this is fixed in [version] / being fixed now. If it's still misbehaving after updating, email support@getvault.app and I'll dig in personally. — VAULT
+> Thank you for the specifics — this is fixed in [version] / being fixed now. If it's still misbehaving after updating, email support@getsvault.com and I'll dig in personally. — VAULT
 
 Rules for all responses: never argue, never promise dates, never mention prices, never claim capabilities from the prohibited list, sign as VAULT.

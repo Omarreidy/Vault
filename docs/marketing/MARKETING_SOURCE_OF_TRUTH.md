@@ -37,7 +37,7 @@ Relief and completion: the "I should be doing something with my money" hum goes 
 
 ## Primary CTA
 
-**"Get your score in 60 seconds"** — always offer the no-bank-login path first; the Plaid ask comes after value is shown, with "read-only, look never touch" at the moment of the ask.
+**"Get your score in about 60 seconds"** — always offer the no-bank-login path first; the Plaid ask comes after value is shown, with "read-only, look never touch" at the moment of the ask. Always qualify the timing with "about" (it varies by user and device). Never promise moves "every morning," a dollar amount on every move, or that VAULT can always produce a new personalized move — use "surfaces specific money moves and shows the numbers behind them when available."
 
 ## Approved language (own these)
 

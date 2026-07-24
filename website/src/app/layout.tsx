@@ -22,13 +22,13 @@ export const metadata: Metadata = {
   metadataBase: new URL('https://getsvault.com'),
   title: 'VAULT — Your Money Has a Next Move',
   description:
-    'The finance app that tells you your next money move. VAULT reads your connected accounts — read-only, via Plaid — and hands you specific money moves every morning. Your first score takes 60 seconds, no bank login needed.',
+    'The finance app that tells you your next money move. VAULT uses information from your connected accounts — read-only, via Plaid — to surface specific money moves and show the numbers behind them when available. Your first score takes about 60 seconds, no bank login needed.',
   keywords: ['money moves', 'next money move', 'daily money moves', 'finance app', 'money', 'wealth', 'VAULT'],
   alternates: { canonical: '/' },
   openGraph: {
     title: 'VAULT — Your Money Has a Next Move',
     description:
-      'The finance app that tells you your next money move. Specific money moves from your real accounts, every morning — read-only via Plaid.',
+      'The finance app that tells you your next money move. Specific money moves surfaced from your real accounts — read-only via Plaid.',
     url: 'https://getsvault.com',
     siteName: 'VAULT',
     type: 'website',
@@ -37,7 +37,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'VAULT — Your Money Has a Next Move',
     description:
-      'The finance app that tells you your next money move. Specific money moves from your real accounts, every morning — read-only via Plaid.',
+      'The finance app that tells you your next money move. Specific money moves surfaced from your real accounts — read-only via Plaid.',
   },
 };
 
@@ -55,7 +55,7 @@ const JSON_LD = {
   operatingSystem: 'iOS',
   url: 'https://getsvault.com',
   description:
-    'The finance app that tells you your next money move. VAULT reads your connected accounts (read-only via Plaid) and hands you specific money moves every morning.',
+    'The finance app that tells you your next money move. VAULT uses information from your connected accounts (read-only via Plaid) to surface specific money moves with the numbers behind them when available.',
   offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
 };
 

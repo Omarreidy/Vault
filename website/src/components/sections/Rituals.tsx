@@ -6,7 +6,7 @@ import { fadeUp, stagger, VIEWPORT_ONCE } from '@/lib/motion';
 const RITUALS = [
   {
     eyebrow: 'THE DAILY OPEN',
-    title: 'One tap. Every morning.',
+    title: 'One tap. Each morning.',
     body: 'Your change since yesterday, your streak, your moves for the day — served in the time it takes your coffee to brew. The ritual that quietly rebuilds your relationship with money.',
     stat: '21-day streak',
   },

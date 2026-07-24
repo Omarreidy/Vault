@@ -14,6 +14,7 @@ import {
   buildFreshNotifications, loadNotifications, dismissNotification,
   markNotificationRead, getUnreadCount, NotifType,
 } from '../src/services/notifications';
+import { reconcileBadge } from '../src/services/push';
 
 const store = (globalThis as any).__asyncStore as Map<string, string>;
 
@@ -175,4 +176,62 @@ test('read state persists and unread count tracks it', async () => {
 
   await markNotificationRead(notifs[0].id);
   assert.equal(await getUnreadCount(), start - 1);
+});
+
+// ── app-icon badge reconciliation ────────────────────────────────────────────
+// reconcileBadge() sets the native badge to the TRUE in-app unread count. Tests
+// inject a capturing setter + the real unread source, so they prove the exact
+// number the home-screen badge will show at each step.
+
+async function badgeAfterReconcile(): Promise<number> {
+  let captured = -1;
+  await reconcileBadge({ setBadge: async n => { captured = n; } });
+  return captured;
+}
+
+test('badge mirrors in-app unread; clearing all drives it to zero', async () => {
+  seedStreak(4);
+  const notifs = await loadNotifications();
+  assert.ok(notifs.length >= 2);
+
+  // Fresh notifications → badge equals the unread count.
+  assert.equal(await badgeAfterReconcile(), notifs.length);
+
+  // Reading one decrements the badge.
+  await markNotificationRead(notifs[0].id);
+  assert.equal(await badgeAfterReconcile(), notifs.length - 1);
+
+  // Reading the rest (the "mark all read" path) drives the badge to zero — a
+  // stale native badge must not survive the user clearing notifications.
+  for (const n of notifs.slice(1)) await markNotificationRead(n.id);
+  assert.equal(await badgeAfterReconcile(), 0);
+});
+
+test('badge: dismissing the last unread notification clears the badge', async () => {
+  seedStreak(4);
+  const notifs = await loadNotifications();
+  for (const n of notifs) await dismissNotification(n.id);
+  assert.equal(await getUnreadCount(), 0);
+  assert.equal(await badgeAfterReconcile(), 0);
+});
+
+test('badge: new unread still raises the count (never force-zeroed)', async () => {
+  seedStreak(4);
+  const notifs = await loadNotifications();
+  assert.ok(notifs.length > 0);
+  // With genuine unread present, reconcile must NOT zero the badge.
+  assert.equal(await badgeAfterReconcile(), notifs.length);
+});
+
+test('badge: reconcile never emits a negative count', async () => {
+  let captured = -99;
+  await reconcileBadge({ getUnread: async () => -5, setBadge: async n => { captured = n; } });
+  assert.equal(captured, 0, 'clamped at zero');
+});
+
+test('badge: no native setter available (web) → no-op, no throw', async () => {
+  // Default path with no injected setter and no native module resolves to a
+  // safe no-op rather than throwing.
+  await reconcileBadge();
+  assert.ok(true);
 });

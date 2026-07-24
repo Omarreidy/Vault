@@ -54,7 +54,7 @@ We implement industry-standard security measures including:
 
 ## 6. Data Retention
 
-We retain your data for as long as your account is active. You may request deletion of your account and associated data at any time by contacting support@getvault.app.
+We retain your data for as long as your account is active. You may request deletion of your account and associated data at any time by contacting support@getsvault.com.
 
 ## 7. Your Rights
 
@@ -65,7 +65,7 @@ Depending on your location, you may have the right to:
 - Export your data in a portable format
 - Opt out of certain data processing
 
-To exercise these rights, contact: privacy@getvault.app
+To exercise these rights, contact: privacy@getsvault.com
 
 ## 8. Children's Privacy
 
@@ -78,8 +78,8 @@ We will notify you of material changes to this Privacy Policy via in-app notific
 ## 10. Contact Us
 
 **VAULT**
-Email: privacy@getvault.app
-Support: support@getvault.app`;
+Email: privacy@getsvault.com
+Support: support@getsvault.com`;
 
 export const TERMS_OF_SERVICE = `# VAULT Terms of Service
 
@@ -144,7 +144,7 @@ These Terms are governed by the laws of the State of Delaware, without regard to
 
 ## 13. Contact
 
-For questions about these Terms: legal@getvault.app`;
+For questions about these Terms: legal@getsvault.com`;
 
 // ─── Legal document versions ──────────────────────────────────────────────────
 // Bump a version whenever its document materially changes; every user is then

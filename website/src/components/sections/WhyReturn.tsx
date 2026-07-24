@@ -6,8 +6,8 @@ import { fadeUp, stagger, VIEWPORT_ONCE } from '@/lib/motion';
 
 const HOOKS = [
   {
-    title: 'A new hand every morning',
-    body: 'The feed refreshes every day. What’s in today’s hand? There’s only one way to know.',
+    title: 'A new hand every day',
+    body: 'The feed refreshes each day you open it. What’s in today’s hand? There’s only one way to know.',
   },
   {
     title: 'Streaks that hurt to break',

@@ -7,8 +7,9 @@ All copy complies with `MARKETING_SOURCE_OF_TRUTH.md`. Placeholders: `{first}` =
 ## 1 · Website hero (implemented in `website/src`)
 
 **H1:** Your money has a next move.
-**Sub:** VAULT reads your connected accounts — read-only, it can look, never touch — and hands you specific money moves every morning, with the dollar amounts that make them worth doing. Most take minutes.
-**CTA support:** Your first score takes 60 seconds — no bank login needed.
+**Sub:** VAULT uses information from your connected accounts — read-only, it can look, never touch — to surface specific money moves and show the numbers behind them when available. Most take minutes.
+**CTA support:** Your first score takes about 60 seconds — no bank login needed.
+*(Corrected 2026-07-19: dropped "every morning" delivery promise and per-move dollar-amount promise; "about 60 seconds" — timing varies by user/device.)*
 **Trust line:** Read-only via Plaid · Encrypted in transit & at rest · Your data is never sold
 
 ## 2 · Waitlist page (if store URL is pending)

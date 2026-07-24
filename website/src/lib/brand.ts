@@ -45,5 +45,5 @@ export const SITE = {
   name: 'VAULT',
   domain: 'https://getsvault.com',
   tagline: 'Your money has a next move.',
-  supportEmail: 'support@getvault.app',
+  supportEmail: 'support@getsvault.com',
 } as const;

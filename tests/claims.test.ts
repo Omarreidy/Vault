@@ -100,6 +100,19 @@ const RULES: Rule[] = [
   { name: '"addictive" framing', pattern: /as addictive/i },
   { name: 'fabricated example recency', pattern: /annual fee posts|haven'?t used since/i },
   { name: 'absolute behavior-not-balance claim', pattern: /never by balance|behavior, not balance|behavior alone/i },
+  {
+    // Delivery overclaim removed 2026-07-19: not every user receives new personalized
+    // moves every morning. ("each morning" as a ritual invitation remains allowed.)
+    name: '"every morning" delivery promise',
+    pattern: /every morning/i,
+    allowBefore: /\/\/[^\n]*$/,
+  },
+  {
+    // Timing varies by user/device — the claim must be qualified as "about 60 seconds".
+    name: 'unqualified "60 seconds" timing promise',
+    pattern: /\b60 seconds\b/i,
+    allowBefore: /\babout\s*$|~\s*$|\/\/[^\n]*$/i,
+  },
 ];
 
 test('claims guard scans a sensible number of user-facing files', () => {

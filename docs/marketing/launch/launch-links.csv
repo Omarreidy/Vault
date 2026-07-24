@@ -1,0 +1,20 @@
+link_id,video,platform,utm_source,utm_medium,utm_campaign,utm_content,creator_id,variant,url,status
+v21-tt,V21 60-second score,TikTok,tiktok,organic,launch,v21,founder,a,"https://getsvault.com/?utm_source=tiktok&utm_medium=organic&utm_campaign=launch&utm_content=v21&creator=founder&v=a",ready
+v21-ig,V21 60-second score,Instagram,instagram,organic,launch,v21,founder,a,"https://getsvault.com/?utm_source=instagram&utm_medium=organic&utm_campaign=launch&utm_content=v21&creator=founder&v=a",ready
+v21-yt,V21 60-second score,YouTube Shorts,youtube,organic,launch,v21,founder,a,"https://getsvault.com/?utm_source=youtube&utm_medium=organic&utm_campaign=launch&utm_content=v21&creator=founder&v=a",ready
+v24-tt,V24 read-only trust,TikTok,tiktok,organic,launch,v24,founder,a,"https://getsvault.com/?utm_source=tiktok&utm_medium=organic&utm_campaign=launch&utm_content=v24&creator=founder&v=a",ready
+v24-ig,V24 read-only trust,Instagram,instagram,organic,launch,v24,founder,a,"https://getsvault.com/?utm_source=instagram&utm_medium=organic&utm_campaign=launch&utm_content=v24&creator=founder&v=a",ready
+v24-yt,V24 read-only trust,YouTube Shorts,youtube,organic,launch,v24,founder,a,"https://getsvault.com/?utm_source=youtube&utm_medium=organic&utm_campaign=launch&utm_content=v24&creator=founder&v=a",ready
+v01-tt,V01 idle cash,TikTok,tiktok,organic,launch,v01,founder,a,"https://getsvault.com/?utm_source=tiktok&utm_medium=organic&utm_campaign=launch&utm_content=v01&creator=founder&v=a",ready
+v01-ig,V01 idle cash,Instagram,instagram,organic,launch,v01,founder,a,"https://getsvault.com/?utm_source=instagram&utm_medium=organic&utm_campaign=launch&utm_content=v01&creator=founder&v=a",ready
+v01-yt,V01 idle cash,YouTube Shorts,youtube,organic,launch,v01,founder,a,"https://getsvault.com/?utm_source=youtube&utm_medium=organic&utm_campaign=launch&utm_content=v01&creator=founder&v=a",ready
+v22-tt,V22 Daily Open,TikTok,tiktok,organic,launch,v22,founder,a,"https://getsvault.com/?utm_source=tiktok&utm_medium=organic&utm_campaign=launch&utm_content=v22&creator=founder&v=a",ready
+v22-ig,V22 Daily Open,Instagram,instagram,organic,launch,v22,founder,a,"https://getsvault.com/?utm_source=instagram&utm_medium=organic&utm_campaign=launch&utm_content=v22&creator=founder&v=a",ready
+v22-yt,V22 Daily Open,YouTube Shorts,youtube,organic,launch,v22,founder,a,"https://getsvault.com/?utm_source=youtube&utm_medium=organic&utm_campaign=launch&utm_content=v22&creator=founder&v=a",ready
+v07-tt,V07 anthem,TikTok,tiktok,organic,launch,v07,founder,a,"https://getsvault.com/?utm_source=tiktok&utm_medium=organic&utm_campaign=launch&utm_content=v07&creator=founder&v=a",ready
+v07-ig,V07 anthem,Instagram,instagram,organic,launch,v07,founder,a,"https://getsvault.com/?utm_source=instagram&utm_medium=organic&utm_campaign=launch&utm_content=v07&creator=founder&v=a",ready
+v07-yt,V07 anthem,YouTube Shorts,youtube,organic,launch,v07,founder,a,"https://getsvault.com/?utm_source=youtube&utm_medium=organic&utm_campaign=launch&utm_content=v07&creator=founder&v=a",ready
+li-launch,Launch post,LinkedIn,linkedin,organic,launch,launch_post,founder,a,"https://getsvault.com/?utm_source=linkedin&utm_medium=organic&utm_campaign=launch&utm_content=launch_post&creator=founder&v=a",ready
+x-launch,Launch thread,X,x,organic,launch,launch_thread,founder,a,"https://getsvault.com/?utm_source=x&utm_medium=organic&utm_campaign=launch&utm_content=launch_thread&creator=founder&v=a",ready
+rd-general,Reddit posts,Reddit,reddit,organic,launch,reddit_general,founder,a,"https://getsvault.com/?utm_source=reddit&utm_medium=organic&utm_campaign=launch&utm_content=reddit_general&creator=founder&v=a",ready
+em-announce,Launch email,Email,email,email,launch,announce_1,,a,"https://getsvault.com/?utm_source=email&utm_medium=email&utm_campaign=launch&utm_content=announce_1&v=a",ready

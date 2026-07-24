@@ -191,7 +191,7 @@
 - **Download:** clearest promise in the set — answers the exact question users type into Google · **Return:** new moves daily + streak + delta · **Pay:** natural ladder — free tells you *what*, Premium (unlimited Concierge) is *unlimited why and how, grounded in your accounts*
 - **Objection:** "How good are the moves, really?" · **Trust risk:** move quality must hold; repetitive moves break the promise (top product dependency) · **Competitive weakness:** incumbents can bolt on "recommendations" — VAULT's moat is the loop (moves + finish line + momentum), which must stay ahead
 - **Expansion:** high — "next move" scales from cancel-a-fee to open-a-Roth to estate planning; category noun ("money moves") is ownable and already the product's core object
-- **Homepage H1:** "Your money has a next move." · **Sub:** "VAULT reads your real accounts and hands you three specific moves every morning — with the dollar amounts that make them worth doing. Most take minutes."
+- **Homepage H1:** "Your money has a next move." · **Sub:** "VAULT uses information from your connected accounts — read-only, it can look, never touch — to surface specific money moves and show the numbers behind them when available. Most take minutes." *(Softened 2026-07-19: no "every morning" delivery promise, no per-move dollar guarantee.)*
 - **ASC subtitle:** "Your next money move, daily" · **15s ad:** bank app scroll (charts, nothing to do) → cut to VAULT: "$4,200 idle in checking → move it." Swipe. Done. "Charts don't build wealth. Moves do."
 - **Word-of-mouth:** "It looks at your actual accounts and tells you three specific things to do each day — with real dollar amounts."
 - **Avoid:** "we do it for you" (VAULT doesn't execute), "guaranteed savings," "advice"
@@ -311,8 +311,8 @@ Also demoted: "Wealth has a new operating system" as the website H1. "Financial 
 7. **Investor-style pitch (internal only):** Consumer finance has an engagement asymmetry: the products with daily habit loops (banks, trackers) create no action, and the products that create action (advisors) have no daily loop. VAULT owns the gap with an action-first loop — personalized, dollar-quantified daily moves from Plaid data, a completion mechanic, and a behavior-based momentum score — monetized by an AI concierge grounded in the user's own accounts. The loop drives retention; retention drives the subscription; the move graph compounds into a defensible dataset of what actions users actually take.
 8. **Word-of-mouth explanation:** "It looks at your actual bank accounts and tells you three specific things to do each day — like 'you've got $4,000 sitting idle, here's where it should go' — and you build a streak doing them."
 9. **Homepage headline:** Your money has a next move.
-10. **Homepage subheadline:** VAULT reads your real accounts and hands you three specific moves every morning — with the dollar amounts that make them worth doing. Most take minutes. The momentum compounds.
-11. **Primary CTA:** Get your score in 60 seconds *(App Store download button retains standard badge; this is the supporting line)*
+10. **Homepage subheadline:** VAULT uses information from your connected accounts — read-only, it can look, never touch — to surface specific money moves and show the numbers behind them when available. Most take minutes. *(Softened 2026-07-19: no "every morning" delivery promise, no per-move dollar guarantee.)*
+11. **Primary CTA:** Get your score in about 60 seconds *(App Store download button retains standard badge; this is the supporting line; "about" added 2026-07-19 — timing varies)*
 12. **Secondary CTA:** Watch the Daily Open *(demo video)*
 13. **Three primary benefits + 14. proof for each:**
     - **Always know your next move** — proof: move cards generated from your connected accounts, quoting your own balances, sorted by dollar impact.
@@ -435,7 +435,7 @@ Also demoted: "Wealth has a new operating system" as the website H1. "Financial 
 ### Website copy recommendations (`website/`)
 
 1. **Hero H1:** replace "Wealth has a new operating system." → **"Your money has a next move."** Keep the vault/gold aesthetic untouched — the visual world is an asset.
-2. **Hero sub:** "VAULT reads your real accounts and hands you three specific moves every morning — with the dollar amounts that make them worth doing. Most take minutes. The momentum compounds." (Drops "Private-bank intelligence.")
+2. **Hero sub:** "VAULT uses information from your connected accounts — read-only, it can look, never touch — to surface specific money moves and show the numbers behind them when available. Most take minutes." (Drops "Private-bank intelligence." Softened 2026-07-19: no "every morning" delivery promise.)
 3. **MeetVault:** "It sees everything." → "It sees where you stand." (fixes the overclaim).
 4. **WealthFeed example cards:** replace the "Annual fee posts Friday" card with a real detector example (e.g., "Credit utilization at 42% — pay $600 before your statement closes."). Drop "overnight."
 5. **Problem section:** already on-strategy ("Budgeting apps show you charts. Then guilt. Then you delete them.") — keep verbatim; it's the best line on the site.

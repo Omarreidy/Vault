@@ -367,7 +367,7 @@ export default function SettingsScreen({ onClose, onResetOnboarding }: Props) {
         await syncPremiumStatus();
         Alert.alert('Restored!', 'Your Premium subscription is active.', [{ text: 'Great' }]);
       } else {
-        Alert.alert('No subscription found', 'No active subscription found on this account.\n\nContact support@getvault.app if you believe this is an error.', [{ text: 'OK' }]);
+        Alert.alert('No subscription found', 'No active subscription found on this account.\n\nContact support@getsvault.com if you believe this is an error.', [{ text: 'OK' }]);
       }
     } catch {
       Alert.alert('Error', 'Could not restore purchases. Please try again.', [{ text: 'OK' }]);
@@ -424,7 +424,7 @@ export default function SettingsScreen({ onClose, onResetOnboarding }: Props) {
             } catch (e) {
               Alert.alert(
                 'Could not delete account',
-                'Something went wrong. Please check your connection and try again, or email support@getvault.app.',
+                'Something went wrong. Please check your connection and try again, or email support@getsvault.com.',
                 [{ text: 'OK' }]
               );
               return;

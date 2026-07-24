@@ -15,7 +15,7 @@ Production note: capture from the **demo account** with a Plaid Sandbox connecti
 
 | # | Headline | Support line | App screen | Required state / data | Data type |
 |---|---|---|---|---|---|
-| 1 | **Your money has a next move.** | Specific moves, from your real accounts — every morning. | Home / Wealth Feed, one personalized move card front and center (idle-cash detector) | Demo account, Plaid Sandbox linked, feed composed with personalized moves | Seeded (sandbox) + "Illustrative" caption |
+| 1 | **Your money has a next move.** | Specific moves, surfaced from your real accounts. | Home / Wealth Feed, one personalized move card front and center (idle-cash detector) | Demo account, Plaid Sandbox linked, feed composed with personalized moves | Seeded (sandbox) + "Illustrative" caption |
 | 2 | **See what deserves attention.** | The Daily Open: what changed, what to do about it. | Daily Open brief — velocity delta since yesterday + today's hand | Demo account with a prior-day snapshot so the delta renders | Seeded |
 | 3 | **Moves, not charts.** | Dollar amounts. Effort levels. Done in minutes. | Move card detail (credit-utilization detector) with impact + effort + action button | Sandbox card with utilization >30% | Seeded + "Illustrative" caption |
 | 4 | **Close your vault. Every day.** | Three moves. A finish line. A streak worth protecting. | Vault Closed celebration + streak counter | Complete 3 moves on the demo account that day | Seeded (real celebration state) |
@@ -52,3 +52,34 @@ Reorders to pure move density: 1) move card idle cash · 2) move card subscripti
 3. Ask the Concierge: "What should I tackle first this month?" — capture the grounded answer.
 4. Screenshot at full device resolution; deliver raw PNGs to the frame template (background + type per this doc).
 5. Verify every visible number is the sandbox account's real in-app state; add the "Illustrative" corner caption to frames 1, 3, 5.
+
+## Capture readiness — verified & prepared 2026-07-19
+
+**Demo account server state (`appreview@getvault.app`, user `5fefe3de…`) was audited and repaired.** As previously seeded, the feed produced only **one** personalized card (Roth) — the savings balance blocked the idle-cash detector (`savings ≥ 50% of checking`) and the credit card sat at 18% utilization (detector needs >30%). Frames 1 and 3 were impossible to capture. The demo Plaid fixture (`item_id demo-item-review`) was updated in place:
+
+| Account | Was | Now | Why |
+|---|---|---|---|
+| Premier Checking | $12,450.32 | unchanged | Frame-1 idle-cash headline number |
+| High-Yield Savings | $8,200 | **$3,100** | Unblocks the idle-cash detector |
+| Rewards Card | $1,800 / $10,000 (18%) | **$4,200 / $10,000 (42%)** | Fires the utilization detector; 42% matches the V02/website example |
+| Brokerage | $24,000 | unchanged | Keeps the Roth detector firing (<$50k, no roth subtype) |
+| Transactions | June-dated | re-dated 2026-07-03 → 07-17 | Stale dates read as a dead account on camera |
+
+**The demo feed now deals exactly three personalized moves** — `p-idle-cash` ("$12,450 sitting idle in checking" · +$560/yr), `p-credit-util` ("Credit utilization at 42%" · pay down $1,260), `p-roth` — a full "hand" matching the three-move narrative. All figures are what the app genuinely computes from the seeded fixture; nothing is drawn on top.
+
+**No synthetic "screenshot mode" was added, deliberately.** The app has a hard no-fake-data rule enforced by code and the claims audit; a fixture mode that paints fake UI would violate it and hand App Review a discoverable fake-data path. Deterministic capture state is achieved server-side in the review account's own data instead — production users cannot reach it because it exists only inside the review account.
+
+**Per-frame navigation (tabs: Feed · Vault · Insights · Future · Profile):**
+
+| Frame | Path | Prep dependency |
+|---|---|---|
+| 1 Wealth Feed | Feed tab → idle-cash card front and center | none — ready now |
+| 2 Daily Open | Feed tab → Daily Open brief card at top | complete ≥1 move the **prior** day (streak + delta are device-local AsyncStorage — they must be earned on the capture device) |
+| 3 Move detail | Feed tab → tap the 42%-utilization card | none — ready now |
+| 4 Vault Closed | complete the day's 3rd move on the Feed | do moves 1–2 first, capture on move 3 |
+| 5 Concierge | Feed (or Profile) → Concierge → ask "What should I tackle first this month?" | live Anthropic key verified healthy today |
+| 6 Score | Vault tab (score arc, tier badge, dimension bars) | none — PLATINUM 741 renders |
+| 7 Trust | Profile → Settings → connected accounts + delete-account row | none |
+| 8 Premium | Profile → upgrade sheet; **crop above the price line** | none |
+
+Status bar: capture with full battery, strong signal, 9:41 if using simulator conventions; keep identical across frames. Repeat-capture stability: the fixture is static (no auto-refresh cron touches `demo-item-review`), so frames 1/3/6 reproduce identically across sessions; frames 2/4 depend only on the scripted two-day protocol above.

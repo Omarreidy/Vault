@@ -36,12 +36,12 @@ const MOVES = [
 
 const BEATS = [
   {
-    title: 'Every morning, VAULT deals you a hand.',
-    body: 'A fresh hand of moves each day, drawn from your connected accounts. Not tips. Not articles. Moves.',
+    title: 'Open the vault — get dealt a hand.',
+    body: 'A fresh hand of moves, drawn from your connected accounts. Not tips. Not articles. Moves.',
   },
   {
     title: 'Each one specific. Each one doable.',
-    body: 'Dollar amounts, timeframes, scripts — everything needed to execute in minutes, not weekends.',
+    body: 'The numbers behind each move when available, timeframes, scripts — what you need to execute in minutes, not weekends.',
   },
   {
     title: 'Swipe. Execute. Bank the points.',

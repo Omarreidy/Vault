@@ -47,9 +47,9 @@ export default function FinalCTA() {
             variants={fadeUp}
             className="mx-auto mt-8 max-w-xl text-[17px] leading-relaxed text-parchment-dim"
           >
-            Download VAULT and get your starting score in 60 seconds — three questions, no bank
-            login. Connect your accounts when you&rsquo;re ready, and wake up tomorrow to moves
-            dealt from your real numbers.
+            Download VAULT and get your starting score in about 60 seconds — three questions,
+            no bank login. Connect your accounts when you&rsquo;re ready, and VAULT starts
+            dealing moves from your real numbers.
           </motion.p>
 
           <motion.div variants={fadeUp} className="mt-12 flex flex-col items-center gap-4">

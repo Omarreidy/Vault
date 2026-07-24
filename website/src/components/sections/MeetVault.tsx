@@ -8,7 +8,7 @@ const PILLARS = [
   {
     n: '01',
     title: 'Connect.',
-    body: 'Answer three questions for your starting score — 60 seconds, no bank login. Then connect your accounts through Plaid when you’re ready: read-only, encrypted, credentials never stored.',
+    body: 'Answer three questions for your starting score — about 60 seconds, no bank login. Then connect your accounts through Plaid when you’re ready: read-only, encrypted, credentials never stored.',
   },
   {
     n: '02',
@@ -34,7 +34,7 @@ function RevealContent() {
       <h2 className="mt-6 font-display text-5xl leading-[1.05] font-light tracking-tight text-ink sm:text-6xl md:text-7xl">
         Not another budgeting app.
         <span className="mt-2 block">
-          Your <em className="text-gold-dark italic">financial operating system.</em>
+          A finance app with a <em className="text-gold-dark italic">finish line.</em>
         </span>
       </h2>
       <p className="mt-8 max-w-xl text-[17px] leading-relaxed text-ink-sub">

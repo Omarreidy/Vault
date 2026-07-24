@@ -20,6 +20,10 @@ export interface VaultStats {
   weekStartScore: number | null; // velocity score snapshot at start of week
   lastKnownScore: number | null; // most recent velocity score seen (any day)
   prevDayScore: number | null;   // lastKnownScore as of the last day rollover
+  // True once prevDayScore came from an ACTUAL prior calendar day (a rollover),
+  // not the first-ever synthetic self-baseline. Lets the Daily Open tell "no
+  // real movement yet" (show the forming placeholder) from a genuine 0 delta.
+  deltaBaselineReady: boolean;
   dayStamp: string;            // YYYY-MM-DD of last daily window
   weekStamp: string;           // YYYY-MM-DD (Monday) of last weekly window
 }
@@ -61,6 +65,7 @@ function fresh(): VaultStats {
     weekStartScore: null,
     lastKnownScore: null,
     prevDayScore: null,
+    deltaBaselineReady: false,
     dayStamp: todayStr(),
     weekStamp: mondayStr(),
   };
@@ -80,6 +85,7 @@ export async function loadStats(): Promise<VaultStats> {
     if (s.weekStartScore !== null && !Number.isFinite(s.weekStartScore)) s.weekStartScore = null;
     if (s.lastKnownScore !== null && !Number.isFinite(s.lastKnownScore)) s.lastKnownScore = null;
     if (s.prevDayScore !== null && !Number.isFinite(s.prevDayScore)) s.prevDayScore = null;
+    s.deltaBaselineReady = s.deltaBaselineReady === true;
 
     const today = todayStr();
     const monday = mondayStr();
@@ -90,8 +96,12 @@ export async function loadStats(): Promise<VaultStats> {
       s.xpToday = 0;
       s.scoreVisitedToday = false;
       s.conciergeUsedToday = false;
-      // Yesterday's closing score becomes today's comparison baseline.
-      if (s.lastKnownScore !== null) s.prevDayScore = s.lastKnownScore;
+      // Yesterday's closing score becomes today's comparison baseline — now a
+      // genuine day-over-day baseline, so day-over-day deltas are meaningful.
+      if (s.lastKnownScore !== null) {
+        s.prevDayScore = s.lastKnownScore;
+        s.deltaBaselineReady = true;
+      }
       s.dayStamp = today;
       changed = true;
     }
@@ -170,6 +180,17 @@ export async function recordDailyScore(score: number): Promise<VaultStats> {
 export function dailyDelta(stats: VaultStats, currentScore: number): number | null {
   if (stats.prevDayScore === null || !Number.isFinite(currentScore)) return null;
   return currentScore - stats.prevDayScore;
+}
+
+/**
+ * Whether the daily delta reflects a GENUINE day-over-day change yet. False on
+ * the first day (the baseline is the score's own first reading, so any delta is
+ * a synthetic 0) — the Daily Open shows its forming placeholder instead of a
+ * meaningless "0". True once a real calendar-day rollover has anchored a prior
+ * baseline. Independent of whether the delta happens to equal 0.
+ */
+export function hasRealDelta(stats: VaultStats): boolean {
+  return stats.deltaBaselineReady && stats.prevDayScore !== null;
 }
 
 /** Weekly velocity gain (current score minus the snapshot taken at week start). */

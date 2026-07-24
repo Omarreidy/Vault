@@ -3,7 +3,7 @@
 **Storage:** two Supabase tables, both insert-only from clients, readable only with the service role.
 - `analytics_events` — app events (`src/services/analytics.ts`, existing).
 - `website_events` — marketing-site events (`website/src/lib/track.ts`, new).
-**Migration:** `supabase/migrations/20260719000000_launch_analytics.sql` (creates `website_events`; adds the anon-insert policy so **pre-signup app events** stop dropping). *Not applied yet — Imran applies it (Day 1 of the calendar).*
+**Migration:** `supabase/migrations/20260719000000_launch_analytics.sql` (creates `website_events`; adds the anon-insert policy so **pre-signup app events** stop dropping). *Applied to production 2026-07-19 and live-verified — see `14_ANALYTICS_VALIDATION.md`.*
 
 **Privacy rules (hard):** no balances, transaction contents, merchant names, message text, or any dollar figure ever appears in `props`. Coarse tier/counters only. Website has no financial data by construction. Session IDs are random per launch/visit; no advertising identifiers; no third-party analytics SDK.
 

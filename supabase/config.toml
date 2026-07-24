@@ -411,3 +411,9 @@ s3_secret_key = "env(S3_SECRET_KEY)"
 # declarative_schema_path = "./database"
 # JSON string passed through to pg-delta SQL formatting.
 # format_options = "{\"keywordCase\":\"upper\",\"indent\":2,\"maxWidth\":80,\"commaStyle\":\"trailing\"}"
+
+# push-dispatch is invoked by pg_cron with an x-cron-secret header only (no
+# JWT), and fails closed on CRON_SECRET inside the function — the platform
+# gateway must not require a JWT or every cron invocation 401s before dispatch.
+[functions.push-dispatch]
+verify_jwt = false

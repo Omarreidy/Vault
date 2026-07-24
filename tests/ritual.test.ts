@@ -10,7 +10,7 @@ import {
   buildBriefState, formatDelta, buildWeeklyRecapBody, DAILY_MOVES_TARGET,
   VAULT_CLOSED_HEADLINES, pickVaultClosedHeadline,
 } from '../src/services/ritual';
-import { loadStats, recordDailyScore, dailyDelta } from '../src/services/progressStats';
+import { loadStats, recordDailyScore, dailyDelta, hasRealDelta } from '../src/services/progressStats';
 import { recordActionStreak, getStreak } from '../src/services/streak';
 
 const store: Map<string, string> = (globalThis as any).__asyncStore;
@@ -118,6 +118,51 @@ test('delta is null until any baseline exists; NaN scores are ignored', async ()
   assert.equal(dailyDelta(empty, 700), null);
   const stats = await recordDailyScore(NaN);
   assert.equal(stats.lastKnownScore, null);
+});
+
+// ── Daily Open zero-state gating (hasRealDelta) ──────────────────────────────
+
+test('zero-state: first day has no REAL delta yet (Daily Open shows the placeholder)', async () => {
+  const empty = await loadStats();
+  assert.equal(hasRealDelta(empty), false, 'no baseline → forming');
+  const firstDay = await recordDailyScore(741);
+  // The delta is a synthetic 0 on day one — must NOT count as a real movement.
+  assert.equal(dailyDelta(firstDay, 741), 0);
+  assert.equal(hasRealDelta(firstDay), false, 'synthetic day-one 0 is not a real delta');
+});
+
+test('zero-state: same-day intra-day changes on day one are still "forming"', async () => {
+  await recordDailyScore(300);        // estimated on install
+  const afterConnect = await recordDailyScore(480); // connect a bank same day
+  assert.equal(hasRealDelta(afterConnect), false, 'no prior calendar day yet');
+});
+
+test('zero-state: a genuine calendar rollover makes the delta real', async () => {
+  const day1 = await recordDailyScore(700);
+  assert.equal(hasRealDelta(day1), false);
+  // Rewind the day stamp so loadStats performs a real rollover.
+  store.set('@vault_stats_v1', JSON.stringify({ ...day1, dayStamp: localDay(-1) }));
+  const rolled = await loadStats();
+  assert.equal(hasRealDelta(rolled), true, 'a real prior day now anchors the baseline');
+  const day2 = await recordDailyScore(715);
+  assert.equal(hasRealDelta(day2), true);
+  assert.equal(dailyDelta(day2, 715), 15, 'and the real delta shows through');
+});
+
+test('zero-state: a genuine no-change day is still a REAL delta of 0 (not forming)', async () => {
+  const day1 = await recordDailyScore(700);
+  store.set('@vault_stats_v1', JSON.stringify({ ...day1, dayStamp: localDay(-1) }));
+  const rolled = await loadStats();
+  const day2 = await recordDailyScore(700); // identical score next day
+  assert.equal(dailyDelta(day2, 700), 0);
+  assert.equal(hasRealDelta(day2), true, 'held-steady is real info, not the placeholder');
+});
+
+test('zero-state: corrupt/legacy stored flag coerces to false (no crash)', async () => {
+  store.set('@vault_stats_v1', JSON.stringify({ deltaBaselineReady: 'yes', prevDayScore: 500 }));
+  const s = await loadStats();
+  assert.equal(s.deltaBaselineReady, false, 'non-boolean coerces to false');
+  assert.equal(hasRealDelta(s), false);
 });
 
 // ── Action-based streak ──────────────────────────────────────────────────────

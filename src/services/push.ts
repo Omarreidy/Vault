@@ -4,6 +4,7 @@ import { supabase } from './supabase';
 import { buildWeeklyRecapBody } from './ritual';
 import { getNotifPrefs, getNotifMeta, isPausedNow } from './notificationPrefs';
 import { routeForNotification } from './notificationRouting';
+import { getUnreadCount } from './notifications';
 import { navigateToTab } from '../navigation/navigationRef';
 import { track, EVENTS } from './analytics';
 
@@ -59,7 +60,7 @@ export async function initPushNotifications(): Promise<void> {
     }
 
     wireNotificationInteractions(Notifications);
-    await clearBadge();
+    await reconcileBadge();
     await registerPushToken();
     await syncDailyReminder();
     await syncWeeklyRecap();
@@ -97,9 +98,10 @@ function wireNotificationInteractions(Notifications: any): void {
     registerPushToken().catch(() => {});
   });
 
-  // Returning to the app means the user has seen what the badge announced.
+  // Returning to the app reconciles the home-screen badge with the real in-app
+  // unread count (0 when nothing is unread, not a blind force-to-zero).
   AppState.addEventListener('change', state => {
-    if (state === 'active') clearBadge().catch(() => {});
+    if (state === 'active') reconcileBadge().catch(() => {});
   });
 }
 
@@ -118,7 +120,30 @@ function handleNotificationResponse(response: any): void {
   }
 }
 
-/** iOS badge is announcement state, not a counter — opening the app clears it. */
+/**
+ * Point the home-screen app-icon badge at the TRUE in-app unread count. This is
+ * the single reconciliation path — call it on cold start, on every foreground,
+ * and after any in-app read/dismiss/clear so the native badge can never drift
+ * from what the user sees in the notification center. Remote and local
+ * notifications both funnel through the same in-app unread count, so a stale
+ * "1" can't survive the user clearing their notifications, and a genuinely
+ * unread item still shows a badge (we never blindly force zero).
+ */
+export async function reconcileBadge(
+  // Seam for tests: default to the real unread count + native badge setter.
+  deps: { getUnread?: () => Promise<number>; setBadge?: (n: number) => Promise<void> } = {},
+): Promise<void> {
+  const Notifications = getNotifications();
+  const setBadge =
+    deps.setBadge ?? (Notifications ? (n: number) => Notifications.setBadgeCountAsync(n) : null);
+  if (!setBadge) return; // web / no native module — nothing to reconcile
+  try {
+    const count = await (deps.getUnread ?? getUnreadCount)();
+    await setBadge(Math.max(0, count));
+  } catch {}
+}
+
+/** Hard-zero the badge (sign-out teardown — the next account starts clean). */
 export async function clearBadge(): Promise<void> {
   const Notifications = getNotifications();
   if (!Notifications) return;
@@ -212,6 +237,7 @@ export async function teardownPushForSignOut(): Promise<void> {
     try {
       await Notifications.cancelScheduledNotificationAsync(DAILY_REMINDER_ID);
       await Notifications.cancelScheduledNotificationAsync(WEEKLY_RECAP_ID);
+      await clearBadge();
     } catch {}
   }
 

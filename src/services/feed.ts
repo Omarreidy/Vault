@@ -25,10 +25,16 @@ function seededShuffle<T>(arr: T[], seed: number): T[] {
   return a;
 }
 
-// Changes every calendar day — same feed all day, fresh tomorrow.
-function todaySeed(): number {
-  const d = new Date();
+// A stable integer key for a given LOCAL calendar day (YYYYMMDD). Local — not
+// UTC — so the feed rotates on the user's own midnight, matching the day
+// windows used by streaks/stats (progressStats). Pure + exported for tests.
+export function daySeedFromDate(d: Date): number {
   return d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
+}
+
+// Changes every calendar day — same feed all day, fresh tomorrow.
+export function todaySeed(): number {
+  return daySeedFromDate(new Date());
 }
 
 // Mix moves, pulse cards, and wins into a variable-reward sequence.
@@ -81,11 +87,26 @@ export function composeFeed(
   base: FeedItem[],
   personalizedMoves: WealthMove[] | null,
   plaidConnected: boolean,
+  seed: number = todaySeed(),
 ): FeedItem[] {
-  const personalized: FeedItem[] = (personalizedMoves ?? [])
+  // Rank by impact so priority is respected, then keep the top 5.
+  const ranked = (personalizedMoves ?? [])
     .slice()
     .sort((a, b) => b.impactValue - a.impactValue)
-    .slice(0, 5)
+    .slice(0, 5);
+
+  // Daily rotation without breaking priority or inventing novelty:
+  //   • the single highest-impact move is PINNED at the top every day, so the
+  //     most important action never gets demoted below a lesser one;
+  //   • the remaining real moves rotate by LOCAL calendar day, so a connected
+  //     user isn't frozen on one fixed order forever.
+  // Same day → same seed → same order (stable). New local day → new order.
+  // The seed is offset so personalized and generic cards don't rotate in
+  // lockstep with each other.
+  const rotated = ranked.length > 2
+    ? [ranked[0], ...seededShuffle(ranked.slice(1), seed ^ 0x51ee7)]
+    : ranked;
+  const personalized: FeedItem[] = rotated
     .map(m => ({ id: `move-${m.id}`, type: 'move' as const, data: { ...m, personalized: true } }));
 
   const personalizedIds = new Set(personalized.map(i => i.id));

@@ -1,12 +1,12 @@
 import React, { useState, useCallback, useRef, useEffect, useLayoutEffect } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
-  Modal, Dimensions, Animated,
+  Modal, Dimensions, Animated, AppState,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 
-import { buildFeed, composeFeed, fetchPersonalizedMoves, FeedItem } from '../services/feed';
+import { buildFeed, composeFeed, fetchPersonalizedMoves, FeedItem, todaySeed } from '../services/feed';
 import { track, EVENTS } from '../services/analytics';
 import { ALL_MOVES } from '../services/mockData';
 import { INSIGHTS, Insight, fetchLiveInsights } from '../services/insights';
@@ -29,10 +29,10 @@ import PlaidLinkScreen from './PlaidLinkScreen';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { postActivity, fetchMemberCount } from '../services/cohort';
 import { getStreak, recordActionStreak } from '../services/streak';
-import { recordMove, loadStats, recordDailyScore, dailyDelta, weeklyVelocityGain } from '../services/progressStats';
+import { recordMove, loadStats, recordDailyScore, dailyDelta, hasRealDelta, weeklyVelocityGain } from '../services/progressStats';
 import { xpForMove, DAILY_MOVES_TARGET } from '../services/ritual';
 import { fetchLiveScore, fetchProfileScore } from '../services/velocity';
-import { syncWeeklyRecap } from '../services/push';
+import { syncWeeklyRecap, reconcileBadge } from '../services/push';
 import DailyBriefCard from '../components/DailyBriefCard';
 import VaultClosedCelebration from '../components/VaultClosedCelebration';
 import { usePlaid } from '../context/PlaidContext';
@@ -189,6 +189,7 @@ export default function HomeScreen() {
   // Daily Open brief state: today's moves so far (persisted) + velocity delta.
   const [movesTodayBase, setMovesTodayBase] = useState(0);
   const [briefDelta, setBriefDelta] = useState<number | null>(null);
+  const [briefDeltaReady, setBriefDeltaReady] = useState(false);
   const [briefScore, setBriefScore] = useState<number | null>(null);
   const [briefSource, setBriefSource] = useState<'live' | 'estimated' | null>(null);
   // XP earned today (persisted total + this session's), for the closing celebration.
@@ -208,6 +209,11 @@ export default function HomeScreen() {
   // Drops out-of-order fetch resolutions when connection state changes mid-flight.
   const feedRequestRef = useRef(0);
 
+  // The local day the current feed order was built for — lets a warm app that
+  // crosses midnight refresh its rotation without a cold start.
+  const feedDayRef = useRef(todaySeed());
+  const plaidConnectedRef = useRef(false);
+
   const loadPersonalizedFeed = useCallback((connected: boolean) => {
     const requestId = ++feedRequestRef.current;
     // Live market news backs the pulse cards; the evergreen set is the
@@ -217,6 +223,7 @@ export default function HomeScreen() {
       fetchLiveInsights().catch(() => null),
     ]).then(([personalizedMoves, liveInsights]) => {
       if (requestId !== feedRequestRef.current) return;
+      feedDayRef.current = todaySeed();
       const next = composeFeed(
         buildFeed(ALL_MOVES, liveInsights ?? INSIGHTS, []), personalizedMoves, connected);
       setFeed(next);
@@ -239,6 +246,8 @@ export default function HomeScreen() {
       setXpToday(stats.xpToday);
     });
     getUnreadCount().then(setNotifCount).catch(() => {});
+    // Cold-start: align the home-screen badge with the real in-app unread count.
+    reconcileBadge().catch(() => {});
     AsyncStorage.getItem('@vault_plaid_nudge_dismissed').then(val => {
       if (val === 'true') setShowPlaidNudge(false);
     });
@@ -263,6 +272,7 @@ export default function HomeScreen() {
         setBriefScore(s.total);
         setBriefSource(source);
         setBriefDelta(dailyDelta(stats, s.total));
+        setBriefDeltaReady(hasRealDelta(stats));
         syncWeeklyRecap(weeklyVelocityGain(stats, s.total)).catch(() => {});
       } catch {
         // brief shows its syncing state; non-fatal
@@ -276,8 +286,21 @@ export default function HomeScreen() {
   // connect-to-unlock card flash in (and the list never re-anchors mid-view).
   useEffect(() => {
     if (!plaidReady) return;
+    plaidConnectedRef.current = plaidConnected;
     loadPersonalizedFeed(plaidConnected);
   }, [plaidReady, plaidConnected, loadPersonalizedFeed]);
+
+  // Warm-app midnight crossing: if the local calendar day changed while the app
+  // sat backgrounded, recompose so the daily rotation refreshes on return.
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', state => {
+      if (state !== 'active') return;
+      if (todaySeed() !== feedDayRef.current) {
+        loadPersonalizedFeed(plaidConnectedRef.current);
+      }
+    });
+    return () => sub.remove();
+  }, [loadPersonalizedFeed]);
   const [notifCount, setNotifCount] = useState(0);
   const [itemHeight, setItemHeight] = useState(Dimensions.get('window').height);
 
@@ -441,6 +464,7 @@ export default function HomeScreen() {
       {item.type === 'brief' && (
         <DailyBriefCard
           delta={briefDelta}
+          deltaReady={briefDeltaReady}
           scoreTotal={briefScore}
           scoreSource={briefSource}
           streakDays={streakDays}
@@ -497,7 +521,7 @@ export default function HomeScreen() {
       )}
     </View>
   ), [itemHeight, handleAct, handleSkip, handleSave, feedLength, scrollToNext,
-      briefDelta, briefScore, briefSource, streakDays, movesTodayBase, actedCount]);
+      briefDelta, briefDeltaReady, briefScore, briefSource, streakDays, movesTodayBase, actedCount]);
 
   return (
     <View style={styles.root}>
@@ -706,10 +730,11 @@ export default function HomeScreen() {
 
       <Modal visible={showNotifs} animationType="slide" presentationStyle="pageSheet">
         <NotificationsScreen
-          onClose={() => { setShowNotifs(false); getUnreadCount().then(setNotifCount).catch(() => {}); }}
+          onClose={() => { setShowNotifs(false); getUnreadCount().then(setNotifCount).catch(() => {}); reconcileBadge().catch(() => {}); }}
           onNavigate={tab => {
             setShowNotifs(false);
             getUnreadCount().then(setNotifCount).catch(() => {});
+            reconcileBadge().catch(() => {});
             // Home lives on the Feed tab — only jump when the story is elsewhere.
             if (tab !== 'Feed') navigateToTab(tab);
           }}

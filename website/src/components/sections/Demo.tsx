@@ -226,7 +226,7 @@ function DemoScreen() {
                 That&rsquo;s the feeling.
               </p>
               <p className="mt-2 text-[12px] leading-relaxed text-ink-sub">
-                Every morning. Real accounts, real moves, real momentum.
+                Real accounts, real moves, real momentum.
               </p>
               <a
                 href="#download"

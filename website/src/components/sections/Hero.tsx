@@ -149,9 +149,9 @@ export default function Hero() {
             variants={wordReveal}
             className="mt-8 max-w-xl text-[17px] leading-relaxed text-parchment-dim"
           >
-            VAULT reads your connected accounts — read-only, it can look, never touch — and
-            hands you specific money moves every morning, with the dollar amounts that make
-            them worth doing. Most take minutes.
+            VAULT uses information from your connected accounts — read-only, it can look,
+            never touch — to surface specific money moves and show the numbers behind them
+            when available. Most take minutes.
           </motion.p>
 
           <motion.div
@@ -175,7 +175,7 @@ export default function Hero() {
             variants={wordReveal}
             className="mt-6 text-[14px] font-medium tracking-wide text-parchment-dim"
           >
-            Your first score takes 60 seconds — no bank login needed.
+            Your first score takes about 60 seconds — no bank login needed.
           </motion.p>
 
           <motion.p
