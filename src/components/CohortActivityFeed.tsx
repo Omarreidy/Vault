@@ -225,7 +225,7 @@ export default function CohortActivityFeed() {
           {/* Cohort pulse strip */}
           <View style={styles.pulseStrip}>
             <View style={styles.liveDot} />
-            <Text style={styles.pulseText}>Cohort activity · live</Text>
+            <Text style={styles.pulseText}>Cohort activity · recent</Text>
           </View>
           {items!.map((item, i) => (
             <ActivityCard key={item.id} activity={item} index={i} />

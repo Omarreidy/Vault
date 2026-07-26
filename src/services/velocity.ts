@@ -79,12 +79,21 @@ export async function fetchProfileScore(): Promise<VelocityScore | null> {
     const score = data.score;
     const tier = (data.tier ?? getTierFromScore(score)) as TierName;
 
+    // Onboarding stores a single total (0–1000) — there is no real per-dimension
+    // breakdown until accounts are connected and calculate-score runs. Previously
+    // this invented one (total × 0.72 / 0.61 / 0.55 / 0.68, capped at 100), which
+    // saturated every dimension to a perfect 100/100 for any score above ~140.
+    // Project the one number we actually have onto the 0–100 scale instead; the
+    // UI already labels this state "Estimated score · Connect accounts for your
+    // real score". Never fabricate differentiated dimensions here.
+    const projected = Math.max(0, Math.min(Math.round(score / 10), 100));
+
     return {
       total: score,
-      savings: Math.min(Math.round(score * 0.72), 100),
-      investment: Math.min(Math.round(score * 0.61), 100),
-      debt: Math.min(Math.round(score * 0.55), 100),
-      spending: Math.min(Math.round(score * 0.68), 100),
+      savings: projected,
+      investment: projected,
+      debt: projected,
+      spending: projected,
       weeklyChange: 0,
       percentile: data.percentile ?? Math.min(Math.round(score / 10), 99),
       tier,

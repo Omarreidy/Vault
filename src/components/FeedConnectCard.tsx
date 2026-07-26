@@ -13,7 +13,7 @@ interface Props {
 }
 
 const UNLOCKS = [
-  { icon: '◉', text: 'Your real Wealth Velocity score — live, not estimated' },
+  { icon: '◉', text: 'Your real Wealth Velocity score — built from your accounts, not an estimate' },
   { icon: '◆', text: 'Moves generated from your actual balances' },
   { icon: '◬', text: 'A financial independence date from your real net worth' },
 ];

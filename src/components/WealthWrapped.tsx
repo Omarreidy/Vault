@@ -142,7 +142,7 @@ export default function WealthWrapped({ visible, onClose }: Props) {
                       {plaidSummary.accountCount} ACCOUNT{plaidSummary.accountCount === 1 ? '' : 'S'} SYNCED
                     </Text>
                   </View>
-                  <Text style={styles.scoreLabel}>NET WORTH · LIVE</Text>
+                  <Text style={styles.scoreLabel}>NET WORTH · CONNECTED</Text>
                 </View>
 
                 <View style={styles.divider} />

@@ -336,7 +336,7 @@ export default function TrajectoryScreen() {
           <View style={styles.liveBadge}>
             <View style={styles.liveDot} />
             <Text style={styles.liveTxt}>
-              Live · Projected from your {formatCurrencyFull(trajectoryInputs.currentNetWorth)} net worth
+              Projected from your {formatCurrencyFull(trajectoryInputs.currentNetWorth)} net worth
             </Text>
           </View>
         )}

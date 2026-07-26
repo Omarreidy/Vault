@@ -152,18 +152,21 @@ const NEWS_TO_TAG: Record<string, string> = {
 };
 
 // Short "what this means for you" pill driven by sentiment + category
+// Copy discipline: these render for every member, including those with no
+// connected accounts and no holdings — so they describe the market, never the
+// reader's portfolio, and never prescribe an action ("consider…", "lock in…").
 export function buildImpactPill(sentiment: string, category: string): string {
   if (sentiment === 'bullish') {
-    if (category === 'FED')      return 'Lock in HYSA rates — the window may be short';
-    if (category === 'EARNINGS') return 'Strong earnings season — your portfolio may benefit';
-    return 'Positive market signal for wealth builders';
+    if (category === 'FED')      return 'Savings rates may be near a peak';
+    if (category === 'EARNINGS') return 'Broad earnings strength this season';
+    return 'Positive signal across the market';
   }
   if (sentiment === 'bearish') {
-    if (category === 'FED')  return 'HYSA yields may decline — consider longer-term vehicles';
-    if (category === 'TECH') return 'Tech exposure may face short-term pressure';
-    return 'Defensive positioning may protect your wealth';
+    if (category === 'FED')  return 'Savings yields may decline from here';
+    if (category === 'TECH') return 'Tech sector under short-term pressure';
+    return 'Markets in a defensive stretch';
   }
-  return 'Monitor this for impact on your financial plan';
+  return 'Context for your money decisions';
 }
 
 // Same output as marketSignal's timeAgoNews, duplicated here so this module

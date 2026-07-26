@@ -120,7 +120,7 @@ export default function DailyBriefCard({
           {scoreTotal !== null && (
             <Text style={styles.scoreLine}>
               Score {scoreTotal}
-              {scoreSource === 'live' ? '  ·  live from your accounts' : scoreSource === 'estimated' ? '  ·  estimated' : ''}
+              {scoreSource === 'live' ? '  ·  from your accounts' : scoreSource === 'estimated' ? '  ·  estimated' : ''}
             </Text>
           )}
         </View>

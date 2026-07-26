@@ -110,9 +110,9 @@ export default function BankConnectedScreen({ onDone }: { onDone: () => void }) 
       } catch {}
 
       const list: Benefit[] = [];
-      list.push({ icon: '◉', label: 'Wealth Velocity Score', value: total > 0 ? `${total} · ${tierName} tier` : 'Now live' });
+      list.push({ icon: '◉', label: 'Wealth Velocity Score', value: total > 0 ? `${total} · ${tierName} tier` : 'Now unlocked' });
       if (summary) {
-        list.push({ icon: '◐', label: 'Net Worth Tracking', value: `${fmtMoney(nw)} · live` });
+        list.push({ icon: '◐', label: 'Net Worth Tracking', value: `${fmtMoney(nw)} · connected` });
       }
       if (pct != null) {
         const top = Math.max(1, 100 - pct);

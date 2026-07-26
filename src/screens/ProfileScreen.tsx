@@ -67,7 +67,10 @@ export default function ProfileScreen({ onResetOnboarding }: ProfileProps = {}) 
   const { name, tier, score: realScore, joinedAt } = realProfile;
   const score = realScore ?? { total: 0, savings: 0, investment: 0, debt: 0, spending: 0, weeklyChange: 0, percentile: 0, tier: 'BRONZE' as const, tierProgress: 0 };
   const info = TIERS[tier];
-  const months = joinedAt ? Math.max(1, Math.floor((Date.now() - joinedAt.getTime()) / (1000 * 60 * 60 * 24 * 30))) : 1;
+  // Real tenure only: a member of 30 seconds is not a "1mo" member. Show days
+  // until the first full month has actually elapsed.
+  const memberDays = joinedAt ? Math.max(0, Math.floor((Date.now() - joinedAt.getTime()) / (1000 * 60 * 60 * 24))) : 0;
+  const memberFor = memberDays >= 30 ? `${Math.floor(memberDays / 30)}mo` : `${memberDays}d`;
   const [activeTab, setActiveTab] = useState<Tab>('Profile');
   const [shareWin, setShareWin] = useState<WealthWin | null>(null);
   const [showSettings, setShowSettings] = useState(false);
@@ -195,7 +198,7 @@ export default function ProfileScreen({ onResetOnboarding }: ProfileProps = {}) 
             <TierBadge tier={tier} size="lg" showLabel={false} />
           </View>
           <View style={styles.cardStatsRow}>
-            {[{ v: score.total.toString(), l: 'SCORE' }, { v: `${streak}d`, l: 'STREAK' }, { v: `${months}mo`, l: 'MEMBER' }].map(({ v, l }, i) => (
+            {[{ v: score.total.toString(), l: 'SCORE' }, { v: `${streak}d`, l: 'STREAK' }, { v: memberFor, l: 'MEMBER' }].map(({ v, l }, i) => (
               <React.Fragment key={l}>
                 {i > 0 && <View style={styles.statDiv} />}
                 <View style={styles.stat}>

@@ -583,103 +583,13 @@ export function getReport(ticker: string): CompanyReport | null {
   return COMPANY_REPORTS.find(r => r.ticker.toUpperCase() === ticker.toUpperCase()) ?? null;
 }
 
-// Generates a plausible preview report for any ticker not in our database
-export function generatePreviewReport(ticker: string): CompanyReport {
-  const t = ticker.toUpperCase();
-  // Seed simple pseudo-random values from ticker chars so same ticker = same data
-  const seed = t.split('').reduce((s, c) => s + c.charCodeAt(0), 0);
-  const rand = (min: number, max: number) => min + (seed % (max - min));
-
-  const moat    = rand(3, 9);
-  const growth  = rand(-5, 45);
-  const margin  = rand(5, 35);
-  const change  = parseFloat(((seed % 20) - 10).toFixed(1));
-  const verdict: Verdict         = moat >= 7 ? 'BUY' : moat >= 5 ? 'HOLD' : 'SELL';
-  const answer: InvestAnswer     = moat >= 7 ? 'WATCH' : moat >= 5 ? 'WATCH' : 'WATCH';
-
-  return {
-    ticker: t,
-    name: `${t} Corporation`,
-    sector: 'Full analysis coming soon',
-    isPreview: true,
-    investmentVerdict: {
-      answer,
-      summary: `This is a preview report for ${t}. Connect VAULT to live market data for a full AI-powered deep dive on this company.`,
-      reasons: [
-        `We don't have ${t} in our deep research database yet`,
-        'Full AI analysis requires live financial data integration — coming soon',
-        'In the meantime, use the Signal tab to see if this stock shows up in Hot Movers or Volume Spikes',
-        'Our research team is adding new companies weekly — check back soon',
-      ],
-      caution: 'This is a placeholder report. Do not make investment decisions based on preview data. Use full reports (NVDA, AAPL, TSLA, META) for actual research.',
-    },
-    price: `$${rand(10, 800)}`,
-    change,
-    marketCap: `$${rand(1, 500)}B`,
-    verdict,
-    moatScore: moat,
-    oneLiner: `${t} is not yet in our deep research database. Full AI analysis is coming soon.`,
-
-    businessModel: `Full business model analysis for ${t} is coming soon. VAULT is building out AI-powered deep research for thousands of companies. In the meantime, you can explore our full reports for NVDA, AAPL, TSLA, and META to see the depth of analysis we provide.`,
-    revenueStreams: [
-      { name: 'Core Business', pct: 70, description: 'Primary revenue source — details coming with live data integration' },
-      { name: 'Secondary Lines', pct: 20, description: 'Additional revenue streams — full breakdown coming soon' },
-      { name: 'Other', pct: 10, description: 'Miscellaneous revenue — to be analyzed' },
-    ],
-
-    revenue: 'Live data coming soon',
-    revenueGrowth: growth,
-    netIncome: 'Live data coming soon',
-    netMargin: margin,
-    operatingExpenses: 'Live data coming soon',
-    cashOnHand: 'Live data coming soon',
-    peRatio: 'Live data coming soon',
-    employees: 'Live data coming soon',
-
-    tam: 'Full market analysis coming soon',
-    marketShare: 'Coming soon',
-    targetMarket: `Full market analysis for ${t} coming soon with live data integration.`,
-
-    moatFactors: [
-      'Full moat analysis coming soon',
-      'Connect live data to unlock competitive analysis',
-      'Check back as we expand our research database',
-    ],
-    weaknesses: [
-      'Full risk analysis coming soon',
-      'Live financial data integration will unlock complete weakness analysis',
-    ],
-
-    executives: [
-      {
-        name: 'Leadership Team',
-        role: 'Full leadership analysis coming soon',
-        prior: 'Connect live data to unlock',
-        wins: `Full executive background research for ${t} coming soon`,
-      },
-    ],
-
-    journey: [
-      { year: 2000, event: 'Company history coming soon', impact: 'Full timeline unlocks with live data integration', type: 'founding' },
-    ],
-
-    roadmap: [
-      { timeframe: 'Coming soon', initiative: 'Full roadmap analysis', detail: `Connect VAULT to live data to unlock ${t}'s full journey and roadmap`, confidence: 'speculative' },
-    ],
-
-    risks: [
-      { category: 'Data Pending', description: `Full risk analysis for ${t} coming soon. Live data integration will unlock complete research.`, severity: 'medium' },
-    ],
-
-    competitors: [
-      { name: 'Competitor analysis', ticker: '—', threat: 'medium', detail: `Full competitive landscape for ${t} coming with live data integration` },
-    ],
-  } as CompanyReport & { isPreview: boolean };
-}
-
-export function getOrGenerateReport(ticker: string): CompanyReport & { isPreview?: boolean } {
-  return getReport(ticker) ?? generatePreviewReport(ticker);
-}
+// NOTE: a `generatePreviewReport`/`getOrGenerateReport` pair used to live here.
+// It fabricated a stock price, market cap, growth/margin figures and a
+// BUY/HOLD/SELL verdict for any uncovered ticker by hashing the ticker's
+// characters. It was dead code (the UI calls fetchCompanyResearch, which hits
+// the live company-research function), and it violated VAULT's no-fake-data
+// rule outright, so it was deleted 2026-07-26. Never reintroduce generated
+// financial figures or verdicts — if data is unavailable, say so.
 
 export const ANSWER_COLORS: Record<InvestAnswer, string> = {
   'YES':   '#7EB8A4',

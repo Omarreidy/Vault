@@ -20,7 +20,7 @@ function SubBar({ label, value, color, delay }: { label: string; value: number; 
 
   return (
     <View style={sub.row}>
-      <Text style={sub.label}>{label}</Text>
+      <Text style={sub.label} numberOfLines={1}>{label}</Text>
       <View style={sub.track}>
         <Animated.View style={[sub.fill, { width, backgroundColor: color }]} />
       </View>
@@ -31,7 +31,9 @@ function SubBar({ label, value, color, delay }: { label: string; value: number; 
 
 const sub = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  label: { fontSize: FONTS.sizes.xs, color: COLORS.textDim, width: 72, letterSpacing: FONTS.tracking.wider, textTransform: 'uppercase' },
+  // width fits the longest label ("INVESTMENT") at this size + tracking; below
+  // ~88 it wraps mid-word ("INVESTMEN / T"). numberOfLines guards regressions.
+  label: { fontSize: FONTS.sizes.xs, color: COLORS.textDim, width: 88, letterSpacing: FONTS.tracking.wider, textTransform: 'uppercase' },
   track: { flex: 1, height: 2, backgroundColor: COLORS.border, overflow: 'hidden', borderRadius: 1 },
   fill: { height: '100%', borderRadius: 1 },
   val: { fontSize: FONTS.sizes.xs, fontFamily: FONTS.display, width: 24, textAlign: 'right', fontWeight: FONTS.weights.light },

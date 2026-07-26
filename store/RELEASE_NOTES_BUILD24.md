@@ -20,7 +20,7 @@ Build 23 predates ~2,000 lines of app changes including every claims-compliance 
 ### Notifications
 - Full client notification system: deep links (warm + cold start) via `navigationRef` + `notificationRouting`, badge clearing, token clearing on sign-out (both paths), token-rotation listener.
 - Cross-device preference sync with quiet hours and pause (`notificationPrefs.ts` → `notification_prefs` table).
-- Notification centre copy de-faked — real timestamps, no invented figures.
+- Notification centre copy de-faked — actual timestamps, no invented figures.
 
 ### Instrumentation
 - 17 new funnel analytics events (auth, onboarding, score reveal, Plaid start/exit, concierge, paywall, referral, app open). Pre-signup events now record correctly (the RLS policy that silently dropped them was fixed server-side and is live).
@@ -35,7 +35,7 @@ Build 23 predates ~2,000 lines of app changes including every claims-compliance 
 > • First run now shows a legal acknowledgement step — please read it and confirm it's clear.
 > • Notification settings (Settings → Notifications): toggles, quiet hours, and pause should persist across app restarts.
 > • Tap a push notification and confirm it opens the right screen, both when the app is open and fully closed.
-> • The Daily Open, feed, and Settings copy have changed throughout — flag anything that reads as a promise or a guarantee.
+> • The Daily Open, feed, and Settings copy have changed throughout — flag anything that reads as an overpromise or a certain outcome.
 > • Your first score takes about 60 seconds and needs no bank login. To connect accounts without a real bank, use Plaid Sandbox: `user_good` / `pass_good`.
 >
 > Report anything odd to support@getsvault.com.
@@ -54,4 +54,4 @@ Build 23 predates ~2,000 lines of app changes including every claims-compliance 
 ## Known limitations of this build
 
 - Built under the **Individual** team (`MX438B4597`, Omar Reidy). After the Vault Wealth LLC migration completes, the distribution certificate and provisioning profiles will need regenerating, and **a fresh build will be required for the actual App Store submission** — this build is for TestFlight, screenshots, and video capture.
-- `eas.json` → `submit.production.ios.appleId` is `omarreidy2@gmail.com` but the real developer account is `nmjaffee@gmail.com`. **`eas submit` will fail until corrected** — fix after the migration settles the team identity.
+- **`eas.json` submit config is correct as-is — do not "fix" the appleId.** It reads `omarreidy2@gmail.com` (personal) while the developer account is `nmjaffee@gmail.com` (work, inbox not accessible). This is fine: submission authenticates with the **App Store Connect API Key** (`N9ZV54N66H`, ADMIN role) held in EAS credentials — a token, not an email login. Build 20 was submitted and reviewed under this same config; it was rejected for org enrollment, never for authentication. Apple-ID *login* (as during `eas credentials`) is separate and works via 2FA to the trusted phone, which Omar has.

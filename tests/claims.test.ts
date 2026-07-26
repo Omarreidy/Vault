@@ -60,6 +60,8 @@ interface Rule {
   pattern: RegExp;
   /** A match is allowed when this tests true against the 60 chars before it (negations, comments). */
   allowBefore?: RegExp;
+  /** Files exempt from this rule (e.g. the Market/Signal tab genuinely is live). */
+  allowFiles?: RegExp[];
 }
 
 const RULES: Rule[] = [
@@ -79,6 +81,19 @@ const RULES: Rule[] = [
     name: 'unsupported real-time claims',
     pattern: /real[- ]time/i,
     allowBefore: /\/\/[^\n]*$/,
+  },
+  {
+    // "Live" scores/data are prohibited — the score and Plaid data are refreshed
+    // snapshots. The sole exemption is the Market/Signal tab, whose quotes and
+    // news genuinely come from a timestamped live API (src/components/MarketSignal.tsx).
+    // Only flags user-facing prose ("live, not estimated", "Live · …"), not
+    // identifiers like isLive/hasLive/liveDot.
+    // Targets the user-facing phrasings only, so `scoreSource: 'live'` style
+    // identifiers and code comments stay legal.
+    name: 'unsupported "live" data/score claims',
+    pattern: /live (from your|data|score|balances|net worth)|·\s*live\b|\blive, not\b|now live\b|score (is )?live\b/i,
+    allowBefore: /\/\/[^\n]*$|\{\/\*[^\n]*$|\*[^\n]*$/,
+    allowFiles: [/MarketSignal\.tsx$/, /marketSignal\.ts$/],
   },
   {
     name: 'unqualified "guaranteed" outcomes',
@@ -123,6 +138,7 @@ for (const rule of RULES) {
   test(`no user-facing surface contains ${rule.name}`, () => {
     const violations: string[] = [];
     for (const file of FILES) {
+      if (rule.allowFiles?.some((re) => re.test(file))) continue;
       const text = fs.readFileSync(path.join(ROOT, file), 'utf8');
       const re = new RegExp(rule.pattern.source, rule.pattern.flags.includes('g') ? rule.pattern.flags : rule.pattern.flags + 'g');
       for (let m = re.exec(text); m !== null; m = re.exec(text)) {
