@@ -1,6 +1,49 @@
 import Anthropic from 'npm:@anthropic-ai/sdk@0.99.0';
+import { createClient } from 'npm:@supabase/supabase-js@2';
 import { requireUser, corsHeaders as cors } from '../_shared/auth.ts';
 import { allowRequest, tooManyRequests } from '../_shared/ratelimit.ts';
+
+// The AI analysis is the slow part of this endpoint (~25–30s to generate) and
+// is stable for a day; the market data around it is cheap and must stay fresh.
+// So we cache only the analysis, keyed by ticker, and re-fetch quotes every
+// time. See migrations/20260726000000_company_research_cache.sql.
+const ANALYSIS_TTL_MS = 24 * 60 * 60 * 1000;
+const RESEARCH_MODEL = 'claude-haiku-4-5-20251001';
+
+function cacheClient() {
+  return createClient(
+    Deno.env.get('SUPABASE_URL')!,
+    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+  );
+}
+
+/** Returns a cached analysis for this ticker, or null on miss/stale/any error. */
+async function readCachedAnalysis(ticker: string): Promise<Record<string, unknown> | null> {
+  try {
+    const { data } = await cacheClient()
+      .from('company_research_cache')
+      .select('analysis, model, created_at')
+      .eq('ticker', ticker)
+      .maybeSingle();
+    if (!data) return null;
+    // A model change invalidates: a cached report from a different model is not
+    // what this deployment promises to return.
+    if (data.model !== RESEARCH_MODEL) return null;
+    if (Date.now() - new Date(data.created_at).getTime() > ANALYSIS_TTL_MS) return null;
+    return data.analysis ?? null;
+  } catch {
+    return null; // cache must never break the endpoint
+  }
+}
+
+/** Best-effort write-through; failures are swallowed so a cache problem can't fail a request. */
+async function writeCachedAnalysis(ticker: string, analysis: Record<string, unknown>): Promise<void> {
+  try {
+    await cacheClient()
+      .from('company_research_cache')
+      .upsert({ ticker, analysis, model: RESEARCH_MODEL, created_at: new Date().toISOString() });
+  } catch { /* ignore */ }
+}
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
@@ -122,18 +165,29 @@ Return ONLY a valid JSON object with these exact fields (no markdown, no explana
   "vaultAngle": "what this means for a retail investor building wealth"
 }`;
 
-    const response = await client.messages.create({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 4096,
-      messages: [{ role: 'user', content: prompt }],
-    });
+    // Cache hit → skip the ~25–30s generation entirely. Market data above was
+    // already fetched fresh, so the merged response is still current.
+    let analysis: any = await readCachedAnalysis(ticker);
+    const cacheHit = analysis != null;
 
-    let analysis: any = {};
-    try {
-      const text = response.content[0].type === 'text' ? response.content[0].text : '';
-      const jsonMatch = text.match(/\{[\s\S]*\}/);
-      if (jsonMatch) analysis = JSON.parse(jsonMatch[0]);
-    } catch { analysis = {}; }
+    if (!cacheHit) {
+      const response = await client.messages.create({
+        model: RESEARCH_MODEL,
+        max_tokens: 4096,
+        messages: [{ role: 'user', content: prompt }],
+      });
+
+      analysis = {};
+      try {
+        const text = response.content[0].type === 'text' ? response.content[0].text : '';
+        const jsonMatch = text.match(/\{[\s\S]*\}/);
+        if (jsonMatch) analysis = JSON.parse(jsonMatch[0]);
+      } catch { analysis = {}; }
+
+      // Only cache a real parse — caching {} would serve placeholder copy for a
+      // full day and hide a prompt/parsing regression behind a fast response.
+      if (Object.keys(analysis).length > 0) await writeCachedAnalysis(ticker, analysis);
+    }
 
     const [week52Low, week52High] = (profile.range ?? '').split('-').map((s: string) => s.trim());
 
@@ -176,7 +230,7 @@ Return ONLY a valid JSON object with these exact fields (no markdown, no explana
       investmentVerdict: analysis.investmentVerdict ?? {
         answer: 'WATCH',
         summary: 'Analysis in progress.',
-        reasons: ['Real-time data loaded', 'Claude analysis complete', 'Review financials above'],
+        reasons: ['Market data loaded', 'Analysis complete', 'Review financials above'],
         caution: 'Always do your own research before investing.',
       },
       moatFactors: analysis.moatFactors ?? [],
