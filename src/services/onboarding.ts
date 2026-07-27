@@ -1,11 +1,10 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useState, useEffect } from 'react';
 import { TierName } from '../types';
-import { supabase, functionAuthHeaders } from './supabase';
+import { supabase, callFunction } from './supabase';
 import { postActivity } from './cohort';
 import { computeOnboardingScore, Gap } from './onboardingScore';
 
-const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? 'https://gvdfypehwmemootjizmd.supabase.co';
 
 export interface OnboardingAnswers {
   name: string;
@@ -97,11 +96,7 @@ export async function markOnboardingComplete(
     ? { name: result.name, age: answers.age, income: answers.income, goal: answers.goal }
     : { name: result.name };
   try {
-    await fetch(`${SUPABASE_URL}/functions/v1/submit-onboarding`, {
-      method: 'POST',
-      headers: await functionAuthHeaders(),
-      body: JSON.stringify(payload),
-    });
+    await callFunction('submit-onboarding', { body: payload });
   } catch {
     // Non-fatal: local reveal + AsyncStorage already reflect the result; the
     // score can be reconciled on next score fetch / app open.

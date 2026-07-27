@@ -5,12 +5,10 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
-import { supabase, functionAuthHeaders } from '../services/supabase';
+import { supabase, callFunction } from '../services/supabase';
 import { EVENTS, track } from '../services/analytics';
 import { COLORS, FONTS, SPACING, RADIUS, CARD_SHADOW } from '../constants/theme';
 
-const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? 'https://gvdfypehwmemootjizmd.supabase.co';
-const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? 'sb_publishable_tHoiSHF-49L1_p0OLRPeKw_5mfSi0fs';
 
 interface PlaidAccount {
   account_id: string;
@@ -46,13 +44,7 @@ export default function PlaidLinkScreen({ visible, onClose, onSuccess }: Props) 
     setError('');
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      const res = await fetch(`${SUPABASE_URL}/functions/v1/plaid-link-token`, {
-        method: 'POST',
-        headers: await functionAuthHeaders(),
-        body: JSON.stringify({ user_id: user?.id ?? 'guest' }),
-      });
-      const data = await res.json();
-      if (data.error) throw new Error(data.error);
+      const data = await callFunction('plaid-link-token', { body: { user_id: user?.id ?? 'guest' } });
       setLinkToken(data.link_token);
     } catch {
       setError('Could not connect to bank service. Try again.');

@@ -22,6 +22,9 @@ function resetSupabaseMock() {
     auth: {
       getUser: async () => ({ data: { user: null }, error: null }),
       getSession: async () => ({ data: { session: null }, error: null }),
+      refreshSession: async () => ({ data: { session: null }, error: null }),
+      startAutoRefresh: async () => { globalThis.__autoRefreshOn = true; },
+      stopAutoRefresh: async () => { globalThis.__autoRefreshOn = false; },
     },
     from: () => chainable(),
     rpc: async () => ({ data: null, error: null }),
@@ -35,6 +38,9 @@ function createClient() {
     auth: {
       getUser: (...a) => mock().auth.getUser(...a),
       getSession: (...a) => mock().auth.getSession(...a),
+      refreshSession: (...a) => mock().auth.refreshSession(...a),
+      startAutoRefresh: (...a) => mock().auth.startAutoRefresh(...a),
+      stopAutoRefresh: (...a) => mock().auth.stopAutoRefresh(...a),
       signInWithPassword: (...a) => mock().auth.signInWithPassword?.(...a),
       onAuthStateChange: () => ({ data: { subscription: { unsubscribe() {} } } }),
     },

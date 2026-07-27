@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { AppState, AppStateStatus } from 'react-native';
-import { supabase, functionAuthHeaders } from '../services/supabase';
+import { supabase, callFunction } from '../services/supabase';
 import {
   dedupeAccounts,
   dedupeTransactions,
@@ -10,8 +10,6 @@ import {
   sumSpend,
 } from '../services/plaidMath';
 
-const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? 'https://gvdfypehwmemootjizmd.supabase.co';
-const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? 'sb_publishable_tHoiSHF-49L1_p0OLRPeKw_5mfSi0fs';
 
 // Don't re-pull from Plaid more often than this — protects the backend + Plaid
 // rate limits when many users foreground the app repeatedly.
@@ -104,17 +102,14 @@ export function PlaidProvider({ children }: { children: React.ReactNode }) {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const headers = await functionAuthHeaders();
-
+      // Both go through callFunction so an access token that expired while the
+      // app was backgrounded is refreshed and replayed — this runs on app
+      // foreground, which is exactly when a stale token is most likely.
       // 1) Pull fresh balances/transactions into our store.
-      await fetch(`${SUPABASE_URL}/functions/v1/plaid-refresh`, {
-        method: 'POST', headers, body: JSON.stringify({ user_id: user.id }),
-      }).catch(() => {});
+      await callFunction('plaid-refresh', { body: { user_id: user.id } }).catch(() => {});
 
       // 2) Recompute the score from the fresh data (fire-and-forget; non-fatal).
-      fetch(`${SUPABASE_URL}/functions/v1/calculate-score`, {
-        method: 'POST', headers, body: JSON.stringify({ user_id: user.id }),
-      }).catch(() => {});
+      callFunction('calculate-score', { body: { user_id: user.id } }).catch(() => {});
 
       lastHardRefresh.current = Date.now();
     } catch {

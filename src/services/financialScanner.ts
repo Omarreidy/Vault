@@ -158,7 +158,7 @@ export const MOCK_SCAN_RESULTS: ScanResult[] = [
   },
 ];
 
-import { supabase, functionAuthHeaders } from './supabase';
+import { supabase, functionAuthHeaders, refreshSessionToken } from './supabase';
 
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? 'https://gvdfypehwmemootjizmd.supabase.co';
 
@@ -247,17 +247,25 @@ export async function scanDocument(imageUri: string, opts: ScanOptions = {}): Pr
   const base64 = await renderScanImage(imageUri);
   if (base64.length > MAX_IMAGE_B64_LEN) throw new ScanError('image_too_large');
 
-  const headers = await functionAuthHeaders();
-
-  // One retry, only for transient transport failures (network blip, cold-start
-  // 5xx). Deterministic failures (401/413/429/503) surface immediately.
+  // One retry, for transient transport failures (network blip, cold-start 5xx)
+  // and for an expired access token, which a refresh makes recoverable.
+  // Deterministic failures (413/429/503) surface immediately.
   let lastError = new ScanError('unavailable');
   for (let attempt = 1; attempt <= 2; attempt++) {
     try {
-      return await postScan(base64, headers);
+      // Headers are rebuilt per attempt so a refreshed token is actually used.
+      // Hoisting them out of the loop would replay the same dead token.
+      return await postScan(base64, await functionAuthHeaders());
     } catch (err) {
       lastError = err instanceof ScanError ? err : new ScanError('unavailable', String(err));
-      if (!lastError.transient || attempt === 2) throw lastError;
+      if (attempt === 2) throw lastError;
+      // A token that expired while the app was backgrounded is recoverable:
+      // refresh and replay once before telling the member to sign in again.
+      if (lastError.reason === 'auth') {
+        if (!(await refreshSessionToken())) throw lastError;
+        continue;
+      }
+      if (!lastError.transient) throw lastError;
       await new Promise(r => setTimeout(r, retryDelayMs * attempt));
     }
   }

@@ -1,10 +1,7 @@
 import { VelocityScore, TierName } from '../types';
 import { TIERS } from '../constants/theme';
-import { supabase, functionAuthHeaders } from './supabase';
+import { supabase, callFunction } from './supabase';
 import { tierFromScore } from './plaidMath';
-
-const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? 'https://gvdfypehwmemootjizmd.supabase.co';
-const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? 'sb_publishable_tHoiSHF-49L1_p0OLRPeKw_5mfSi0fs';
 
 // Thresholds live in plaidMath.ts so client and server can never disagree.
 export function getTierFromScore(score: number): TierName {
@@ -37,14 +34,11 @@ export async function fetchLiveScore(): Promise<VelocityScore | null> {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return null;
 
-    const res = await fetch(`${SUPABASE_URL}/functions/v1/calculate-score`, {
-      method: 'POST',
-      headers: await functionAuthHeaders(),
-      body: JSON.stringify({ user_id: user.id }),
-    });
-
-    const data = await res.json();
-    if (data.error) return null;
+    // Previously a 401 from an expired token was swallowed here and returned as
+    // null, which the Score screen renders as a spinner that never resolves.
+    // callFunction refreshes and replays first, so that path is now rare — and
+    // when it does fail the caller gets null quickly rather than hanging.
+    const data = await callFunction('calculate-score', { body: { user_id: user.id } });
 
     return {
       total: data.total,

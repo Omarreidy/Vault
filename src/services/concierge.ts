@@ -1,9 +1,8 @@
-import { supabase } from './supabase';
+import { supabase, functionAuthHeaders, refreshSessionToken, AuthExpiredError } from './supabase';
 import { dedupeAccounts, categorizeAccounts, sumBalances } from './plaidMath';
 import { getPreferredLanguage } from './locale';
 
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? 'https://gvdfypehwmemootjizmd.supabase.co';
-const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? 'sb_publishable_tHoiSHF-49L1_p0OLRPeKw_5mfSi0fs';
 
 export interface ConversationMessage {
   role: 'user' | 'assistant';
@@ -74,24 +73,28 @@ export async function askConcierge(
   messages: ConversationMessage[],
   onChunk: (text: string) => void,
 ): Promise<void> {
-  const [userContext, language, { data: { session } }] = await Promise.all([
+  const [userContext, language] = await Promise.all([
     fetchUserContext(),
     getPreferredLanguage(),
-    supabase.auth.getSession(),
   ]);
   if (userContext) userContext.language = language;
 
-  const authToken = session?.access_token ?? SUPABASE_ANON_KEY;
-
-  const response = await fetch(`${SUPABASE_URL}/functions/v1/concierge`, {
+  // This endpoint streams, so it can't go through callFunction (which parses a
+  // whole JSON body). It still needs the same expired-token handling: build the
+  // headers through functionAuthHeaders so a stale token is refreshed up front,
+  // then refresh-and-replay once if the server still says 401.
+  const send = async () => fetch(`${SUPABASE_URL}/functions/v1/concierge`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${authToken}`,
-      'apikey': SUPABASE_ANON_KEY,
-    },
+    headers: await functionAuthHeaders(),
     body: JSON.stringify({ messages, userContext }),
   });
+
+  let response = await send();
+  if (response.status === 401) {
+    if (!(await refreshSessionToken())) throw new AuthExpiredError();
+    response = await send();
+    if (response.status === 401) throw new AuthExpiredError();
+  }
 
   if (!response.ok) throw new Error(`Server error: ${response.status}`);
 

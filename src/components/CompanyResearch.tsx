@@ -7,7 +7,7 @@ import * as Haptics from 'expo-haptics';
 import InlineDisclaimer from './InlineDisclaimer';
 import { COLORS, FONTS, SPACING, RADIUS, CARD_SHADOW } from '../constants/theme';
 import {
-  fetchCompanyResearch, POPULAR_TICKERS, CompanyReport,
+  fetchCompanyResearch, researchErrorMessage, POPULAR_TICKERS, CompanyReport,
   VERDICT_COLORS, CONFIDENCE_COLORS, SEVERITY_COLORS, THREAT_COLORS,
   ANSWER_COLORS, ANSWER_BG,
 } from '../services/companyResearch';
@@ -443,7 +443,7 @@ export default function CompanyResearch() {
       const report = await fetchCompanyResearch(t);
       setActiveReport(report);
     } catch (err: any) {
-      setError(`Could not load research for ${t}. Check the ticker and try again.`);
+      setError(researchErrorMessage(err, t));
     } finally {
       setLoading(false);
     }

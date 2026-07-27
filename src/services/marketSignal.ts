@@ -35,9 +35,7 @@ export interface NewsItem {
   url?: string;
 }
 
-import { functionAuthHeaders } from './supabase';
-
-const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? 'https://gvdfypehwmemootjizmd.supabase.co';
+import { callFunction } from './supabase';
 
 // Fallback snapshot for when market is closed / API limit hit
 export const FALLBACK_SNAPSHOT: MarketSnapshot = {
@@ -54,11 +52,7 @@ export async function fetchMarketData(): Promise<LiveMarketData> {
   if (marketDataCache && Date.now() - marketDataCache.ts < TTL) {
     return marketDataCache.data;
   }
-  const res = await fetch(`${SUPABASE_URL}/functions/v1/market-data`, {
-    method: 'GET', headers: await functionAuthHeaders(),
-  });
-  if (!res.ok) throw new Error('Market data unavailable');
-  const data = await res.json();
+  const data = await callFunction<LiveMarketData>('market-data', { method: 'GET' });
   marketDataCache = { data, ts: Date.now() };
   return data;
 }
@@ -67,11 +61,7 @@ export async function fetchMarketNews(): Promise<NewsItem[]> {
   if (marketNewsCache && Date.now() - marketNewsCache.ts < TTL) {
     return marketNewsCache.data;
   }
-  const res = await fetch(`${SUPABASE_URL}/functions/v1/market-news`, {
-    method: 'GET', headers: await functionAuthHeaders(),
-  });
-  if (!res.ok) throw new Error('News unavailable');
-  const result = await res.json();
+  const result = await callFunction<{ articles?: NewsItem[] }>('market-news', { method: 'GET' });
   const articles = result.articles ?? [];
   marketNewsCache = { data: articles, ts: Date.now() };
   return articles;

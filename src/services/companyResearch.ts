@@ -1,9 +1,12 @@
-import { functionAuthHeaders } from './supabase';
-
-const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? 'https://gvdfypehwmemootjizmd.supabase.co';
+import { callFunction, AuthExpiredError, NetworkError, FunctionError } from './supabase';
 
 const RESEARCH_TTL = 30 * 60 * 1000; // 30 minutes per ticker
 const researchCache = new Map<string, { data: any; ts: number }>();
+
+// Generation legitimately takes 20–30s on a ticker nobody has looked up yet, so
+// this ceiling is deliberately well clear of that — it exists to make a dead
+// connection settle, not to cut off a slow-but-working report.
+const RESEARCH_TIMEOUT_MS = 90_000;
 
 export async function fetchCompanyResearch(ticker: string): Promise<any> {
   const key = ticker.toUpperCase();
@@ -11,16 +14,37 @@ export async function fetchCompanyResearch(ticker: string): Promise<any> {
   if (cached && Date.now() - cached.ts < RESEARCH_TTL) {
     return cached.data;
   }
-  const res = await fetch(`${SUPABASE_URL}/functions/v1/company-research`, {
-    method: 'POST',
-    headers: await functionAuthHeaders(),
-    body: JSON.stringify({ ticker: key }),
+  // callFunction refreshes and replays once on 401, so an access token that
+  // expired while the app was backgrounded no longer surfaces as a failed search.
+  const data = await callFunction('company-research', {
+    body: { ticker: key },
+    timeoutMs: RESEARCH_TIMEOUT_MS,
   });
-  if (!res.ok) throw new Error('Research unavailable');
-  const data = await res.json();
-  if (data.error) throw new Error(data.error);
   researchCache.set(key, { data, ts: Date.now() });
   return data;
+}
+
+/**
+ * Turn a research failure into a message that names the actual cause.
+ *
+ * The previous copy — "Check the ticker and try again" — was shown for every
+ * failure, including expired sessions and dropped connections. It told members
+ * their input was wrong when it wasn't, so they retyped the same correct symbol
+ * repeatedly until the underlying problem cleared on its own. Only a 400 from
+ * the server is genuinely about the symbol; nothing else should imply it is.
+ */
+export function researchErrorMessage(err: unknown, ticker: string): string {
+  if (err instanceof AuthExpiredError) {
+    return 'Your session expired. Sign in again to load research.';
+  }
+  if (err instanceof NetworkError) {
+    return 'Could not reach VAULT. Check your connection and try again.';
+  }
+  if (err instanceof FunctionError) {
+    if (err.status === 429) return 'Too many searches just now. Wait a few seconds and try again.';
+    if (err.status === 400) return `"${ticker}" doesn't look like a stock symbol. Try one like AAPL or MSFT.`;
+  }
+  return `Research is temporarily unavailable for ${ticker}. Try again in a moment.`;
 }
 
 export const POPULAR_TICKERS = ['NVDA', 'AAPL', 'MSFT', 'META', 'GOOGL', 'AMZN', 'TSLA'];

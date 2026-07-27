@@ -118,12 +118,27 @@ function signIn() {
   (globalThis as any).__supabaseMock = {
     auth: {
       getUser: async () => ({ data: { user: { id: 'u1' } }, error: null }),
-      getSession: async () => ({ data: { session: { access_token: 'jwt' } }, error: null }),
+      // A real, comfortably-valid session: expires_at is what tells the client
+      // whether a refresh is due before the request goes out.
+      getSession: async () => ({
+        data: { session: { access_token: 'jwt', expires_at: Math.floor(Date.now() / 1000) + 3000 } },
+        error: null,
+      }),
+      refreshSession: async () => ({ data: { session: null }, error: new Error('not needed') }),
+      startAutoRefresh: async () => {},
+      stopAutoRefresh: async () => {},
     },
     from: () => { throw new Error('not needed'); },
     rpc: async () => ({ data: null, error: null }),
   };
 }
+
+/** A response shaped like a real one — status and ok included, as fetch always provides. */
+const reply = (body: any, status = 200) => (async () => ({
+  ok: status >= 200 && status < 300,
+  status,
+  json: async () => body,
+})) as any;
 
 test('score fetch: network failure → null (slow/failed request never invents a score)', async () => {
   signIn();
@@ -133,15 +148,19 @@ test('score fetch: network failure → null (slow/failed request never invents a
 
 test('score fetch: server error payload → null, not a zero score', async () => {
   signIn();
-  globalThis.fetch = (async () => ({ json: async () => ({ error: 'no_plaid_data' }) })) as any;
+  globalThis.fetch = reply({ error: 'no_plaid_data' });
+  assert.equal(await fetchLiveScore(), null);
+});
+
+test('score fetch: a 500 → null, not a zero score', async () => {
+  signIn();
+  globalThis.fetch = reply({ error: 'boom' }, 500);
   assert.equal(await fetchLiveScore(), null);
 });
 
 test('score fetch: good payload maps through with derived tier progress', async () => {
   signIn();
-  globalThis.fetch = (async () => ({
-    json: async () => ({ total: 512, savings: 60, investment: 40, debt: 80, spending: 70, percentile: 53, tier: 'GOLD' }),
-  })) as any;
+  globalThis.fetch = reply({ total: 512, savings: 60, investment: 40, debt: 80, spending: 70, percentile: 53, tier: 'GOLD' });
   const s = await fetchLiveScore();
   assert.equal(s!.total, 512);
   assert.equal(s!.tier, 'GOLD');

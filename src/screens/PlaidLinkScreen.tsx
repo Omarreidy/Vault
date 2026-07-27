@@ -6,13 +6,11 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
 import * as Haptics from 'expo-haptics';
-import { supabase, functionAuthHeaders } from '../services/supabase';
+import { supabase, callFunction } from '../services/supabase';
 import { EVENTS, track } from '../services/analytics';
 import BankConnectedScreen from './BankConnectedScreen';
 import { COLORS, FONTS, SPACING, RADIUS, CARD_SHADOW } from '../constants/theme';
 
-const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? 'https://gvdfypehwmemootjizmd.supabase.co';
-const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? 'sb_publishable_tHoiSHF-49L1_p0OLRPeKw_5mfSi0fs';
 
 interface PlaidAccount {
   account_id: string;
@@ -48,13 +46,7 @@ export default function PlaidLinkScreen({ visible, onClose, onSuccess }: Props) 
     setError('');
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      const res = await fetch(`${SUPABASE_URL}/functions/v1/plaid-link-token`, {
-        method: 'POST',
-        headers: await functionAuthHeaders(),
-        body: JSON.stringify({ user_id: user?.id ?? 'guest' }),
-      });
-      const data = await res.json();
-      if (data.error) throw new Error(data.error);
+      const data = await callFunction('plaid-link-token', { body: { user_id: user?.id ?? 'guest' } });
       setLinkToken(data.link_token);
     } catch (err: any) {
       setError('Could not connect to bank service. Try again.');
@@ -74,13 +66,9 @@ export default function PlaidLinkScreen({ visible, onClose, onSuccess }: Props) 
 
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) throw new Error('Please sign in before connecting a bank.');
-        const res = await fetch(`${SUPABASE_URL}/functions/v1/plaid-exchange`, {
-          method: 'POST',
-          headers: await functionAuthHeaders(),
-          body: JSON.stringify({ public_token: msg.public_token, user_id: user.id }),
+        const data = await callFunction('plaid-exchange', {
+          body: { public_token: msg.public_token, user_id: user.id },
         });
-        const data = await res.json();
-        if (data.error) throw new Error(data.error);
         // Show the cinematic celebration; the parent's onSuccess fires when the
         // user taps through it (see BankConnectedScreen onDone below).
         setConnectedAccounts(data.accounts ?? []);
