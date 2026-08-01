@@ -1,5 +1,5 @@
 import { Platform } from 'react-native';
-import { supabase } from './supabase';
+import { supabase, currentUserId } from './supabase';
 
 /**
  * Reads the authoritative premium entitlement from `profiles.is_premium`.
@@ -20,8 +20,8 @@ export async function syncPremiumStatus(
   const attempts = opts.attempts ?? 4;
   const delayMs = opts.delayMs ?? 1200;
   try {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return null;
+    const userId = await currentUserId();
+    if (!userId) return null;
 
     // Poll a few times so a just-completed purchase (webhook lands in ~1–3s)
     // is reflected without forcing the caller to restart the app.
@@ -29,7 +29,7 @@ export async function syncPremiumStatus(
       const { data } = await supabase
         .from('profiles')
         .select('is_premium')
-        .eq('id', user.id)
+        .eq('id', userId)
         .single();
       if (data?.is_premium === true) return true;
       if (attempt < attempts - 1) await new Promise(r => setTimeout(r, delayMs));

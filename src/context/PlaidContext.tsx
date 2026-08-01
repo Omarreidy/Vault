@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { AppState, AppStateStatus } from 'react-native';
-import { supabase, callFunction } from '../services/supabase';
+import { supabase, callFunction, currentUserId } from '../services/supabase';
 import {
   dedupeAccounts,
   dedupeTransactions,
@@ -54,13 +54,13 @@ export function PlaidProvider({ children }: { children: React.ReactNode }) {
 
   const load = useCallback(async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      const userId = await currentUserId();
+      if (!userId) return;
 
       const { data: plaidItems } = await supabase
         .from('plaid_items')
         .select('accounts, transactions')
-        .eq('user_id', user.id);
+        .eq('user_id', userId);
 
       if (!plaidItems || plaidItems.length === 0) {
         setPlaidConnected(false);
@@ -99,17 +99,17 @@ export function PlaidProvider({ children }: { children: React.ReactNode }) {
     if (refreshing.current) return;
     refreshing.current = true;
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      const userId = await currentUserId();
+      if (!userId) return;
 
       // Both go through callFunction so an access token that expired while the
       // app was backgrounded is refreshed and replayed — this runs on app
       // foreground, which is exactly when a stale token is most likely.
       // 1) Pull fresh balances/transactions into our store.
-      await callFunction('plaid-refresh', { body: { user_id: user.id } }).catch(() => {});
+      await callFunction('plaid-refresh', { body: { user_id: userId } }).catch(() => {});
 
       // 2) Recompute the score from the fresh data (fire-and-forget; non-fatal).
-      callFunction('calculate-score', { body: { user_id: user.id } }).catch(() => {});
+      callFunction('calculate-score', { body: { user_id: userId } }).catch(() => {});
 
       lastHardRefresh.current = Date.now();
     } catch {

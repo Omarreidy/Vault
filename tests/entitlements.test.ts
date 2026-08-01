@@ -19,7 +19,7 @@ function installProfileMock(rows: (boolean | null)[] | boolean | null, signedIn 
   (globalThis as any).__supabaseMock = {
     auth: {
       getUser: async () => ({ data: { user: signedIn ? { id: 'user-1' } : null }, error: null }),
-      getSession: async () => ({ data: { session: null }, error: null }),
+      getSession: async () => ({ data: { session: signedIn ? { user: { id: 'user-1' } } : null }, error: null }),
     },
     from: () => ({
       select: () => ({
@@ -76,7 +76,10 @@ test('just-purchased: webhook lands mid-poll → picked up without a restart', a
 
 test('DB unreachable → null (never a fabricated entitlement)', async () => {
   (globalThis as any).__supabaseMock = {
-    auth: { getUser: async () => ({ data: { user: { id: 'u' } }, error: null }) },
+    auth: {
+      getUser: async () => ({ data: { user: { id: 'u' } }, error: null }),
+      getSession: async () => ({ data: { session: { user: { id: 'u' } } }, error: null }),
+    },
     from: () => ({ select: () => ({ eq: () => ({ single: async () => { throw new Error('down'); } }) }) }),
     rpc: async () => ({ data: null, error: null }),
   };

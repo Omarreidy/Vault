@@ -6,7 +6,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
 import * as Haptics from 'expo-haptics';
-import { supabase, callFunction } from '../services/supabase';
+import { supabase, callFunction, currentUserId } from '../services/supabase';
 import { EVENTS, track } from '../services/analytics';
 import BankConnectedScreen from './BankConnectedScreen';
 import { COLORS, FONTS, SPACING, RADIUS, CARD_SHADOW } from '../constants/theme';
@@ -45,8 +45,8 @@ export default function PlaidLinkScreen({ visible, onClose, onSuccess }: Props) 
     setLoading(true);
     setError('');
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      const data = await callFunction('plaid-link-token', { body: { user_id: user?.id ?? 'guest' } });
+      const userId = await currentUserId();
+      const data = await callFunction('plaid-link-token', { body: { user_id: userId ?? 'guest' } });
       setLinkToken(data.link_token);
     } catch (err: any) {
       setError('Could not connect to bank service. Try again.');
@@ -64,10 +64,10 @@ export default function PlaidLinkScreen({ visible, onClose, onSuccess }: Props) 
         setLoading(true);
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
 
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) throw new Error('Please sign in before connecting a bank.');
+        const userId = await currentUserId();
+        if (!userId) throw new Error('Please sign in before connecting a bank.');
         const data = await callFunction('plaid-exchange', {
-          body: { public_token: msg.public_token, user_id: user.id },
+          body: { public_token: msg.public_token, user_id: userId },
         });
         // Show the cinematic celebration; the parent's onSuccess fires when the
         // user taps through it (see BankConnectedScreen onDone below).

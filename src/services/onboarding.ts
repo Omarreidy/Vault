@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useState, useEffect } from 'react';
 import { TierName } from '../types';
-import { supabase, callFunction } from './supabase';
+import { supabase, callFunction, currentUserId } from './supabase';
 import { postActivity } from './cohort';
 import { computeOnboardingScore, Gap } from './onboardingScore';
 
@@ -85,8 +85,8 @@ export async function markOnboardingComplete(
 ): Promise<void> {
   await AsyncStorage.setItem(ONBOARDING_RESULT_KEY, JSON.stringify(result));
 
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return;
+  const userId = await currentUserId();
+  if (!userId) return;
 
   // Score/tier/percentile are guarded columns — clients cannot write them
   // (D1). The edge function recomputes them from the raw answers under the
@@ -107,9 +107,9 @@ export async function markOnboardingComplete(
 
 export async function resetOnboarding(): Promise<void> {
   await AsyncStorage.removeItem(ONBOARDING_RESULT_KEY);
-  const { data: { user } } = await supabase.auth.getUser();
-  if (user) {
-    await supabase.from('profiles').update({ onboarding_complete: false }).eq('id', user.id);
+  const userId = await currentUserId();
+  if (userId) {
+    await supabase.from('profiles').update({ onboarding_complete: false }).eq('id', userId);
   }
 }
 
@@ -117,9 +117,9 @@ export function useUserName(fallback = ''): string {
   const [name, setName] = useState(fallback);
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (!user) return;
-      supabase.from('profiles').select('name').eq('id', user.id).single().then(({ data }) => {
+    currentUserId().then(userId => {
+      if (!userId) return;
+      supabase.from('profiles').select('name').eq('id', userId).single().then(({ data }) => {
         if (data?.name) { setName(data.name); return; }
         AsyncStorage.getItem(ONBOARDING_RESULT_KEY).then(json => {
           if (!json) return;

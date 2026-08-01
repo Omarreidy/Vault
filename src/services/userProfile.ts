@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase } from './supabase';
+import { supabase, currentUser } from './supabase';
 import { fetchLiveScore, fetchProfileScore, getTierFromScore } from './velocity';
 import { VelocityScore, TierName } from '../types';
 import { usePlaid } from '../context/PlaidContext';
@@ -39,7 +39,7 @@ export function useRealProfile(): RealProfile {
     let cancelled = false;
 
     async function load() {
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = await currentUser();
       if (!user || cancelled) return;
 
       const joinedAt = user.created_at ? new Date(user.created_at) : null;

@@ -1,5 +1,5 @@
 import { Platform } from 'react-native';
-import { supabase } from './supabase';
+import { supabase, currentUserId } from './supabase';
 
 /**
  * Lightweight product analytics. Events are best-effort inserts into the
@@ -84,8 +84,8 @@ export function buildEvent(
 
 export async function track(event: EventName, props: Record<string, unknown> = {}): Promise<void> {
   try {
-    const { data: { user } } = await supabase.auth.getUser();
-    const row = buildEvent(event, props, user?.id ?? null);
+    const userId = await currentUserId();
+    const row = buildEvent(event, props, userId ?? null);
     await supabase.from('analytics_events').insert(row);
   } catch {
     // Never surface analytics failures to the user.

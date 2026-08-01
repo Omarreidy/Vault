@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { supabase } from './supabase';
+import { supabase, currentUserId } from './supabase';
 
 /**
  * The one reader/writer for notification preferences. SettingsScreen, the
@@ -122,10 +122,10 @@ export async function setNotifMeta(meta: NotifMeta): Promise<void> {
 /** Push the full preference set to notification_prefs (server dispatcher reads it). */
 export async function syncPrefsToServer(prefs: NotifPrefs, meta: NotifMeta): Promise<void> {
   try {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    const userId = await currentUserId();
+    if (!userId) return;
     await supabase.from('notification_prefs').upsert({
-      user_id: user.id,
+      user_id: userId,
       prefs,
       quiet_start: meta.quietStart,
       quiet_end: meta.quietEnd,
@@ -140,12 +140,12 @@ export async function syncPrefsToServer(prefs: NotifPrefs, meta: NotifMeta): Pro
 /** Server copy of the preferences, or null when none exists yet. */
 export async function fetchServerPrefs(): Promise<{ prefs: NotifPrefs; meta: NotifMeta } | null> {
   try {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return null;
+    const userId = await currentUserId();
+    if (!userId) return null;
     const { data, error } = await supabase
       .from('notification_prefs')
       .select('prefs, quiet_start, quiet_end, paused_until')
-      .eq('user_id', user.id)
+      .eq('user_id', userId)
       .maybeSingle();
     if (error || !data) return null;
     return {

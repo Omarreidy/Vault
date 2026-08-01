@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
-import { supabase, callFunction } from '../services/supabase';
+import { supabase, callFunction, currentUserId } from '../services/supabase';
 import { EVENTS, track } from '../services/analytics';
 import { COLORS, FONTS, SPACING, RADIUS, CARD_SHADOW } from '../constants/theme';
 
@@ -43,8 +43,8 @@ export default function PlaidLinkScreen({ visible, onClose, onSuccess }: Props) 
     setLoading(true);
     setError('');
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      const data = await callFunction('plaid-link-token', { body: { user_id: user?.id ?? 'guest' } });
+      const userId = await currentUserId();
+      const data = await callFunction('plaid-link-token', { body: { user_id: userId ?? 'guest' } });
       setLinkToken(data.link_token);
     } catch {
       setError('Could not connect to bank service. Try again.');
@@ -74,12 +74,12 @@ export default function PlaidLinkScreen({ visible, onClose, onSuccess }: Props) 
     setVerifying(true);
     setVerifyMsg('');
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('not signed in');
+      const userId = await currentUserId();
+      if (!userId) throw new Error('not signed in');
       const { data, error: qErr } = await supabase
         .from('plaid_items')
         .select('accounts')
-        .eq('user_id', user.id);
+        .eq('user_id', userId);
       if (qErr) throw qErr;
       const accounts = (data ?? []).flatMap((row: any) => row.accounts ?? []);
       if (accounts.length > 0) {

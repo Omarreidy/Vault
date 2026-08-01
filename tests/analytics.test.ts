@@ -15,7 +15,7 @@ const resetMock = () => {
   globalThis.__supabaseMock = {
     auth: {
       getUser: async () => ({ data: { user: { id: 'user-1' } }, error: null }),
-      getSession: async () => ({ data: { session: null }, error: null }),
+      getSession: async () => ({ data: { session: { user: { id: 'user-1' } } }, error: null }),
     },
     from: () => ({ insert: async (row: any) => { inserted.push(row); return { data: null, error: null }; } }),
     rpc: async () => ({ data: null, error: null }),
@@ -66,12 +66,12 @@ test('track never throws when the insert fails (missing table, offline)', async 
 });
 
 test('track never throws when auth itself rejects', async () => {
-  globalThis.__supabaseMock.auth.getUser = async () => { throw new Error('network down'); };
+  globalThis.__supabaseMock.auth.getSession = async () => { throw new Error('network down'); };
   await assert.doesNotReject(track(EVENTS.PLAID_LINK_SUCCEEDED));
 });
 
 test('track tolerates a signed-out user', async () => {
-  globalThis.__supabaseMock.auth.getUser = async () => ({ data: { user: null }, error: null });
+  globalThis.__supabaseMock.auth.getSession = async () => ({ data: { session: null }, error: null });
   await track(EVENTS.CONNECT_CARD_VIEWED);
   assert.equal(inserted[0].user_id, null);
 });

@@ -1,4 +1,4 @@
-import { supabase, functionAuthHeaders, refreshSessionToken, AuthExpiredError } from './supabase';
+import { supabase, functionAuthHeaders, refreshSessionToken, AuthExpiredError, currentUserId } from './supabase';
 import { dedupeAccounts, categorizeAccounts, sumBalances } from './plaidMath';
 import { getPreferredLanguage } from './locale';
 
@@ -27,12 +27,12 @@ export interface UserContext {
 
 async function fetchUserContext(): Promise<UserContext | null> {
   try {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return null;
+    const userId = await currentUserId();
+    if (!userId) return null;
 
     const [{ data: profile }, { data: plaidItems }] = await Promise.all([
-      supabase.from('profiles').select('name, tier, score, percentile').eq('id', user.id).single(),
-      supabase.from('plaid_items').select('accounts').eq('user_id', user.id),
+      supabase.from('profiles').select('name, tier, score, percentile').eq('id', userId).single(),
+      supabase.from('plaid_items').select('accounts').eq('user_id', userId),
     ]);
 
     const base: UserContext = {

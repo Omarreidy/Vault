@@ -1,6 +1,6 @@
 import { Platform, AppState } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { supabase } from './supabase';
+import { supabase, currentUserId } from './supabase';
 import { buildWeeklyRecapBody } from './ritual';
 import { getNotifPrefs, getNotifMeta, isPausedNow } from './notificationPrefs';
 import { routeForNotification } from './notificationRouting';
@@ -195,8 +195,8 @@ export async function registerPushToken(): Promise<string | null> {
     });
     if (!token) return null;
 
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
+    const userId = await currentUserId();
+    if (userId) {
       // Timezone rides along so the server dispatcher can compute this
       // member's LOCAL hour for quiet hours and send windows.
       let timezone: string | null = null;
@@ -204,7 +204,7 @@ export async function registerPushToken(): Promise<string | null> {
       const { error } = await supabase
         .from('profiles')
         .update(timezone ? { push_token: token, timezone } : { push_token: token })
-        .eq('id', user.id);
+        .eq('id', userId);
       const prev = await AsyncStorage.getItem(LAST_TOKEN_KEY).catch(() => null);
       if (!error && prev !== token) {
         await AsyncStorage.setItem(LAST_TOKEN_KEY, token).catch(() => {});
@@ -226,9 +226,9 @@ export async function registerPushToken(): Promise<string | null> {
  */
 export async function teardownPushForSignOut(): Promise<void> {
   try {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      await supabase.from('profiles').update({ push_token: null }).eq('id', user.id);
+    const userId = await currentUserId();
+    if (userId) {
+      await supabase.from('profiles').update({ push_token: null }).eq('id', userId);
     }
   } catch {}
 

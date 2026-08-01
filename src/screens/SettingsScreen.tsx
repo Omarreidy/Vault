@@ -20,7 +20,7 @@ import {
 import { CURRENCY_KEY, LANGUAGE_KEY } from '../services/locale';
 import { useRealProfile } from '../services/userProfile';
 import { usePlaid } from '../context/PlaidContext';
-import { supabase } from '../services/supabase';
+import { supabase, currentUser } from '../services/supabase';
 import { syncPremiumStatus } from '../services/premium';
 import PlaidLinkScreen from './PlaidLinkScreen';
 import UpgradeScreen from './UpgradeScreen';
@@ -278,7 +278,7 @@ export default function SettingsScreen({ onClose, onResetOnboarding }: Props) {
   const handleExport = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = await currentUser();
       const profileJson = await AsyncStorage.getItem('@vault_onboarding_result').catch(() => null);
       const profile = profileJson ? JSON.parse(profileJson) : {};
       const lines = [

@@ -1,7 +1,7 @@
 import { WealthMove } from '../types';
 import { Insight } from './insights';
 import { WealthWin } from '../types';
-import { supabase } from './supabase';
+import { supabase, currentUserId } from './supabase';
 import { dedupeAccounts, dedupeTransactions } from './plaidMath';
 
 export type FeedItemType = 'move' | 'pulse' | 'win' | 'beliefs' | 'connect' | 'brief';
@@ -135,13 +135,13 @@ export function composeFeed(
 // Returns null if no Plaid data (caller falls back to generic moves)
 export async function fetchPersonalizedMoves(): Promise<WealthMove[] | null> {
   try {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return null;
+    const userId = await currentUserId();
+    if (!userId) return null;
 
     const { data: plaidItems } = await supabase
       .from('plaid_items')
       .select('accounts, transactions')
-      .eq('user_id', user.id);
+      .eq('user_id', userId);
 
     if (!plaidItems || plaidItems.length === 0) return null;
 

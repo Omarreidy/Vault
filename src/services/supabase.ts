@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient, type User } from '@supabase/supabase-js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AppState } from 'react-native';
 
@@ -53,7 +53,7 @@ async function currentAccessToken(): Promise<string | null> {
 }
 
 /**
- * The signed-in member's id, read from the locally cached session.
+ * The signed-in member, read from the locally cached session.
  *
  * Prefer this over `supabase.auth.getUser()` anywhere you only need to know
  * *who* the member is. getUser() performs a network round trip to
@@ -70,13 +70,18 @@ async function currentAccessToken(): Promise<string | null> {
  * RLS and the edge functions' requireUser() are. A client that misreads its
  * own id simply gets empty results.
  */
-export async function currentUserId(): Promise<string | null> {
+export async function currentUser(): Promise<User | null> {
   try {
     const { data: { session } } = await supabase.auth.getSession();
-    return session?.user?.id ?? null;
+    return session?.user ?? null;
   } catch {
     return null;
   }
+}
+
+/** The signed-in member's id, or null. See currentUser for why this avoids getUser(). */
+export async function currentUserId(): Promise<string | null> {
+  return (await currentUser())?.id ?? null;
 }
 
 /**

@@ -1,5 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 import {
   functionAuthHeaders, callFunction, currentUserId,
   AuthExpiredError, NetworkError, FunctionError,
@@ -205,6 +207,33 @@ test('the member id comes from the cached session, never from a network call', a
 test('a signed-out member yields null rather than hanging or throwing', async () => {
   mockAuth({ session: null });
   assert.equal(await currentUserId(), null);
+});
+
+test('no screen or service reaches for getUser() again', () => {
+  // getUser() is a network round trip to /auth/v1/user with no timeout. Used to
+  // answer "who am I?" it puts an unbounded hop in front of every load, which is
+  // what made Score, Timeline and Cohort slow and occasionally hang. currentUser
+  // reads the same data from the cached session. supabase.ts is exempt: it
+  // documents the distinction.
+  const dirs = ['src/screens', 'src/components', 'src/services', 'src/context'];
+  const offenders: string[] = [];
+  const walk = (dir: string) => {
+    const abs = path.join(__dirname, '..', dir);
+    if (!fs.existsSync(abs)) return;
+    for (const e of fs.readdirSync(abs, { withFileTypes: true })) {
+      const rel = path.join(dir, e.name);
+      if (e.isDirectory()) { walk(rel); continue; }
+      if (!/\.tsx?$/.test(e.name) || rel.endsWith('services/supabase.ts')) continue;
+      const src = fs.readFileSync(path.join(__dirname, '..', rel), 'utf8');
+      src.split('\n').forEach((line, i) => {
+        if (line.includes('auth.getUser()') && !line.trim().startsWith('*') && !line.trim().startsWith('//')) {
+          offenders.push(`${rel}:${i + 1}`);
+        }
+      });
+    }
+  };
+  dirs.forEach(walk);
+  assert.deepEqual(offenders, [], `use currentUser()/currentUserId() instead:\n${offenders.join('\n')}`);
 });
 
 // ── Research must succeed on a first-ever ticker ─────────────────────────────
