@@ -17,7 +17,7 @@ import {
   getNotifMeta, setNotifMeta, isPausedNow, DEFAULT_NOTIF_META, NOTIF_META_KEY,
   syncPrefsToServer, fetchServerPrefs, DEFAULT_NOTIF_PREFS,
 } from '../services/notificationPrefs';
-import { CURRENCY_KEY, LANGUAGE_KEY, SUPPORTED_CURRENCIES, SUPPORTED_LANGUAGES } from '../services/locale';
+import { CURRENCY_KEY, LANGUAGE_KEY } from '../services/locale';
 import { useRealProfile } from '../services/userProfile';
 import { usePlaid } from '../context/PlaidContext';
 import { supabase } from '../services/supabase';
@@ -27,8 +27,6 @@ import UpgradeScreen from './UpgradeScreen';
 
 const DARK_MODE_KEY    = '@vault_dark_mode';
 
-const CURRENCIES = [...SUPPORTED_CURRENCIES];
-const LANGUAGES  = [...SUPPORTED_LANGUAGES];
 
 // "Pause" is indefinite until the member resumes — a far-future instant the
 // server dispatcher compares against, not a countdown we'd have to refresh.
@@ -199,8 +197,6 @@ export default function SettingsScreen({ onClose, onResetOnboarding }: Props) {
   const [pushPermission, setPushPermission] = useState<PushPermission>('unavailable');
 
   // Preferences
-  const [currency,  setCurrency]  = useState('USD');
-  const [language,  setLanguage]  = useState('English');
 
   // Modals
   const [showPlaid,      setShowPlaid]      = useState(false);
@@ -208,8 +204,6 @@ export default function SettingsScreen({ onClose, onResetOnboarding }: Props) {
   const [showUpgrade,    setShowUpgrade]    = useState(false);
   const [showPrivacy,    setShowPrivacy]    = useState(false);
   const [showTerms,      setShowTerms]      = useState(false);
-  const [showCurrency,   setShowCurrency]   = useState(false);
-  const [showLanguage,   setShowLanguage]   = useState(false);
 
   // ── Load persisted prefs on mount (server copy wins — cross-device sync) ──
   useEffect(() => {
@@ -232,15 +226,6 @@ export default function SettingsScreen({ onClose, onResetOnboarding }: Props) {
 
     getPushPermission().then(setPushPermission).catch(() => {});
 
-    AsyncStorage.multiGet([CURRENCY_KEY, LANGUAGE_KEY])
-      .then(pairs => {
-        for (const [key, val] of pairs) {
-          if (!val) continue;
-          if (key === CURRENCY_KEY)  setCurrency(val);
-          if (key === LANGUAGE_KEY)  setLanguage(val);
-        }
-      })
-      .catch(() => {});
   }, []);
 
   // ── Persist notification prefs whenever anything changes ──────────────────
@@ -280,16 +265,6 @@ export default function SettingsScreen({ onClose, onResetOnboarding }: Props) {
 
   // ── Handlers ──────────────────────────────────────────────────────────────
 
-  const handleCurrency = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-    setShowCurrency(true);
-  };
-
-  const handleLanguage = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-    setShowLanguage(true);
-  };
-
   const handlePrivacy = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
     setShowPrivacy(true);
@@ -317,8 +292,8 @@ export default function SettingsScreen({ onClose, onResetOnboarding }: Props) {
         `Email: ${user?.email ?? '—'}`,
         '',
         'PREFERENCES',
-        `Currency: ${currency}`,
-        `Language: ${language}`,
+        'Currency: USD (multi-currency not yet supported)',
+        'Language: English (localization not yet supported)',
         '',
         'NOTIFICATIONS',
         `New wealth moves: ${notifMoves ? 'On' : 'Off'}`,
@@ -627,9 +602,14 @@ export default function SettingsScreen({ onClose, onResetOnboarding }: Props) {
 
         {/* Preferences */}
         <Section title="PREFERENCES">
-          <LinkRow label="Currency" value={currency} onPress={handleCurrency} />
+          {/* Display-only until they do something. Currency needs real FX
+              conversion (relabelling USD amounts in EUR would misstate a
+              member's money) and Language needs a localization pass — the
+              picker previously stored a preference that changed nothing on
+              screen, which reads as a broken control. */}
+          <LinkRow label="Currency" sub="USD" value="Coming soon" />
           <Divider />
-          <LinkRow label="Language" value={language} onPress={handleLanguage} />
+          <LinkRow label="Language" sub="English" value="Coming soon" />
         </Section>
 
         {/* Connected accounts — read the live Plaid state, not just what was
@@ -690,22 +670,6 @@ export default function SettingsScreen({ onClose, onResetOnboarding }: Props) {
       </ScrollView>
 
       {/* Inline overlays — rendered last so they stack above the scroll content */}
-      <PickerSheet
-        visible={showCurrency}
-        title="Currency"
-        options={CURRENCIES}
-        selected={currency}
-        onSelect={v => { setCurrency(v); AsyncStorage.setItem(CURRENCY_KEY, v).catch(() => {}); }}
-        onClose={() => setShowCurrency(false)}
-      />
-      <PickerSheet
-        visible={showLanguage}
-        title="Language"
-        options={LANGUAGES}
-        selected={language}
-        onSelect={v => { setLanguage(v); AsyncStorage.setItem(LANGUAGE_KEY, v).catch(() => {}); }}
-        onClose={() => setShowLanguage(false)}
-      />
       <PickerSheet
         visible={showQuietStart}
         title="Quiet hours begin"

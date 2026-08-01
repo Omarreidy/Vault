@@ -10,6 +10,16 @@ import { allowRequest, tooManyRequests } from '../_shared/ratelimit.ts';
 const ANALYSIS_TTL_MS = 24 * 60 * 60 * 1000;
 const RESEARCH_MODEL = 'claude-haiku-4-5-20251001';
 
+// The report schema is large — executives, journey, roadmap, risks, competitors.
+// At 4096 the model was hitting the ceiling mid-object on longer companies, and
+// truncated JSON does not parse, which is what produced "placeholder" reports.
+// Headroom here is the cheapest reliability win available.
+const MAX_TOKENS = 8192;
+
+// Retries cost ~25s each. That is an acceptable trade for a first-ever lookup
+// that actually works: the alternative was a member retyping a valid ticker.
+const GENERATION_ATTEMPTS = 2;
+
 function cacheClient() {
   return createClient(
     Deno.env.get('SUPABASE_URL')!,
@@ -171,22 +181,43 @@ Return ONLY a valid JSON object with these exact fields (no markdown, no explana
     const cacheHit = analysis != null;
 
     if (!cacheHit) {
-      const response = await client.messages.create({
-        model: RESEARCH_MODEL,
-        max_tokens: 4096,
-        messages: [{ role: 'user', content: prompt }],
-      });
-
+      // A first-ever lookup must produce a real report, not a page of "loading…"
+      // placeholders. The dominant failure is the model's JSON not parsing —
+      // usually truncation at the token ceiling, occasionally stray prose around
+      // the object. Both are retryable, and a member would rather wait than
+      // retype a ticker that was never wrong, so we retry rather than degrade.
       analysis = {};
-      try {
-        const text = response.content[0].type === 'text' ? response.content[0].text : '';
-        const jsonMatch = text.match(/\{[\s\S]*\}/);
-        if (jsonMatch) analysis = JSON.parse(jsonMatch[0]);
-      } catch { analysis = {}; }
+      for (let attempt = 1; attempt <= GENERATION_ATTEMPTS; attempt++) {
+        try {
+          const response = await client.messages.create({
+            model: RESEARCH_MODEL,
+            max_tokens: MAX_TOKENS,
+            messages: [{ role: 'user', content: prompt }],
+            // Nudge the model straight into the object on a retry: the wrapper
+            // prose that broke the first parse can't be emitted before it.
+            ...(attempt > 1 ? { system: 'Reply with the JSON object only. No preamble, no markdown fences.' } : {}),
+          });
 
-      // Only cache a real parse — caching {} would serve placeholder copy for a
-      // full day and hide a prompt/parsing regression behind a fast response.
-      if (Object.keys(analysis).length > 0) await writeCachedAnalysis(ticker, analysis);
+          const text = response.content[0].type === 'text' ? response.content[0].text : '';
+          const jsonMatch = text.match(/\{[\s\S]*\}/);
+          const parsed = jsonMatch ? JSON.parse(jsonMatch[0]) : null;
+          if (parsed && Object.keys(parsed).length > 0) { analysis = parsed; break; }
+          console.warn(`company-research ${ticker}: attempt ${attempt} produced no parseable object`);
+        } catch (err) {
+          console.warn(`company-research ${ticker}: attempt ${attempt} failed`, String(err));
+        }
+      }
+
+      // Every attempt failed. Say so instead of returning a report shaped like a
+      // real one but filled with placeholders — the client can retry an error,
+      // but it cannot tell that a 200 is hollow.
+      if (Object.keys(analysis).length === 0) {
+        return new Response(JSON.stringify({ error: 'Research is temporarily unavailable for this ticker.' }), {
+          status: 503, headers: { ...cors, 'Content-Type': 'application/json' },
+        });
+      }
+
+      await writeCachedAnalysis(ticker, analysis);
     }
 
     const [week52Low, week52High] = (profile.range ?? '').split('-').map((s: string) => s.trim());

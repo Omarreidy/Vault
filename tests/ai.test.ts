@@ -118,10 +118,19 @@ function signIn() {
   (globalThis as any).__supabaseMock = {
     auth: {
       getUser: async () => ({ data: { user: { id: 'u1' } }, error: null }),
-      // A real, comfortably-valid session: expires_at is what tells the client
-      // whether a refresh is due before the request goes out.
+      // A real, comfortably-valid session. expires_at tells the client whether a
+      // refresh is due before the request goes out, and `user` is what callers
+      // read to identify the member — Supabase sessions always carry both, and
+      // services now read the id from here rather than paying a getUser()
+      // network round trip for it.
       getSession: async () => ({
-        data: { session: { access_token: 'jwt', expires_at: Math.floor(Date.now() / 1000) + 3000 } },
+        data: {
+          session: {
+            access_token: 'jwt',
+            expires_at: Math.floor(Date.now() / 1000) + 3000,
+            user: { id: 'u1' },
+          },
+        },
         error: null,
       }),
       refreshSession: async () => ({ data: { session: null }, error: new Error('not needed') }),

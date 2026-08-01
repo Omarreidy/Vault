@@ -53,6 +53,33 @@ async function currentAccessToken(): Promise<string | null> {
 }
 
 /**
+ * The signed-in member's id, read from the locally cached session.
+ *
+ * Prefer this over `supabase.auth.getUser()` anywhere you only need to know
+ * *who* the member is. getUser() performs a network round trip to
+ * /auth/v1/user to re-validate the token, and screens were calling it purely
+ * to read an id — putting an untimed network hop in front of every load. That
+ * is why Score, Timeline and Cohort took seconds to appear, and why they hung
+ * outright when the hop stalled: nothing bounded it.
+ *
+ * getSession() reads the cached session with no network call, and
+ * currentAccessToken() above already refreshes it when it is near expiry, so
+ * the token backing the request that follows is still fresh.
+ *
+ * This is not a security downgrade. The client is not a trust boundary —
+ * RLS and the edge functions' requireUser() are. A client that misreads its
+ * own id simply gets empty results.
+ */
+export async function currentUserId(): Promise<string | null> {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    return session?.user?.id ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Headers for edge-function calls. Protected functions require the caller's
  * real session JWT — the anon key alone is rejected with 401. Falls back to
  * the anon key only for the few public, read-only endpoints.

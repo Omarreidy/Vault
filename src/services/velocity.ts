@@ -1,6 +1,6 @@
 import { VelocityScore, TierName } from '../types';
 import { TIERS } from '../constants/theme';
-import { supabase, callFunction } from './supabase';
+import { supabase, callFunction, currentUserId } from './supabase';
 import { tierFromScore } from './plaidMath';
 
 // Thresholds live in plaidMath.ts so client and server can never disagree.
@@ -31,14 +31,15 @@ export function getPointsToNextTier(score: number): number {
 // Falls back to profile score (from onboarding) if no Plaid data
 export async function fetchLiveScore(): Promise<VelocityScore | null> {
   try {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return null;
+    // Cached session read, not a network round trip — see currentUserId.
+    const userId = await currentUserId();
+    if (!userId) return null;
 
     // Previously a 401 from an expired token was swallowed here and returned as
     // null, which the Score screen renders as a spinner that never resolves.
     // callFunction refreshes and replays first, so that path is now rare — and
     // when it does fail the caller gets null quickly rather than hanging.
-    const data = await callFunction('calculate-score', { body: { user_id: user.id } });
+    const data = await callFunction('calculate-score', { body: { user_id: userId } });
 
     return {
       total: data.total,
@@ -59,13 +60,13 @@ export async function fetchLiveScore(): Promise<VelocityScore | null> {
 // Fetch score from Supabase profile (set during onboarding)
 export async function fetchProfileScore(): Promise<VelocityScore | null> {
   try {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return null;
+    const userId = await currentUserId();
+    if (!userId) return null;
 
     const { data } = await supabase
       .from('profiles')
       .select('score, tier, percentile')
-      .eq('id', user.id)
+      .eq('id', userId)
       .single();
 
     if (!data?.score) return null;

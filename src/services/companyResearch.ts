@@ -3,10 +3,16 @@ import { callFunction, AuthExpiredError, NetworkError, FunctionError } from './s
 const RESEARCH_TTL = 30 * 60 * 1000; // 30 minutes per ticker
 const researchCache = new Map<string, { data: any; ts: number }>();
 
-// Generation legitimately takes 20–30s on a ticker nobody has looked up yet, so
-// this ceiling is deliberately well clear of that — it exists to make a dead
-// connection settle, not to cut off a slow-but-working report.
-const RESEARCH_TIMEOUT_MS = 90_000;
+// A cold ticker costs ~25s to generate, and the server now retries once itself,
+// so a worst-case successful response can take well over a minute. This ceiling
+// exists only to make a dead connection settle — never to cut off a report that
+// is still coming.
+const RESEARCH_TIMEOUT_MS = 150_000;
+
+/** Server-side failures (503, 5xx) are worth one more try; auth and input errors are not. */
+function worthRetrying(err: unknown): boolean {
+  return err instanceof FunctionError && err.status >= 500;
+}
 
 export async function fetchCompanyResearch(ticker: string): Promise<any> {
   const key = ticker.toUpperCase();
@@ -14,12 +20,25 @@ export async function fetchCompanyResearch(ticker: string): Promise<any> {
   if (cached && Date.now() - cached.ts < RESEARCH_TTL) {
     return cached.data;
   }
-  // callFunction refreshes and replays once on 401, so an access token that
-  // expired while the app was backgrounded no longer surfaces as a failed search.
-  const data = await callFunction('company-research', {
+
+  // Looking up a ticker must work the first time a member asks. callFunction
+  // already refreshes and replays once on an expired token; this adds one more
+  // attempt for a server that couldn't produce a report, so between the two
+  // layers a cold ticker gets four generation attempts before anyone sees an
+  // error. Slower is the correct trade — retyping a valid ticker is not.
+  const request = () => callFunction('company-research', {
     body: { ticker: key },
     timeoutMs: RESEARCH_TIMEOUT_MS,
   });
+
+  let data: any;
+  try {
+    data = await request();
+  } catch (err) {
+    if (!worthRetrying(err)) throw err;
+    data = await request();
+  }
+
   researchCache.set(key, { data, ts: Date.now() });
   return data;
 }

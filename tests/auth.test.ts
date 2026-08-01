@@ -1,10 +1,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  functionAuthHeaders, callFunction,
+  functionAuthHeaders, callFunction, currentUserId,
   AuthExpiredError, NetworkError, FunctionError,
 } from '../src/services/supabase';
-import { researchErrorMessage } from '../src/services/companyResearch';
+import { researchErrorMessage, fetchCompanyResearch } from '../src/services/companyResearch';
 
 // Regression tests for the "search it three times before it works" bug.
 //
@@ -18,7 +18,7 @@ const ANON = 'sb_publishable_tHoiSHF-49L1_p0OLRPeKw_5mfSi0fs';
 const sec = (ms: number) => Math.floor(ms / 1000);
 
 function session(expiresInMs: number, token = 'fresh-token') {
-  return { access_token: token, expires_at: sec(Date.now() + expiresInMs) };
+  return { access_token: token, expires_at: sec(Date.now() + expiresInMs), user: { id: 'u1' } };
 }
 
 /** Installs an auth mock; returns a counter of how many refreshes were requested. */
@@ -187,6 +187,50 @@ test('a 200 carrying an error field is still treated as a failure', async () => 
     () => callFunction('company-research', { body: { ticker: 'AAPL' } }),
     (err: Error) => err instanceof FunctionError && err.message === 'Research unavailable',
   );
+});
+
+// ── Identifying the member without a network round trip ──────────────────────
+
+test('the member id comes from the cached session, never from a network call', async () => {
+  mockAuth({ session: session(50 * 60_000) });
+  // Any fetch at all here would be the getUser() round trip we removed: it sat
+  // in front of every Score, Timeline and Cohort load and nothing bounded it.
+  let networkCalls = 0;
+  (globalThis as any).fetch = async () => { networkCalls++; throw new Error('should not be called'); };
+
+  assert.equal(await currentUserId(), 'u1');
+  assert.equal(networkCalls, 0, 'reading who the member is must not touch the network');
+});
+
+test('a signed-out member yields null rather than hanging or throwing', async () => {
+  mockAuth({ session: null });
+  assert.equal(await currentUserId(), null);
+});
+
+// ── Research must succeed on a first-ever ticker ─────────────────────────────
+
+test('a server that fails to generate is retried, and the member never sees the failure', async () => {
+  mockAuth({ session: session(50 * 60_000) });
+  const sent = mockFetch([
+    { status: 503, body: { error: 'Research is temporarily unavailable for this ticker.' } },
+    { status: 200, body: { ticker: 'ROP', verdict: 'BUY', businessModel: 'Real analysis.' } },
+  ]);
+
+  const data = await fetchCompanyResearch('ROP');
+
+  assert.equal(data.verdict, 'BUY');
+  assert.equal(sent.length, 2, 'the failed generation was retried automatically');
+});
+
+test('a bad ticker is not retried — only server failures are', async () => {
+  mockAuth({ session: session(50 * 60_000) });
+  const sent = mockFetch([
+    { status: 400, body: { error: 'invalid ticker' } },
+    { status: 200, body: { verdict: 'BUY' } },
+  ]);
+
+  await assert.rejects(() => fetchCompanyResearch('!!'), (e: FunctionError) => e.status === 400);
+  assert.equal(sent.length, 1, 'retrying a malformed ticker would just waste the member\'s time');
 });
 
 // ── The message shown to the member ──────────────────────────────────────────

@@ -1,4 +1,4 @@
-import { supabase } from './supabase';
+import { supabase, currentUserId } from './supabase';
 
 /**
  * Real cohort social layer backed by Supabase.
@@ -102,12 +102,12 @@ export async function postActivity(
   xp?: number,
 ): Promise<string | null> {
   try {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return null;
+    const userId = await currentUserId();
+    if (!userId) return null;
     const { data, error } = await supabase
       .from('cohort_activity')
       .insert({
-        user_id: user.id,
+        user_id: userId,
         type,
         headline: headline.slice(0, 120),
         sub: sub ? sub.slice(0, 200) : null,
@@ -128,18 +128,18 @@ export async function setReaction(
   on: boolean,
 ): Promise<boolean> {
   try {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return false;
+    const userId = await currentUserId();
+    if (!userId) return false;
     if (on) {
       const { error } = await supabase.from('cohort_reactions').upsert(
-        { activity_id: activityId, user_id: user.id, label: key },
+        { activity_id: activityId, user_id: userId, label: key },
         { onConflict: 'activity_id,user_id,label', ignoreDuplicates: true },
       );
       return !error;
     }
     const { error } = await supabase.from('cohort_reactions')
       .delete()
-      .match({ activity_id: activityId, user_id: user.id, label: key });
+      .match({ activity_id: activityId, user_id: userId, label: key });
     return !error;
   } catch {
     return false;

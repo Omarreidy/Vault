@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase } from './supabase';
+import { supabase, currentUserId } from './supabase';
 import { dedupeAccounts, dedupeTransactions } from './plaidMath';
 
 export type TimelineCategory = 'savings' | 'investing' | 'debt' | 'income' | 'milestone';
@@ -437,7 +437,10 @@ export function useTimeline(plaidConnected?: boolean): TimelineState {
 
     async function load() {
       try {
-        const { data: { user } } = await supabase.auth.getUser();
+        // Read the session locally rather than re-validating over the network:
+        // getUser() put an untimed round trip in front of every Timeline load.
+        const { data: { session } } = await supabase.auth.getSession();
+        const user = session?.user;
         if (!user || cancelled) {
           setState(s => ({ ...s, loading: false }));
           return;
