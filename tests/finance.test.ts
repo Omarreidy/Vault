@@ -140,6 +140,70 @@ test('duplicate paychecks from a double-stored item do not double income', () =>
   assert.equal(estimateMonthlyIncome(dedupeTransactions([pay, { ...pay }])), 2600);
 });
 
+// ── spend excludes money that never left (regression: inflated monthly spend) ─
+//
+// sumSpend used to total every positive amount, which booked a member's own
+// money movement as consumption. Paying a $500 card bill from checking counted
+// the same $500 twice (once as the purchases on the card, once as the payment),
+// and moving money into savings — the opposite of spending — raised reported
+// spend by the amount saved.
+
+test('a credit-card payment is not spend — its purchases were already counted', () => {
+  const purchase = tx({ transaction_id: 'p1', amount: 500, category: ['Shops'] });
+  const cardBill = tx({ transaction_id: 'p2', amount: 500, category: ['Payment', 'Credit Card'] });
+  assert.equal(sumSpend([purchase, cardBill]), 500, 'not 1000');
+});
+
+test('moving money into savings is not spending', () => {
+  const toSavings = tx({ transaction_id: 's1', amount: 800, category: ['Transfer', 'Savings'] });
+  const groceries = tx({ transaction_id: 's2', amount: 120, category: ['Food and Drink', 'Groceries'] });
+  assert.equal(sumSpend([toSavings, groceries]), 120);
+});
+
+test('rent IS spending — only card payments are excluded, not all Payment rows', () => {
+  const rent = tx({ transaction_id: 'r1', amount: 1850, category: ['Payment', 'Rent'] });
+  assert.equal(sumSpend([rent]), 1850);
+});
+
+test("Plaid's current taxonomy is honoured for transfers and card payments", () => {
+  const transfer = tx({ amount: 400, category: null, personal_finance_category: { primary: 'TRANSFER_OUT', detailed: 'TRANSFER_OUT_SAVINGS' } });
+  const card = tx({ amount: 300, category: null, personal_finance_category: { primary: 'LOAN_PAYMENTS', detailed: 'LOAN_PAYMENTS_CREDIT_CARD_PAYMENT' } });
+  const real = tx({ amount: 60, category: null, personal_finance_category: { primary: 'FOOD_AND_DRINK', detailed: 'FOOD_AND_DRINK_GROCERIES' } });
+  assert.equal(sumSpend([transfer, card, real]), 60);
+});
+
+// ── income counts wages, not internal transfers ──────────────────────────────
+
+test('a direct-deposited paycheck counts even though Plaid tags it Transfer', () => {
+  // The most common real shape. Excluding everything tagged Transfer would
+  // report zero income for most members.
+  const paycheck = tx({ amount: -3200, category: ['Transfer', 'Payroll'] });
+  assert.equal(estimateMonthlyIncome([paycheck]), 3200);
+});
+
+test('a bare transfer from your own savings is not income', () => {
+  const fromSavings = tx({ amount: -1000, category: ['Transfer', 'Deposit'] });
+  assert.equal(estimateMonthlyIncome([fromSavings]), 0);
+});
+
+test('income is recognised from the current taxonomy when the legacy field is gone', () => {
+  const wages = tx({ amount: -2800, category: null, personal_finance_category: { primary: 'INCOME', detailed: 'INCOME_WAGES' } });
+  assert.equal(estimateMonthlyIncome([wages]), 2800, 'a 0 here silently substitutes the $5,000 score fallback');
+});
+
+test('mixed month: wages counted once, transfers and card payment excluded', () => {
+  const rows = [
+    tx({ transaction_id: 'a', amount: -3000, category: ['Transfer', 'Payroll'] }),
+    tx({ transaction_id: 'b', amount: -600, category: ['Transfer', 'Deposit'] }),
+    tx({ transaction_id: 'c', amount: 1850, category: ['Payment', 'Rent'] }),
+    tx({ transaction_id: 'd', amount: 420, category: ['Payment', 'Credit Card'] }),
+    tx({ transaction_id: 'e', amount: 500, category: ['Transfer', 'Savings'] }),
+    tx({ transaction_id: 'f', amount: 240, category: ['Food and Drink'] }),
+  ];
+  assert.equal(estimateMonthlyIncome(rows), 3000, 'the savings transfer is not income');
+  assert.equal(sumSpend(rows), 2090, 'rent + food only — not the card bill or the savings transfer');
+});
+
 // ── deleted & reconnected accounts (regression D6) ───────────────────────────
 test('re-linked institution (same account, new account_id) is not double-counted', () => {
   const original = acct({ account_id: 'item1-acc', name: 'Everyday Checking', mask: '4321', balances: { current: 8000 } });

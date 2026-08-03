@@ -31,13 +31,19 @@ export interface PlaidTransaction {
   pending?: boolean | null;
   amount?: number | null;
   category?: string[] | null;
+  /** Plaid's current taxonomy. The legacy `category` array is being retired. */
+  personal_finance_category?: { primary?: string | null; detailed?: string | null } | null;
   name?: string | null;
   date?: string | null;
 }
 
 export const SAVINGS_SUBTYPES = ['savings', 'money market', 'cd'];
 export const INVESTMENT_SUBTYPES = ['brokerage', '401k', 'ira', 'roth', '403b', '529'];
-export const INCOME_CATEGORIES = ['Payroll', 'Deposit', 'Income'];
+
+// Earned income only. 'Deposit' is deliberately absent: Plaid files a transfer
+// from your own savings as ['Transfer', 'Deposit'], and counting that as income
+// inflated monthly income by the size of every internal transfer.
+export const INCOME_CATEGORIES = ['Payroll', 'Income'];
 
 const num = (v: unknown): number => (typeof v === 'number' && isFinite(v) ? v : 0);
 
@@ -120,14 +126,60 @@ export function sumBalances(accounts: PlaidAccount[], key: 'current' | 'limit'):
   return (accounts ?? []).reduce((s, a) => s + num(a?.balances?.[key]), 0);
 }
 
-/** Plaid legacy category match: money in + Payroll/Deposit/Income category. */
+/** Legacy category array, lowercased, never null. */
+function legacyCats(t: PlaidTransaction): string[] {
+  return (t?.category ?? []).filter((c): c is string => typeof c === 'string');
+}
+
+/**
+ * Money moved between the member's own accounts, or a credit-card bill being
+ * paid. Neither is consumption and neither belongs in monthly spend:
+ *
+ *   • A card payment double-counts. The purchases it settles were already
+ *     counted as spend on the card itself, so adding the payment from checking
+ *     books the same money twice.
+ *   • A transfer into savings is the opposite of spending, yet it used to raise
+ *     reported spend by the amount saved.
+ *
+ * ['Payment', 'Rent'] is real spending and must NOT be excluded — only card
+ * payments are, which is why this checks for the pairing rather than 'Payment'.
+ */
+export function isTransferOrCardPayment(t: PlaidTransaction): boolean {
+  const pfc = t?.personal_finance_category;
+  const primary = typeof pfc?.primary === 'string' ? pfc.primary.toUpperCase() : '';
+  const detailed = typeof pfc?.detailed === 'string' ? pfc.detailed.toUpperCase() : '';
+  if (primary.startsWith('TRANSFER_')) return true;
+  if (detailed.includes('CREDIT_CARD_PAYMENT')) return true;
+
+  const cats = legacyCats(t);
+  if (cats.some(c => c === 'Transfer')) return true;
+  if (cats.some(c => c === 'Payment') && cats.some(c => /credit card/i.test(c))) return true;
+  return false;
+}
+
+/**
+ * Earned money in. Reads Plaid's current taxonomy first and falls back to the
+ * legacy category array, because the legacy field is being retired and an
+ * income figure of 0 silently substitutes a hardcoded fallback in the score.
+ * Internal transfers are excluded — they are not income.
+ */
 export function isIncomeTx(t: PlaidTransaction): boolean {
-  return (
-    num(t?.amount) < 0 &&
-    INCOME_CATEGORIES.some(c =>
-      (t?.category ?? []).some(tc => typeof tc === 'string' && tc.includes(c)),
-    )
-  );
+  if (num(t?.amount) >= 0) return false;
+
+  // Current taxonomy is unambiguous where present.
+  const primary = t?.personal_finance_category?.primary;
+  if (typeof primary === 'string') {
+    const p = primary.toUpperCase();
+    if (p === 'INCOME') return true;
+    if (p.startsWith('TRANSFER_')) return false;
+  }
+
+  // An explicit income marker wins over the Transfer tag: Plaid files a
+  // direct-deposited paycheck as ['Transfer', 'Payroll']. Excluding everything
+  // tagged Transfer would discard real wages and report zero income.
+  // A bare ['Transfer', 'Deposit'] carries no such marker and is money arriving
+  // from another of the member's own accounts, so it correctly falls through.
+  return INCOME_CATEGORIES.some(c => legacyCats(t).some(tc => tc.includes(c)));
 }
 
 /** |sum| of income transactions over the stored window; 0 when none. Unrounded. */
@@ -138,13 +190,19 @@ export function estimateMonthlyIncome(transactions: PlaidTransaction[]): number 
 }
 
 /**
- * Spend over the stored window = sum of positive amounts. Refunds/reversals
- * (negative, non-income) deliberately do NOT offset spend — legacy Plaid
- * categories cannot reliably distinguish a refund from an own-account
+ * Spend over the stored window = money that actually left, excluding movement
+ * between the member's own accounts and credit-card bill payments (see
+ * isTransferOrCardPayment — counting those inflated reported spend, badly for
+ * anyone who pays a card from checking or saves regularly).
+ *
+ * Refunds/reversals (negative, non-income) still deliberately do NOT offset
+ * spend: Plaid's categories cannot reliably tell a refund from an own-account
  * transfer. Documented in qa/FINANCIAL_SPEC.md §4. Unrounded.
  */
 export function sumSpend(transactions: PlaidTransaction[]): number {
-  return (transactions ?? []).filter(t => num(t?.amount) > 0).reduce((s, t) => s + num(t.amount), 0);
+  return (transactions ?? [])
+    .filter(t => num(t?.amount) > 0 && !isTransferOrCardPayment(t))
+    .reduce((s, t) => s + num(t.amount), 0);
 }
 
 /** Canonical net worth: checking + savings + investments − credit debt. Unrounded. */
