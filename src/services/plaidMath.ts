@@ -89,6 +89,13 @@ export function dedupeTransactions<T extends PlaidTransaction>(transactions: T[]
     if (t.pending_transaction_id) supersededPendingIds.add(t.pending_transaction_id);
   }
   const seen = new Set<string>();
+  // A re-linked bank arrives as a NEW Plaid Item whose transactions carry fresh
+  // transaction_ids for the same real-world payments, so id matching alone lets
+  // every reconnect duplicate a member's whole window — tripling reported income
+  // and spend for anyone who reconnected twice. The server now drops superseded
+  // Items on connect; this is the second line of defence, matching on what the
+  // transaction actually *is* rather than on the id Plaid happened to mint.
+  const seenIdentity = new Set<string>();
   const out: T[] = [];
   for (const t of txs) {
     const id = t.transaction_id;
@@ -97,6 +104,22 @@ export function dedupeTransactions<T extends PlaidTransaction>(transactions: T[]
       if (supersededPendingIds.has(id)) continue;
       seen.add(id);
     }
+
+    // Same date, same exact amount, same merchant, same account = the same
+    // payment seen twice. Two genuinely separate purchases matching on all four
+    // is possible but rare, and under-counting one coffee is a far smaller error
+    // than double-counting an entire month.
+    const identity = [
+      t.date ?? '',
+      String(num(t.amount)),
+      String(t.name ?? '').toLowerCase().trim(),
+      String((t as any).account_id ?? ''),
+    ].join('|');
+    if (t.date && t.name) {
+      if (seenIdentity.has(identity)) continue;
+      seenIdentity.add(identity);
+    }
+
     out.push(t);
   }
   return out;

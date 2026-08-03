@@ -84,6 +84,42 @@ Deno.serve(async (req) => {
       updated_at: new Date().toISOString(),
     }, { onConflict: 'item_id' });
 
+    // Plaid issues a NEW item_id every time the same bank is re-linked, so the
+    // upsert above never matches an existing row — it inserts another one. Left
+    // alone, each reconnect duplicated the member's whole transaction window
+    // under fresh transaction_ids that dedupeTransactions() cannot recognise,
+    // inflating reported income, spend, and the Vault Score derived from them.
+    //
+    // Identify the same institution the way dedupeAccounts does — by the set of
+    // (name, mask) pairs — and drop the older rows. Best-effort: a cleanup
+    // failure must never fail a successful bank connection.
+    try {
+      const fingerprint = (accts: any[]): string =>
+        (accts ?? [])
+          .map(a => `${String(a?.name ?? '').toLowerCase()}|${String(a?.mask ?? '')}`)
+          .sort()
+          .join(',');
+
+      const current = fingerprint(accountsData.accounts);
+      if (current) {
+        const { data: existing } = await supabase
+          .from('plaid_items')
+          .select('id, item_id, accounts')
+          .eq('user_id', user.id);
+
+        const superseded = (existing ?? [])
+          .filter((row: any) => row.item_id !== item_id && fingerprint(row.accounts) === current)
+          .map((row: any) => row.id);
+
+        if (superseded.length > 0) {
+          await supabase.from('plaid_items').delete().in('id', superseded);
+          console.log(`plaid-exchange: removed ${superseded.length} superseded item(s) for the same institution`);
+        }
+      }
+    } catch (e) {
+      console.warn('plaid-exchange: superseded-item cleanup failed', String(e));
+    }
+
     return new Response(JSON.stringify({
       accounts: accountsData.accounts,
       transactions,
