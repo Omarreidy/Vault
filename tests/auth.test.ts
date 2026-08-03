@@ -251,6 +251,27 @@ test('a server that fails to generate is retried, and the member never sees the 
   assert.equal(sent.length, 2, 'the failed generation was retried automatically');
 });
 
+test('a cold ticker polls for the background report instead of holding one long request', async () => {
+  mockAuth({ session: session(50 * 60_000) });
+  // The shape the server now returns: market data immediately, analysis later.
+  const sent = mockFetch([
+    { status: 200, body: { ticker: 'ETN', price: '$412.00', analysisPending: true } },
+    { status: 200, body: { ticker: 'ETN', price: '$412.00', analysisPending: true } },
+    { status: 200, body: { ticker: 'ETN', price: '$412.00', verdict: 'BUY', businessModel: 'Real analysis.' } },
+  ]);
+
+  const started = Date.now();
+  const data = await fetchCompanyResearch('ETN');
+  const elapsed = Date.now() - started;
+
+  assert.equal(data.verdict, 'BUY', 'the completed report is what the caller receives');
+  assert.equal(data.analysisPending, undefined, 'a pending response is never returned to the UI');
+  assert.equal(sent.length, 3, 'polled until the report was ready');
+  // The point of the design: no single request is long-lived. iOS aborts long
+  // requests below any JS timeout, which is what broke first-time lookups.
+  assert.ok(elapsed >= 3000, 'polling actually waited between attempts');
+});
+
 test('a bad ticker is not retried — only server failures are', async () => {
   mockAuth({ session: session(50 * 60_000) });
   const sent = mockFetch([

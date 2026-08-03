@@ -27,23 +27,53 @@ function cacheClient() {
   );
 }
 
-/** Returns a cached analysis for this ticker, or null on miss/stale/any error. */
-async function readCachedAnalysis(ticker: string): Promise<Record<string, unknown> | null> {
+/** How long a 'generating' marker is trusted before we assume the task died. */
+const GENERATING_STALE_MS = 3 * 60 * 1000;
+
+type CacheState =
+  | { kind: 'ready'; analysis: Record<string, unknown> }
+  | { kind: 'generating' }
+  | { kind: 'absent' };
+
+/** What the cache currently knows about this ticker. Never throws. */
+async function readCacheState(ticker: string): Promise<CacheState> {
   try {
     const { data } = await cacheClient()
       .from('company_research_cache')
-      .select('analysis, model, created_at')
+      .select('analysis, model, status, created_at')
       .eq('ticker', ticker)
       .maybeSingle();
-    if (!data) return null;
+    if (!data) return { kind: 'absent' };
+
+    const ageMs = Date.now() - new Date(data.created_at).getTime();
+
+    // Someone else is already generating this ticker. Don't start a second
+    // identical job — unless the marker is old enough that the task plainly
+    // died (a worker can be evicted mid-flight), in which case retry it.
+    if (data.status === 'generating') {
+      return ageMs > GENERATING_STALE_MS ? { kind: 'absent' } : { kind: 'generating' };
+    }
+
     // A model change invalidates: a cached report from a different model is not
     // what this deployment promises to return.
-    if (data.model !== RESEARCH_MODEL) return null;
-    if (Date.now() - new Date(data.created_at).getTime() > ANALYSIS_TTL_MS) return null;
-    return data.analysis ?? null;
+    if (data.model !== RESEARCH_MODEL) return { kind: 'absent' };
+    if (ageMs > ANALYSIS_TTL_MS) return { kind: 'absent' };
+    const analysis = data.analysis as Record<string, unknown> | null;
+    return analysis && Object.keys(analysis).length > 0
+      ? { kind: 'ready', analysis }
+      : { kind: 'absent' };
   } catch {
-    return null; // cache must never break the endpoint
+    return { kind: 'absent' }; // cache must never break the endpoint
   }
+}
+
+/** Claim this ticker so concurrent searches don't each start a generation. */
+async function markGenerating(ticker: string): Promise<void> {
+  try {
+    await cacheClient()
+      .from('company_research_cache')
+      .upsert({ ticker, analysis: {}, model: null, status: 'generating', created_at: new Date().toISOString() });
+  } catch { /* worst case we generate twice; never fail the request over it */ }
 }
 
 /** Best-effort write-through; failures are swallowed so a cache problem can't fail a request. */
@@ -51,8 +81,48 @@ async function writeCachedAnalysis(ticker: string, analysis: Record<string, unkn
   try {
     await cacheClient()
       .from('company_research_cache')
-      .upsert({ ticker, analysis, model: RESEARCH_MODEL, created_at: new Date().toISOString() });
+      .upsert({ ticker, analysis, model: RESEARCH_MODEL, status: 'ready', created_at: new Date().toISOString() });
   } catch { /* ignore */ }
+}
+
+/** Release the claim so the next search retries rather than polling a job that failed. */
+async function clearGenerating(ticker: string): Promise<void> {
+  try {
+    await cacheClient().from('company_research_cache').delete().eq('ticker', ticker).eq('status', 'generating');
+  } catch { /* ignore */ }
+}
+
+/**
+ * Produce and cache the analysis. Runs detached from the HTTP response via
+ * EdgeRuntime.waitUntil, so nothing is waiting on the connection while it works.
+ */
+async function generateAndCache(client: Anthropic, ticker: string, prompt: string): Promise<void> {
+  for (let attempt = 1; attempt <= GENERATION_ATTEMPTS; attempt++) {
+    try {
+      const response = await client.messages.create({
+        model: RESEARCH_MODEL,
+        max_tokens: MAX_TOKENS,
+        messages: [{ role: 'user', content: prompt }],
+        // Nudge the model straight into the object on a retry: the wrapper prose
+        // that broke the first parse can't be emitted before it.
+        ...(attempt > 1 ? { system: 'Reply with the JSON object only. No preamble, no markdown fences.' } : {}),
+      });
+      const text = response.content[0].type === 'text' ? response.content[0].text : '';
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      const parsed = jsonMatch ? JSON.parse(jsonMatch[0]) : null;
+      if (parsed && Object.keys(parsed).length > 0) {
+        await writeCachedAnalysis(ticker, parsed);
+        return;
+      }
+      console.warn(`company-research ${ticker}: attempt ${attempt} produced no parseable object`);
+    } catch (err) {
+      console.warn(`company-research ${ticker}: attempt ${attempt} failed`, String(err));
+    }
+  }
+  // Every attempt failed. Drop the claim so the member's next search starts a
+  // fresh job instead of polling a marker that will never resolve.
+  console.error(`company-research ${ticker}: generation failed after ${GENERATION_ATTEMPTS} attempts`);
+  await clearGenerating(ticker);
 }
 
 Deno.serve(async (req) => {
@@ -61,7 +131,6 @@ Deno.serve(async (req) => {
   // Signed-in members only — this endpoint spends real Anthropic + FMP tokens.
   let user: { id: string };
   try { user = await requireUser(req); } catch (r) { return r as Response; }
-  if (!(await allowRequest(user.id, 'company-research', 12, 60))) return tooManyRequests();
 
   // Ticker is interpolated into third-party API URLs AND the model prompt, so
   // constrain it to a real symbol shape — no query params, paths, or prose.
@@ -73,6 +142,28 @@ Deno.serve(async (req) => {
     });
   }
   const ticker = rawTicker.toUpperCase();
+
+  // A poll — the client already has this ticker's market data and is only
+  // waiting on the analysis. Answer from the cache alone: no market-data fetch
+  // (5 third-party calls) and no rate-limit charge. Polls run every few seconds,
+  // so charging them would exhaust a budget sized for real searches within one
+  // lookup, and re-fetching quotes each time would burn the FMP quota for
+  // numbers the client is already showing.
+  if (body?.awaiting === true) {
+    const polled = await readCacheState(ticker);
+    if (polled.kind !== 'ready') {
+      return new Response(JSON.stringify({ ticker, analysisPending: true }), {
+        headers: { ...cors, 'Content-Type': 'application/json' },
+      });
+    }
+    // Ready: fall through so the report is returned with fresh market data.
+  }
+
+  // Rate-limit real searches only. This is a cost guard for generation, not an
+  // authorization control — auth is requireUser above.
+  if (body?.awaiting !== true && !(await allowRequest(user.id, 'company-research', 12, 60))) {
+    return tooManyRequests();
+  }
 
   try {
     const fmp = Deno.env.get('FMP_KEY')!;
@@ -175,49 +266,66 @@ Return ONLY a valid JSON object with these exact fields (no markdown, no explana
   "vaultAngle": "what this means for a retail investor building wealth"
 }`;
 
-    // Cache hit → skip the ~25–30s generation entirely. Market data above was
-    // already fetched fresh, so the merged response is still current.
-    let analysis: any = await readCachedAnalysis(ticker);
-    const cacheHit = analysis != null;
+    // Market data above was fetched fresh regardless, so a cached analysis is
+    // still merged with current numbers.
+    let analysis: any;
+    const state = await readCacheState(ticker);
 
-    if (!cacheHit) {
-      // A first-ever lookup must produce a real report, not a page of "loading…"
-      // placeholders. The dominant failure is the model's JSON not parsing —
-      // usually truncation at the token ceiling, occasionally stray prose around
-      // the object. Both are retryable, and a member would rather wait than
-      // retype a ticker that was never wrong, so we retry rather than degrade.
-      analysis = {};
-      for (let attempt = 1; attempt <= GENERATION_ATTEMPTS; attempt++) {
-        try {
-          const response = await client.messages.create({
-            model: RESEARCH_MODEL,
-            max_tokens: MAX_TOKENS,
-            messages: [{ role: 'user', content: prompt }],
-            // Nudge the model straight into the object on a retry: the wrapper
-            // prose that broke the first parse can't be emitted before it.
-            ...(attempt > 1 ? { system: 'Reply with the JSON object only. No preamble, no markdown fences.' } : {}),
-          });
+    // Generation takes 25–30s, and a phone cannot hold a connection open that
+    // long: iOS aborts long requests at the network layer, beneath any timeout
+    // JavaScript can set. That is why a member's first lookup of a ticker failed
+    // and the second — served from cache in ~1s — succeeded.
+    //
+    // So we never make the caller wait for generation. Market data is fetched
+    // and returned right away; the analysis is produced in the background and
+    // the client polls for it. Every request finishes in a couple of seconds,
+    // which leaves nothing for iOS to cut off.
+    // Only clients that know how to poll are given a pending response. Builds
+    // shipped before this change would render `analysisPending` as a report with
+    // every analysis field blank, so they keep the old blocking behaviour — worse
+    // latency, but a complete report rather than an empty-looking one.
+    const clientPolls = body?.poll === true;
 
-          const text = response.content[0].type === 'text' ? response.content[0].text : '';
-          const jsonMatch = text.match(/\{[\s\S]*\}/);
-          const parsed = jsonMatch ? JSON.parse(jsonMatch[0]) : null;
-          if (parsed && Object.keys(parsed).length > 0) { analysis = parsed; break; }
-          console.warn(`company-research ${ticker}: attempt ${attempt} produced no parseable object`);
-        } catch (err) {
-          console.warn(`company-research ${ticker}: attempt ${attempt} failed`, String(err));
-        }
+    if (state.kind !== 'ready' && clientPolls) {
+      if (state.kind === 'absent') {
+        await markGenerating(ticker);
+        // Detach from the response: waitUntil keeps the worker alive for the
+        // task without the client waiting on it.
+        const work = generateAndCache(client, ticker, prompt);
+        // @ts-ignore — EdgeRuntime is provided by the Supabase runtime.
+        if (typeof EdgeRuntime !== 'undefined') EdgeRuntime.waitUntil(work);
+        else void work;
       }
 
-      // Every attempt failed. Say so instead of returning a report shaped like a
-      // real one but filled with placeholders — the client can retry an error,
-      // but it cannot tell that a 200 is hollow.
+      // Market data is real and current; only the analysis is still coming.
+      return new Response(JSON.stringify({
+        ticker,
+        name: companyName,
+        sector,
+        price: `$${Number(currentPrice).toFixed(2)}`,
+        change: parseFloat(Number(changePct).toFixed(2)),
+        marketCap: marketCapStr,
+        peRatio: peRatio !== 'N/A' && peRatio != null ? (typeof peRatio === 'number' ? peRatio.toFixed(1) : peRatio) : 'N/A',
+        revenue: revenueTTM,
+        analysisPending: true,
+      }), { headers: { ...cors, 'Content-Type': 'application/json' } });
+    }
+
+    if (state.kind === 'ready') {
+      analysis = state.analysis;
+    } else {
+      // Legacy client: generate inline as before and answer with the finished
+      // report. Slower, and still subject to the mobile network timeout that
+      // polling exists to avoid — but correct for a build that cannot poll.
+      analysis = {};
+      await generateAndCache(client, ticker, prompt);
+      const after = await readCacheState(ticker);
+      if (after.kind === 'ready') analysis = after.analysis;
       if (Object.keys(analysis).length === 0) {
         return new Response(JSON.stringify({ error: 'Research is temporarily unavailable for this ticker.' }), {
           status: 503, headers: { ...cors, 'Content-Type': 'application/json' },
         });
       }
-
-      await writeCachedAnalysis(ticker, analysis);
     }
 
     const [week52Low, week52High] = (profile.range ?? '').split('-').map((s: string) => s.trim());

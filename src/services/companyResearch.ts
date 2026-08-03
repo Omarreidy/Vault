@@ -3,15 +3,38 @@ import { callFunction, AuthExpiredError, NetworkError, FunctionError } from './s
 const RESEARCH_TTL = 30 * 60 * 1000; // 30 minutes per ticker
 const researchCache = new Map<string, { data: any; ts: number }>();
 
-// A cold ticker costs ~25s to generate, and the server now retries once itself,
-// so a worst-case successful response can take well over a minute. This ceiling
-// exists only to make a dead connection settle — never to cut off a report that
-// is still coming.
-const RESEARCH_TIMEOUT_MS = 150_000;
+// Every request now returns in a couple of seconds — the server never holds the
+// connection open while generating — so this ceiling only has to cover a normal
+// round trip. Keeping requests short is the point: iOS aborts long-running
+// requests at the network layer, below any timeout we can set here, which is
+// what made a member's first lookup of a ticker fail while the second (served
+// from cache) succeeded.
+const RESEARCH_TIMEOUT_MS = 25_000;
 
-/** Server-side failures (503, 5xx) are worth one more try; auth and input errors are not. */
+/** How long to keep polling for a report the server is generating in the background. */
+const GENERATION_WAIT_MS = 120_000;
+const POLL_INTERVAL_MS = 3_000;
+
+const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
+
+/** Server-side failures are worth one more try; auth and input errors are not. */
 function worthRetrying(err: unknown): boolean {
   return err instanceof FunctionError && err.status >= 500;
+}
+
+/**
+ * One request. `awaiting` marks a poll for an in-flight report: the server then
+ * answers from cache alone, skipping the market-data fetch and the rate-limit
+ * charge, neither of which a poll should pay for.
+ */
+async function requestResearch(ticker: string, awaiting = false): Promise<any> {
+  const opts = { body: { ticker, poll: true, awaiting }, timeoutMs: RESEARCH_TIMEOUT_MS };
+  try {
+    return await callFunction('company-research', opts);
+  } catch (err) {
+    if (!worthRetrying(err)) throw err;
+    return await callFunction('company-research', opts);
+  }
 }
 
 export async function fetchCompanyResearch(ticker: string): Promise<any> {
@@ -21,22 +44,21 @@ export async function fetchCompanyResearch(ticker: string): Promise<any> {
     return cached.data;
   }
 
-  // Looking up a ticker must work the first time a member asks. callFunction
-  // already refreshes and replays once on an expired token; this adds one more
-  // attempt for a server that couldn't produce a report, so between the two
-  // layers a cold ticker gets four generation attempts before anyone sees an
-  // error. Slower is the correct trade — retyping a valid ticker is not.
-  const request = () => callFunction('company-research', {
-    body: { ticker: key },
-    timeoutMs: RESEARCH_TIMEOUT_MS,
-  });
+  let data = await requestResearch(key);
 
-  let data: any;
-  try {
-    data = await request();
-  } catch (err) {
-    if (!worthRetrying(err)) throw err;
-    data = await request();
+  // A ticker nobody has looked up yet comes back immediately with real market
+  // data and `analysisPending`, while the report is written in the background.
+  // Poll for it with short requests rather than holding one long one open.
+  const deadline = Date.now() + GENERATION_WAIT_MS;
+  while (data?.analysisPending && Date.now() < deadline) {
+    await sleep(POLL_INTERVAL_MS);
+    data = await requestResearch(key, true);
+  }
+
+  // Still pending at the deadline: the report genuinely isn't coming. Say so
+  // rather than handing back a page with every analysis field missing.
+  if (data?.analysisPending) {
+    throw new FunctionError('Research is taking longer than expected. Try again in a moment.', 503);
   }
 
   researchCache.set(key, { data, ts: Date.now() });
