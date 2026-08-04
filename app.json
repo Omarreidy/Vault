@@ -52,7 +52,7 @@
       "expo-font",
       "expo-notifications"
     ],
-    "privacyPolicyUrl": "https://vault-r4zwi63m1-vault-s-projects5.vercel.app/privacy",
+    "privacyPolicyUrl": "https://getsvault.com/privacy",
     "extra": {
       "eas": {
         "projectId": "1bd77465-3a6e-4210-a447-faee867083cb"

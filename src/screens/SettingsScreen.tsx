@@ -38,9 +38,13 @@ const HOUR_LABELS = Array.from({ length: 24 }, (_, h) => {
 });
 const fmtHour = (h: number) => HOUR_LABELS[((h % 24) + 24) % 24];
 
-const APP_STORE_URL  = 'https://apps.apple.com/app/id6740384574';
+// Must match `ascAppId` in eas.json — that is the App Store Connect record
+// submissions actually go to. A mismatched id opens a 404 store page.
+const APP_STORE_URL  = 'https://apps.apple.com/app/id6781484270';
 const PLAY_STORE_URL = 'https://play.google.com/store/apps/details?id=com.getvault.app';
-const INVITE_URL     = 'https://getvault.app';
+// getvault.app was never registered and does not resolve; every invite sent
+// before this carried a dead link. getsvault.com is the live marketing site.
+const INVITE_URL     = 'https://getsvault.com';
 
 // ─── Sub-components ──────────────────────────────────────────────────────────
 
@@ -303,7 +307,7 @@ export default function SettingsScreen({ onClose, onResetOnboarding }: Props) {
         `Market insights: ${notifInsight ? 'On' : 'Off'}`,
         '',
         'VAULT · Building wealth differently',
-        'getvault.app',
+        'getsvault.com',
       ];
       await Share.share({
         title: 'My VAULT Data Export',
