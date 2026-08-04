@@ -93,11 +93,35 @@ console.log('                 build 26 (old)      build 27 (new)');
 console.log(`monthly income   ${money(oldIncome).padEnd(19)}${money(newIncome)}`);
 console.log(`monthly spend    ${money(oldSpend).padEnd(19)}${money(newSpend)}`);
 
-const excluded = tx.filter(t => num(t.amount) > 0 && isTransferOrCard(t));
-if (excluded.length) {
-  console.log(`\nno longer counted as spending (${excluded.length}, ${money(sum(excluded))}):`);
-  for (const t of excluded.slice(0, 12)) {
-    console.log(`  ${money(Math.abs(num(t.amount))).padStart(12)}  ${String(t.name ?? '').slice(0, 40)}`);
-  }
+console.log(`\nplaid_items rows: ${rows.length}  (more than one per bank means duplicates)`);
+
+const counted = tx.filter(t => num(t.amount) > 0 && !isTransferOrCard(t));
+console.log(`\n─── COUNTED AS SPEND (${counted.length} = ${money(newSpend)}) ───`);
+console.log('Anything here that is not real spending is the bug:\n');
+for (const t of counted.sort((a, b) => num(b.amount) - num(a.amount))) {
+  console.log(
+    `  ${money(num(t.amount)).padStart(11)}  ${String(t.date ?? '').padEnd(11)}` +
+    `${String(t.name ?? '').slice(0, 32).padEnd(33)}${String((t.category ?? []).join('/')).slice(0, 30)}`,
+  );
 }
-console.log('\nNow compare the "new" column against the last 30 days in your bank app.');
+
+const excluded = tx.filter(t => num(t.amount) > 0 && isTransferOrCard(t));
+console.log(`\n─── EXCLUDED as transfer/card payment (${excluded.length} = ${money(sum(excluded))}) ───`);
+for (const t of excluded) {
+  console.log(
+    `  ${money(num(t.amount)).padStart(11)}  ${String(t.date ?? '').padEnd(11)}` +
+    `${String(t.name ?? '').slice(0, 32).padEnd(33)}${String((t.category ?? []).join('/')).slice(0, 30)}`,
+  );
+}
+
+const incomeRows = tx.filter(isIncomeNew);
+console.log(`\n─── COUNTED AS INCOME (${incomeRows.length} = ${money(newIncome)}) ───`);
+for (const t of incomeRows) {
+  console.log(
+    `  ${money(Math.abs(num(t.amount))).padStart(11)}  ${String(t.date ?? '').padEnd(11)}` +
+    `${String(t.name ?? '').slice(0, 32).padEnd(33)}${String((t.category ?? []).join('/')).slice(0, 30)}`,
+  );
+}
+
+console.log('\nCompare the COUNTED list against your bank statement. Anything in it');
+console.log('you did not actually spend is what I need to see.');
