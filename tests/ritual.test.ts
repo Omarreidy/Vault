@@ -14,7 +14,22 @@ import { loadStats, recordDailyScore, dailyDelta, hasRealDelta } from '../src/se
 import { recordActionStreak, getStreak } from '../src/services/streak';
 
 const store: Map<string, string> = (globalThis as any).__asyncStore;
-beforeEach(() => store.clear());
+
+// Streaks now read and write the server too, so each test starts signed out
+// with no profile row — the offline case — and opts in via withRemoteProfile.
+// Without this reset a remote streak would leak into every later test.
+beforeEach(() => {
+  store.clear();
+  const mock: any = (globalThis as any).__supabaseMock;
+  mock.auth.getSession = async () => ({ data: { session: null }, error: null });
+  mock.from = () => ({
+    select: () => mock.from(),
+    update: () => mock.from(),
+    eq: () => mock.from(),
+    maybeSingle: async () => ({ data: null, error: null }),
+    then: (res: any) => Promise.resolve({ data: null, error: null }).then(res),
+  });
+});
 
 const localDay = (offset: number) => {
   const d = new Date();
@@ -195,4 +210,74 @@ test('corrupt streak storage never yields NaN', async () => {
   store.set('@vault_streak_days', 'garbage');
   const r = await recordActionStreak();
   assert.equal(r.streak, 1);
+});
+
+// ── Server-persisted streaks ─────────────────────────────────────────────────
+//
+// Streaks used to live only in AsyncStorage, so reinstalling the app or moving
+// to a new phone silently reset them to zero. profiles.streak_days /
+// streak_last_action are now the durable copy, with the device as an offline
+// cache. These cover the reconciliation between the two.
+
+/** Sign a user in and serve/capture a profiles row through the supabase stub. */
+function withRemoteProfile(row: { streak_days: number; streak_last_action: string | null } | null) {
+  const writes: any[] = [];
+  const mock: any = (globalThis as any).__supabaseMock;
+  mock.auth.getSession = async () => ({
+    data: { session: { user: { id: 'user-1' }, access_token: 't', expires_at: 9e9 } },
+    error: null,
+  });
+  mock.from = () => {
+    const api: any = {
+      select: () => api,
+      update: (patch: any) => { writes.push(patch); return api; },
+      eq: () => api,
+      maybeSingle: async () => ({ data: row, error: null }),
+      then: (res: any) => Promise.resolve({ data: null, error: null }).then(res),
+    };
+    return api;
+  };
+  return writes;
+}
+
+test('a wiped device restores its streak from the server', async () => {
+  // Nothing in AsyncStorage — the state after a reinstall or a new phone.
+  withRemoteProfile({ streak_days: 12, streak_last_action: localDay(-1) });
+  assert.equal(await getStreak(), 12, 'streak survives the wipe');
+  const r = await recordActionStreak();
+  assert.deepEqual(r, { streak: 13, extended: true }, 'and keeps growing from there');
+});
+
+test('the more recent copy wins, so a stale backup cannot undo a live streak', async () => {
+  store.set('@vault_last_open_date', localDay(-9));
+  store.set('@vault_streak_days', '40');            // old restore, long dead
+  withRemoteProfile({ streak_days: 3, streak_last_action: localDay(0) }); // acted today
+  assert.equal(await getStreak(), 3);
+});
+
+test('on the same day the longer streak is kept, so upgrading costs nobody a day', async () => {
+  store.set('@vault_last_open_date', localDay(0));
+  store.set('@vault_streak_days', '21');            // earned locally pre-upgrade
+  withRemoteProfile({ streak_days: 0, streak_last_action: localDay(0) }); // server never written
+  assert.equal(await getStreak(), 21);
+});
+
+test('completing a move writes the streak through to the server', async () => {
+  store.set('@vault_last_open_date', localDay(-1));
+  store.set('@vault_streak_days', '6');
+  const writes = withRemoteProfile({ streak_days: 6, streak_last_action: localDay(-1) });
+  const r = await recordActionStreak();
+  assert.deepEqual(r, { streak: 7, extended: true });
+  assert.deepEqual(
+    writes.at(-1),
+    { streak_days: 7, streak_last_action: localDay(0) },
+    'server received the advanced streak',
+  );
+});
+
+test('a broken streak stays broken even when the server agrees it is old', async () => {
+  store.set('@vault_last_open_date', localDay(-4));
+  store.set('@vault_streak_days', '30');
+  withRemoteProfile({ streak_days: 30, streak_last_action: localDay(-4) });
+  assert.equal(await getStreak(), 0, 'four days idle is not a live streak');
 });
