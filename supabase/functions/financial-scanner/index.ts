@@ -33,9 +33,11 @@ Give a brutally honest financial verdict on what you see. Return ONLY a valid JS
 }
 
 Rules:
-- ASSET = generates value, appreciates, or builds wealth (investments, education, real estate, skills)
+- ASSET = generates value, appreciates, or builds wealth (investments, education, real estate, skills, precious metals and other stores of value)
 - LIABILITY = costs money, depreciates, or drains wealth (most consumer goods, financed items, unused subscriptions)
 - BUDGET CHECK = depends entirely on behavior (food, gym, entertainment — fine if intentional, harmful if unchecked)
+- Precious metals hold value and are NOT consumer goods. High-purity gold (22k, 24k), bullion, coins and bars are ASSETS — they track spot price and are bought as savings across much of the world. Judge them on purity and weight, not on the fact that they are worn.
+- Lower-purity or designer jewelry (10k, 14k, 18k, brand-name pieces) is mostly retail markup, not metal. Call it BUDGET CHECK and say plainly that resale is typically far below purchase price. Do not call it an ASSET just because it contains some gold.
 - If the image is blurry, unclear, or you cannot confidently identify the object, set itemName to "Unclear Photo" and verdict to "BUDGET CHECK". Explain what you think it might be but do NOT guess a specific category with false confidence.
 - Be specific and confident when you CAN see the item clearly.
 - Keep itemName short and recognizable.
@@ -153,11 +155,14 @@ Deno.serve(async (req) => {
   }
   const media_type = ALLOWED_MIME.has(mimeType as string) ? (mimeType as string) : 'image/jpeg';
 
-  // Ordered fallback chain: cheap+fast primary, stronger Anthropic model on a
-  // different serving pool, then a different vendor entirely (if configured).
+  // Ordered fallback chain. Sonnet leads because asset-vs-liability is a
+  // judgement call, not a lookup: Haiku classified a 24k gold necklace as a
+  // LIABILITY because it read "jewellery" as a consumer good. Haiku stays as
+  // the second rung so a Sonnet outage degrades the verdict quality rather
+  // than failing the scan, then a different vendor entirely (if configured).
   const providers = [
-    anthropicProvider('anthropic:claude-haiku-4-5', 'claude-haiku-4-5-20251001', imageBase64, media_type),
     anthropicProvider('anthropic:claude-sonnet-5', 'claude-sonnet-5', imageBase64, media_type),
+    anthropicProvider('anthropic:claude-haiku-4-5', 'claude-haiku-4-5-20251001', imageBase64, media_type),
     openAiProvider(imageBase64, media_type),
   ].filter((p): p is Provider<string> => p !== null);
 
