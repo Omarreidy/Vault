@@ -140,7 +140,7 @@ TO THE MAXIMUM EXTENT PERMITTED BY LAW, VAULT SHALL NOT BE LIABLE FOR ANY INDIRE
 
 ## 12. Governing Law
 
-These Terms are governed by the laws of the State of Delaware, without regard to conflict of law principles.
+These Terms are governed by the laws of the State of California, without regard to conflict of law principles. VAULT is operated by Vault Wealth LLC, a California limited liability company.
 
 ## 13. Contact
 

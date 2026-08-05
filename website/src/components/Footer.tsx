@@ -79,7 +79,8 @@ export default function Footer() {
             provided read-only via Plaid.
           </p>
           <p className="mt-4 text-[12px] text-parchment-faint">
-            © 2026 VAULT. All rights reserved.
+            © 2026 Vault Wealth LLC. All rights reserved. VAULT is a product of Vault Wealth LLC,
+            a California limited liability company.
           </p>
         </div>
       </div>
