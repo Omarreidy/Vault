@@ -276,5 +276,9 @@ const styles = StyleSheet.create({
   },
   btnOff: { opacity: 0.5 },
   btnTxt: { fontSize: FONTS.sizes.md, fontWeight: FONTS.weights.bold, color: '#08080C', letterSpacing: 0.3 },
-  legal: { fontSize: FONTS.sizes.xs, color: COLORS.textMuted, textAlign: 'center', lineHeight: 16 },
+  // The consent line a member reads before handing over bank access — what
+  // Plaid does, that VAULT is read-only, that credentials are never stored.
+  // textMuted put it at 1.77:1 against the background; consent nobody can read
+  // is not consent. textLegible is 5.30:1.
+  legal: { fontSize: FONTS.sizes.xs, color: COLORS.textLegible, textAlign: 'center', lineHeight: 16 },
 });

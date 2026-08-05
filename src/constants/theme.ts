@@ -28,6 +28,11 @@ export const COLORS = {
   textSub: '#3A3830',
   textDim: '#8A8478',
   textMuted: '#C4BEB4',
+  // Quiet but legible. textMuted sits at 1.77:1 on `background` and textDim at
+  // 3.55:1 — both below the 4.5:1 WCAG AA floor for body text, which is fine
+  // for decorative captions and not fine for anything a member must be able to
+  // read: subscription terms, legal links, restore controls. 5.30:1.
+  textLegible: '#6E6859',
 
   // Tier accent colors
   tierBronze: '#9B6A2F',

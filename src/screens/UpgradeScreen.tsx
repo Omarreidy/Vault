@@ -296,10 +296,15 @@ const styles = StyleSheet.create({
   ctaTxt: { fontSize: FONTS.sizes.md, fontWeight: FONTS.weights.bold, color: '#08080C', letterSpacing: 0.3 },
 
   restoreBtn: { alignItems: 'center', paddingVertical: SPACING.sm },
-  restoreTxt: { fontSize: FONTS.sizes.xs, color: COLORS.textMuted, textDecorationLine: 'underline' },
+  // Everything below the CTA is required reading, not decoration: App Store
+  // guideline 3.1.2 obliges the renewal terms and both legal links to be
+  // DISPLAYED, and restore-purchases has to be findable. textMuted rendered
+  // them at 1.77:1 against the background — technically present, practically
+  // invisible. textLegible is 5.30:1.
+  restoreTxt: { fontSize: FONTS.sizes.xs, color: COLORS.textLegible, textDecorationLine: 'underline' },
 
   legal: {
-    fontSize: FONTS.sizes.xs, color: COLORS.textMuted,
+    fontSize: FONTS.sizes.xs, color: COLORS.textLegible,
     textAlign: 'center', lineHeight: 18, letterSpacing: FONTS.tracking.normal,
   },
   policyRow: {
@@ -307,8 +312,8 @@ const styles = StyleSheet.create({
     gap: SPACING.sm, marginTop: SPACING.xs,
   },
   policyLink: {
-    fontSize: FONTS.sizes.xs, color: COLORS.textDim,
+    fontSize: FONTS.sizes.xs, color: COLORS.textLegible,
     textDecorationLine: 'underline', letterSpacing: FONTS.tracking.normal,
   },
-  policyDot: { fontSize: FONTS.sizes.xs, color: COLORS.textMuted },
+  policyDot: { fontSize: FONTS.sizes.xs, color: COLORS.textLegible },
 });
