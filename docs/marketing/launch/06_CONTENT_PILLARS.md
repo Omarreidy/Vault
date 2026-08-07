@@ -35,7 +35,7 @@ Platforms: TikTok, Instagram Reels, YouTube Shorts. No founder face required —
 - **VO style:** second-person, empathetic, never preachy; names the feeling precisely.
 - **Repeatable format:** **"Be honest"** — a series of named, specific micro-feelings ("payday amnesia," "the raise that changed nothing," "the Roth conversation you nodded through").
 - **Connection to VAULT:** last beat only — "this is the exact feeling VAULT was built for."
-- **CTA:** soft — "60 seconds, three questions, no bank login. See where you stand."
+- **CTA:** soft — "about 60 seconds, three questions, no bank login. See where you stand."
 - **Claims boundaries:** never shame ("it's your fault" framing banned); never invented statistics about "most people."
 - **Metrics focus:** completion rate + saves/shares (identity content spreads); installs are secondary here.
 
@@ -74,7 +74,7 @@ Platforms: TikTok, Instagram Reels, YouTube Shorts. No founder face required —
 - **VO style:** founder-adjacent but faceless — "let me show you" energy, plain language.
 - **Repeatable format:** **"Watch it work"** — one flow per video, start to finish, no jump cuts that hide steps (trust is the point). Includes the dedicated read-only/Plaid explainer and delete-account demo.
 - **Connection to VAULT:** is VAULT.
-- **CTA:** direct — "Free to try. Your first score takes 60 seconds, no bank login."
+- **CTA:** direct — "Free to try. Your first score takes about 60 seconds, no bank login."
 - **Claims boundaries:** demo account only; show honest states (including the Concierge saying it lacks data); never edit numbers in post.
 - **Metrics focus:** link taps → install → **connect rate** (this pillar exists to close).
 

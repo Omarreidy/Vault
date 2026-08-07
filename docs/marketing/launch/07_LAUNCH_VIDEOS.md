@@ -15,7 +15,7 @@ Platform defaults: TikTok = native text + trending-safe audio bed · Reels = cle
 - **Shots:** 1) static on a plain balance screen 2) cut to VAULT move card (idle-cash detector) 3) slow push on the impact figure 4) tap "Move it" → completion tick 5) end card.
 - **Recordings:** demo-account feed with idle-cash card; completion animation.
 - **On-screen text:** "$4,200. Doing nothing." → "VAULT calls this a move" → "Most take minutes."
-- **Caption:** Your bank shows the balance. It never mentions what the balance could be doing. VAULT finds the moves in your own accounts — read-only, via Plaid. First score takes 60 seconds, no bank login.
+- **Caption:** Your bank shows the balance. It never mentions what the balance could be doing. VAULT finds the moves in your own accounts — read-only, via Plaid. First score takes about 60 seconds, no bank login.
 - **CTA:** "Your accounts have moves in them. Link in bio."
 - **Audience/funnel:** 24–32 with cash buffer / **TOFU→BOFU** (the series workhorse).
 - **Platforms:** Shorts title: "How much of your checking account is idle?"
@@ -55,7 +55,7 @@ Platform defaults: TikTok = native text + trending-safe audio bed · Reels = cle
 - **Recordings:** missing-Roth card; Concierge explaining a Roth in plain words.
 - **On-screen text:** "You track what you have" → "VAULT flags what's missing" → "educational, always your call."
 - **Caption:** VAULT is educational — it explains account types and the order of operations; it never picks investments and it isn't investment advice. It just refuses to let the obvious go unmentioned.
-- **CTA:** "Find your gaps in 60 seconds. Link in bio."
+- **CTA:** "Find your gaps in about 60 seconds. Link in bio."
 - **Audience/funnel:** beginner-investor overlap / **MOFU**.
 - **Platforms:** Shorts: strong search intent ("do I need a Roth IRA").
 - **Hypothesis:** "what's missing" framing opens a distinct audience vs "what's wrong" framing.
@@ -68,7 +68,7 @@ Platform defaults: TikTok = native text + trending-safe audio bed · Reels = cle
 - **Recordings:** missing-HYSA detector card.
 - **On-screen text:** "one account = one job: waiting" → "the move: give it a job."
 - **Caption:** No bank partnerships, no referral kickbacks on this — VAULT flags the gap; you choose where. Read-only, always.
-- **CTA:** "Three questions. 60 seconds. See your gaps."
+- **CTA:** "Three questions. about 60 seconds. See your gaps."
 - **Audience/funnel:** early-career / **TOFU**.
 - **Platforms:** Reels: text-forward cut works best.
 - **Hypothesis:** "unemployed savings" personification drives saves.
@@ -97,7 +97,7 @@ Platform defaults: TikTok = native text + trending-safe audio bed · Reels = cle
 - **Shots:** text-on-screen over muted b-roll (commute window, direct-deposit push notification, ceiling at night); final beat: one move card.
 - **Recordings:** single move card for the last 3 seconds.
 - **On-screen text:** mirrors VO key lines: "drifting, at altitude" → "you were never taught *next*" → "here. this. today."
-- **Caption:** Earning fine and feeling behind aren't contradictions — they're what happens when nothing in your life says "next." 60 seconds, three questions, no bank login: see where you stand.
+- **Caption:** Earning fine and feeling behind aren't contradictions — they're what happens when nothing in your life says "next." about 60 seconds, three questions, no bank login: see where you stand.
 - **CTA:** soft bio-link.
 - **Audience/funnel:** core segment via feeling / **TOFU** (flagship identity piece).
 - **Platforms:** Reels-first (save-friendly); TikTok with quieter audio bed.
@@ -106,12 +106,12 @@ Platform defaults: TikTok = native text + trending-safe audio bed · Reels = cle
 
 ### V08 · Payday amnesia
 - **Hook:** "Day 1: rich. Day 3: where did it go. Every month. On schedule."
-- **Script/VO (~20s):** "Payday hits and for 48 hours you're a person with a plan. Then rent leaves, the card auto-pays, and the plan evaporates until next month. That cycle isn't a discipline problem — it's what happens when money only gets your attention twice a month. VAULT gives it sixty seconds a morning instead: what changed, what to do, done. Small attention, applied daily, beats big intentions applied never."
+- **Script/VO (~20s):** "Payday hits and for 48 hours you're a person with a plan. Then rent leaves, the card auto-pays, and the plan evaporates until next month. That cycle isn't a discipline problem — it's what happens when money only gets your attention twice a month. VAULT gives it about sixty seconds a morning instead: what changed, what to do, done. Small attention, applied daily, beats big intentions applied never."
 - **Shots:** calendar flipping; deposit notification; balance sag animation; cut to Daily Open delta screen; end card.
 - **Recordings:** Daily Open brief with delta.
-- **On-screen text:** "payday amnesia (n.)" → "attention twice a month" → "60 seconds, daily."
+- **On-screen text:** "payday amnesia (n.)" → "attention twice a month" → "about 60 seconds, daily."
 - **Caption:** Not a budgeting lecture. A rhythm. #paydayroutine
-- **CTA:** "Give your money 60 seconds tomorrow morning."
+- **CTA:** "Give your money about 60 seconds tomorrow morning."
 - **Audience/funnel:** broad young-professional / **TOFU**.
 - **Platforms:** TikTok native; Shorts title "Why your payday plan dies by day 3."
 - **Hypothesis:** naming a micro-phenomenon ("payday amnesia") earns comments/identification.
@@ -132,12 +132,12 @@ Platform defaults: TikTok = native text + trending-safe audio bed · Reels = cle
 
 ### V10 · Everyone assumes you've got it handled
 - **Hook:** "You're the friend people think is 'good with money.' You know better."
-- **Script/VO (~22s):** "You have the job, the direct deposit, the card that gets points. From outside: handled. Inside: you've been meaning to 'sort the money stuff' for three years. There was never a starting line — so you never started. Here's one: sixty seconds, three questions, a score, and then one specific thing to do. Not a course. Not a spreadsheet. A first step small enough to actually take."
+- **Script/VO (~22s):** "You have the job, the direct deposit, the card that gets points. From outside: handled. Inside: you've been meaning to 'sort the money stuff' for three years. There was never a starting line — so you never started. Here's one: about sixty seconds, three questions, a score, and then one specific thing to do. Not a course. Not a spreadsheet. A first step small enough to actually take."
 - **Shots:** text over b-roll (nice desk, tidy apartment — the *appearance* of handled); cut to onboarding question screens; score reveal; end card.
 - **Recordings:** onboarding flow + reveal (no bank connect shown).
-- **On-screen text:** "looks handled ≠ feels handled" → "a starting line: 60 seconds."
+- **On-screen text:** "looks handled ≠ feels handled" → "a starting line: about 60 seconds."
 - **Caption:** The gap between how your finances look and how they feel is where VAULT lives. No bank login for your first score.
-- **CTA:** "Take the 60 seconds."
+- **CTA:** "Take the about 60 seconds."
 - **Audience/funnel:** core / **MOFU**.
 - **Platforms:** Reels-first.
 - **Hypothesis:** "looks vs feels" gap framing lifts click-through vs generic empathy.
@@ -244,7 +244,7 @@ Platform defaults: TikTok = native text + trending-safe audio bed · Reels = cle
 
 ### V18 · The system beats the windfall
 - **Hook:** "A person with a system beats a person with a windfall. Not always — but usually."
-- **Script/VO (~22s):** "Windfalls are stories; systems are structures. Money that arrives without a structure tends to leave the way it came. *(Imagine:)* two people get the same bonus — one has a next-move habit, one has intentions. Twelve months later the difference isn't the bonus; it's what caught it. Build the catching thing first. Sixty seconds a morning is a structure. Three moves is a structure. A streak is a structure."
+- **Script/VO (~22s):** "Windfalls are stories; systems are structures. Money that arrives without a structure tends to leave the way it came. *(Imagine:)* two people get the same bonus — one has a next-move habit, one has intentions. Twelve months later the difference isn't the bonus; it's what caught it. Build the catching thing first. about sixty seconds a morning is a structure. Three moves is a structure. A streak is a structure."
 - **Shots:** text-led; falling coins caught / passing through a net graphic; Daily Open beat; end card.
 - **Recordings:** Daily Open.
 - **On-screen text:** "(hypothetical)" tag on the two-people beat → "build the catching thing."
@@ -257,12 +257,12 @@ Platform defaults: TikTok = native text + trending-safe audio bed · Reels = cle
 
 ### V19 · You track everything but money
 - **Hook:** "Sleep score. Step count. Screen time. And your money runs on vibes."
-- **Script/VO (~20s):** "You quantified your sleep. You closed your rings. You know your VO2 max, roughly. And the resource that underwrites all of it — tracked never, reviewed at 2 a.m. in a panic, once a quarter. Money is the last unmeasured system in your life, and it's the one with compounding. VAULT gives it what the others have: a score, a daily practice, a streak. Sixty seconds. Same as checking your sleep."
+- **Script/VO (~20s):** "You quantified your sleep. You closed your rings. You know your VO2 max, roughly. And the resource that underwrites all of it — tracked never, reviewed at 2 a.m. in a panic, once a quarter. Money is the last unmeasured system in your life, and it's the one with compounding. VAULT gives it what the others have: a score, a daily practice, a streak. about sixty seconds. Same as checking your sleep."
 - **Shots:** ring-close/steps-style graphics (generic, unbranded) → VAULT score arc + streak; end card.
 - **Recordings:** score arc, streak, Daily Open.
 - **On-screen text:** "you track everything" → "except the thing with compounding."
 - **Caption:** The quantified-self movement forgot a system. VAULT: a score for how you handle money — not just how much you have.
-- **CTA:** "Get your baseline in 60 seconds."
+- **CTA:** "Get your baseline in about 60 seconds."
 - **Audience/funnel:** optimizer segment / **TOFU** (highest organic-leverage segment).
 - **Platforms:** Shorts strong (search: "money tracking app not budgeting").
 - **Hypothesis:** the optimizer identity converts to *connect* (not just install) above the account average.
@@ -286,13 +286,13 @@ Platform defaults: TikTok = native text + trending-safe audio bed · Reels = cle
 ## Pillar 5 — Product Demonstrations ("Watch it work")
 
 ### V21 · The 60-second score (full demo)
-- **Hook:** "Your financial score in 60 seconds. No bank login. Watch the whole thing."
-- **Script/VO (~30s, real-time-ish):** "Three questions. Age range… income range… what you're working toward. That's the input. VAULT computes a starting Wealth Velocity score — zero to a thousand, an estimate until you connect accounts, and it says so right on screen. There's the score, the tier, and the gaps it wants to talk about. Sixty real seconds, and you haven't typed a bank password — you connect later, if and when you're ready, read-only."
+- **Hook:** "Your financial score in about 60 seconds. No bank login. Watch the whole thing."
+- **Script/VO (~30s, shot in one unbroken take):** "Three questions. Age range… income range… what you're working toward. That's the input. VAULT computes a starting Wealth Velocity score — zero to a thousand, an estimate until you connect accounts, and it says so right on screen. There's the score, the tier, and the gaps it wants to talk about. about sixty seconds, and you haven't typed a bank password — you connect later, if and when you're ready, read-only."
 - **Shots:** unbroken screen recording of onboarding → reveal → gaps screen; timer overlay running; end card.
 - **Recordings:** full onboarding flow.
 - **On-screen text:** running timer + "no bank login yet" + "estimated — and it says so."
 - **Caption:** The whole first-run, uncut. What you see is what installs. Free.
-- **CTA:** "Beat my 60 seconds. Link in bio."
+- **CTA:** "Beat my about 60 seconds. Link in bio."
 - **Audience/funnel:** fence-sitters / **BOFU** (the closer; pin to profile).
 - **Platforms:** all; Shorts title "Finance app with no bank login required (first score)".
 - **Hypothesis:** uncut real-pace demos out-convert edited demos on install rate (trust transfer).
@@ -309,7 +309,7 @@ Platform defaults: TikTok = native text + trending-safe audio bed · Reels = cle
 - **Audience/funnel:** MOFU→BOFU (ritual proof).
 - **Platforms:** all; the "app over, on purpose" beat is the TikTok comment hook.
 - **Hypothesis:** showing the *finish* converts better than showing the features.
-- **Alt hooks:** "Watch a finance app run out of things to ask me." · "60 seconds and it kicks you out. I love it."
+- **Alt hooks:** "Watch a finance app run out of things to ask me." · "about 60 seconds and it kicks you out. I love it."
 
 ### V23 · Concierge, grounded (honest demo)
 - **Hook:** "I asked an AI that can see my accounts what to fix first. Watch."
@@ -382,7 +382,7 @@ Platform defaults: TikTok = native text + trending-safe audio bed · Reels = cle
 
 ### V28 · Day 21
 - **Hook:** "Day 2 of a money streak is cute. Day 21 is a personality change."
-- **Script/VO (~24s):** "Nobody cares about a two-day streak — you'd break it for a busy Tuesday. Somewhere around week three it inverts: the streak stops being a number you're building and becomes a thing you *have*. Now skipping costs identity, not points. That mechanism — protecting something — is the entire reason streaks work, and it's sitting in your language app and your gym app doing nothing for your net worth. VAULT points it at your money: sixty seconds a day keeps it alive."
+- **Script/VO (~24s):** "Nobody cares about a two-day streak — you'd break it for a busy Tuesday. Somewhere around week three it inverts: the streak stops being a number you're building and becomes a thing you *have*. Now skipping costs identity, not points. That mechanism — protecting something — is the entire reason streaks work, and it's sitting in your language app and your gym app doing nothing for your net worth. VAULT points it at your money: about sixty seconds a day keeps it alive."
 - **Shots:** streak counter climbing across mornings (time-lapse feel); the almost-missed-day beat; end card.
 - **Recordings:** streak UI at various counts (accumulate on demo account).
 - **On-screen text:** "day 2: number" → "day 21: identity" → "skipping now costs something."
@@ -400,7 +400,7 @@ Platform defaults: TikTok = native text + trending-safe audio bed · Reels = cle
 - **Recordings:** completion, streak, score arc.
 - **On-screen text:** "state → verb" → "verbs are votes" → "identity follows evidence."
 - **Caption:** You don't think your way out of "bad with money." You out-vote it.
-- **CTA:** "Cast the first vote. 60 seconds, link in bio."
+- **CTA:** "Cast the first vote. about 60 seconds, link in bio."
 - **Audience/funnel:** core segment, identity layer / **TOFU** (share/save engine).
 - **Platforms:** Reels-first.
 - **Hypothesis:** identity-transformation framing is the brand's most-saved content class (informs future pillar weighting).

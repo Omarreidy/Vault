@@ -123,9 +123,13 @@ const RULES: Rule[] = [
     allowBefore: /\/\/[^\n]*$/,
   },
   {
-    // Timing varies by user/device — the claim must be qualified as "about 60 seconds".
+    // Timing varies by user/device — the claim must be qualified as "about 60
+    // seconds". Spelled-out "sixty seconds" is the same promise and was left
+    // uncovered: the launch video scripts carried six of them, including a
+    // "Sixty real seconds" that stated the claim more forcefully than the
+    // numeral ever did. Match both forms.
     name: 'unqualified "60 seconds" timing promise',
-    pattern: /\b60 seconds\b/i,
+    pattern: /\b(?:60|sixty) seconds\b/i,
     allowBefore: /\babout\s*$|~\s*$|\/\/[^\n]*$/i,
   },
 ];
@@ -169,7 +173,13 @@ for (const rule of RULES) {
 // launch announcement, the launch email and five social posts still carrying
 // both. Published claims are the ones regulators actually read, so this file
 // is now held to the same standard as the app.
-const COPY_FILES = ['docs/marketing/launch/09_LAUNCH_COPY.md'];
+// 07 holds the video captions, CTAs and on-screen text — posted verbatim to
+// TikTok, Reels and Shorts, so every bit as published as 09. It is excluded
+// from the app scan only because it also contains production notes.
+const COPY_FILES = [
+  'docs/marketing/launch/09_LAUNCH_COPY.md',
+  'docs/marketing/launch/07_LAUNCH_VIDEOS.md',
+];
 
 for (const rule of RULES) {
   test(`no publishable marketing copy contains ${rule.name}`, () => {

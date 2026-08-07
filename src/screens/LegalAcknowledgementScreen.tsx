@@ -96,7 +96,7 @@ export default function LegalAcknowledgementScreen({ userId, onComplete }: Props
             <Text style={styles.headlineAccent}>And what it isn’t.</Text>
           </Text>
           <Text style={styles.sub}>
-            Sixty seconds of clarity now, so there’s never a surprise later.
+            A minute of clarity now, so there’s never a surprise later.
           </Text>
 
           <View style={styles.cards}>
