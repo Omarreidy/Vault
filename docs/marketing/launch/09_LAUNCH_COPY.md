@@ -15,25 +15,25 @@ All copy complies with `MARKETING_SOURCE_OF_TRUTH.md`. Placeholders: `{first}` =
 ## 2 · Waitlist page (if store URL is pending)
 
 **H1:** Your money has a next move. The vault opens soon.
-**Body:** VAULT is the finance app that tells you your next money move — specific, dollar-quantified actions drawn from your own accounts, every morning, with a finish line every day. iPhone first. Leave your email and you'll get the App Store link the hour it goes live.
+**Body:** VAULT is the finance app that tells you your next money move — specific, dollar-quantified actions drawn from your own accounts, with a finish line every day. iPhone first. Leave your email and you'll get the App Store link the hour it goes live.
 **Field CTA:** Get the launch link
 **Fine print:** One launch email, maybe two. No list-selling — that would be a strange way to start a trust business.
 
 ## 3 · Waitlist confirmation (email/screen)
 
 **Subject:** You're in. One email when the vault opens.
-Confirmed — you'll get the App Store link the moment VAULT is live. Meanwhile, one honest preview: your first score takes three questions and 60 seconds, no bank login. When you do connect accounts, it's read-only through Plaid — VAULT can look, never touch. — Imran, founder
+Confirmed — you'll get the App Store link the moment VAULT is live. Meanwhile, one honest preview: your first score takes three questions and about 60 seconds, no bank login. When you do connect accounts, it's read-only through Plaid — VAULT can look, never touch. — Imran, founder
 
 ## 4 · App-approval announcement (all channels, short)
 
-VAULT is live on the App Store. Every finance app shows you your money. VAULT tells you what to do with it — specific money moves from your real accounts, every morning, with a finish line every day. First score in 60 seconds, no bank login. {link}
+VAULT is live on the App Store. Every finance app shows you your money. VAULT tells you what to do with it — specific money moves from your real accounts, with a finish line every day. First score in about 60 seconds, no bank login. {link}
 
 ## 5 · Launch email (waitlist)
 
 **Subject:** The vault is open.
 {first} — it's live. VAULT is on the App Store as of this morning.
-What it does, in one sentence: it reads your connected accounts (read-only, via Plaid) and hands you specific money moves every morning — the idle cash, the utilization creeping past 30%, the account you're missing — sorted by what they're worth.
-What to do in your first 5 minutes: answer three questions → see your starting score (60 seconds, no bank login) → connect an account when you're comfortable → open your first vault.
+What it does, in one sentence: it reads your connected accounts (read-only, via Plaid) and hands you specific money moves — the idle cash, the utilization creeping past 30%, the account you're missing — sorted by what they're worth.
+What to do in your first 5 minutes: answer three questions → see your starting score (about 60 seconds, no bank login) → connect an account when you're comfortable → open your first vault.
 {link}
 One ask: if the first session earns it, an App Store review this week matters more to a new app than I can politely express. — Imran
 
@@ -42,7 +42,7 @@ One ask: if the first session earns it, an App Store review this week matters mo
 **Subject:** The score was step one.
 {first} — you got your starting score. It's an estimate — the app told you so. The real thing starts when VAULT can read your actual accounts: that's when the moves become *yours* — your idle cash, your utilization, your missing account, dollar amounts attached.
 About the connection, plainly: it runs through Plaid (the same rails your other finance apps use), VAULT never sees your login, access is read-only — look, never touch — and you can disconnect or delete everything in Settings, any time.
-60 seconds to connect. Tomorrow's open gets personal. {link}
+About 60 seconds to connect. Tomorrow's open gets personal. {link}
 
 ## 7 · Day-7 value email (activated users)
 
@@ -62,15 +62,15 @@ Your VAULT invite code is good for {n} cohort spots. When someone joins with it,
 ## 10 · Founder launch post (X)
 
 I kept watching people who earn decent money feel behind — not from lack of information, but because nothing ever told them what to do *next*. Banks show you what happened. Budgeting apps grade your past. So most people's financial plan is guilt.
-Today I'm launching VAULT: connect your accounts (read-only) and every morning it hands you specific money moves found in your actual data — with a finish line. Three moves, vault closed, done.
-First score takes 60 seconds. No bank login. {link}
+Today I'm launching VAULT: connect your accounts (read-only) and it hands you specific money moves found in your actual data — with a finish line. Three moves, vault closed, done.
+First score takes about 60 seconds. No bank login. {link}
 
 ## 11 · LinkedIn launch post
 
 After months of building, VAULT is live on the App Store.
 The observation behind it: consumer finance has an *action gap*. People have never had more financial data — and less clarity about what to do next. Every incumbent stops at awareness: charts, categories, dashboards. Awareness without direction becomes guilt, and guilt gets deleted.
 VAULT is action-first: it reads your connected accounts (read-only, via Plaid), finds what's working against you — idle cash, credit utilization, subscription creep, missing account types — and deals you specific, dollar-quantified moves each morning. Completing them closes your daily vault, builds a streak, and feeds a momentum score built on how you handle money, not just how much you have.
-Free to try; the first score takes 60 seconds with no bank connection. If the action gap sounds like someone you know, the link is below. Feedback — especially critical — is a gift. {link}
+Free to try; the first score takes about 60 seconds with no bank connection. If the action gap sounds like someone you know, the link is below. Feedback — especially critical — is a gift. {link}
 
 ## 12 · TikTok launch caption
 
@@ -78,12 +78,12 @@ the app that looks at your actual accounts and says "here's your next move" is l
 
 ## 13 · Instagram launch caption
 
-VAULT is live. Every finance app shows you your money — this one tells you what to do with it. Specific moves from your real accounts, every morning. A vault to close every day. A score that climbs on how you handle money, not just how much you have. First score: 60 seconds, no bank login. Link in bio.
+VAULT is live. Every finance app shows you your money — this one tells you what to do with it. Specific moves from your real accounts. A vault to close every day. A score that climbs on how you handle money, not just how much you have. First score: about 60 seconds, no bank login. Link in bio.
 
 ## 14 · X launch post (product-angle variant)
 
 Finance apps: *here's a chart of what you spent.*
-VAULT: *here's $4,200 sitting idle, here's the account it should be in, here's the 60 seconds it takes.* (Illustrative — yours come from your accounts.)
+VAULT: *here's $4,200 sitting idle, here's the account it should be in — moving it takes about 60 seconds.* (Illustrative — yours come from your accounts.)
 Live today on iPhone. First score in 60s, no bank login. {link}
 
 ## 15 · Reddit introduction (adjust per subreddit rules; disclose founder status always)
@@ -104,7 +104,7 @@ What actually happens in your first 5 minutes of VAULT (uncut): three questions 
 **Subject:** faceless money content + an app that gives you infinite material
 {first} — {specific line about their content, 1 sentence, genuine}.
 I built VAULT: it reads your accounts read-only and tells you your specific next money move — "$4,200 idle in checking, move it," "utilization at 42%, pay $610 before the statement" (illustrative — it uses *your* numbers). It demos incredibly well on camera because the content is the user's own accounts.
-The offer: a free year of Premium, a demo account so you never show real balances, {flat fee if budgeted} for one video in your own voice, and a tracked link so we both see if your audience actually converts. No script approval needed — two honest guardrails only: nothing about guaranteed savings/outcomes, and the bank connection is described as read-only. (FTC disclosure applies as usual.)
+The offer: a free year of Premium, a demo account so you never show real balances, {flat fee if budgeted} for one video in your own voice, and a tracked link so we both see if your audience actually converts. No script approval needed — two honest guardrails only: no claims of guaranteed savings or outcomes, and the bank connection is described as read-only. (FTC disclosure applies as usual.)
 Worth a look? 40-second demo: {video link} — Imran, founder
 
 ## 19 · Creator DM (short form)
@@ -139,7 +139,7 @@ Totally fair — generic AI is genuinely good at money *concepts*. The differenc
 
 ## 26 · Response — "Why should I connect my bank?"
 
-You don't have to — that's real: three questions get you a starting score in 60 seconds with no bank login, and the app is honest that it's an estimate. Connecting is what turns generic guidance into *your* moves: your idle cash with the actual amount, your utilization with the actual percentage, the account type you're actually missing. The connection is read-only through Plaid — look, never touch — your credentials never reach us, and disconnecting or deleting everything is one tap in Settings. Take the 60-second version first; connect if the app earns it.
+You don't have to — that's real: three questions get you a starting score in about 60 seconds with no bank login, and the app is honest that it's an estimate. Connecting is what turns generic guidance into *your* moves: your idle cash with the actual amount, your utilization with the actual percentage, the account type you're actually missing. The connection is read-only through Plaid — look, never touch — your credentials never reach us, and disconnecting or deleting everything is one tap in Settings. Take the 60-second version first; connect if the app earns it.
 
 ## 27 · Response — "Is this financial advice?"
 

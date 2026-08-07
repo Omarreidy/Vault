@@ -153,3 +153,44 @@ for (const rule of RULES) {
     assert.deepEqual(violations, [], `Prohibited claim pattern returned:\n${violations.join('\n')}`);
   });
 }
+
+// ── Publishable marketing copy ───────────────────────────────────────────────
+//
+// docs/ is deliberately outside SCAN_DIRS: POSITIONING.md, the claims
+// checklist and the content pillars all QUOTE the banned phrases in order to
+// forbid them, so scanning that tree wholesale reports nothing but false
+// positives.
+//
+// 09_LAUNCH_COPY.md is the exception — it holds no rules, only copy intended
+// to be posted verbatim to the App Store, email, X, LinkedIn, TikTok and
+// Instagram. It went unchecked for that reason, and drifted: a 2026-07-19
+// correction dropped the "every morning" delivery promise and qualified the
+// "60 seconds" timing claim in the website hero and nowhere else, leaving the
+// launch announcement, the launch email and five social posts still carrying
+// both. Published claims are the ones regulators actually read, so this file
+// is now held to the same standard as the app.
+const COPY_FILES = ['docs/marketing/launch/09_LAUNCH_COPY.md'];
+
+for (const rule of RULES) {
+  test(`no publishable marketing copy contains ${rule.name}`, () => {
+    const violations: string[] = [];
+    for (const file of COPY_FILES) {
+      const abs = path.join(ROOT, file);
+      if (!fs.existsSync(abs)) continue;
+      const text = fs.readFileSync(abs, 'utf8');
+      const re = new RegExp(rule.pattern.source, rule.pattern.flags.includes('g') ? rule.pattern.flags : rule.pattern.flags + 'g');
+      for (let m = re.exec(text); m !== null; m = re.exec(text)) {
+        const before = text.slice(Math.max(0, m.index - 60), m.index);
+        const beforeOnLine = before.slice(before.lastIndexOf('\n') + 1);
+        if (rule.allowBefore && rule.allowBefore.test(beforeOnLine)) continue;
+        const line = text.slice(0, m.index).split('\n').length;
+        // The file annotates its own corrections by quoting the phrase it
+        // removed; those notes are documentation, not claims.
+        const lineText = text.split('\n')[line - 1] ?? '';
+        if (/^\s*\*?\(Corrected /.test(lineText)) continue;
+        violations.push(`${file}:${line} → "${m[0]}"`);
+      }
+    }
+    assert.deepEqual(violations, [], `Prohibited claim in copy meant for publication:\n${violations.join('\n')}`);
+  });
+}
