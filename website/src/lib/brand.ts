@@ -39,7 +39,11 @@ export const TIERS = [
   { name: 'Black', color: '#1A1A1A', glow: 'rgba(0,0,0,0.15)', minScore: 900, maxScore: 1000 },
 ] as const;
 
-export const APP_STORE_URL: string | null = null; // TODO: insert App Store link when live
+// Live App Store listing. The id must match `ascAppId` in eas.json — that is
+// the App Store Connect record builds are submitted to. Every CTA on the site
+// falls back to the inert `#download` anchor while this is null, so it stays
+// null until the listing actually resolves.
+export const APP_STORE_URL: string | null = 'https://apps.apple.com/app/id6781484270';
 
 export const SITE = {
   name: 'VAULT',

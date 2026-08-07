@@ -3,7 +3,8 @@
 import { animate, AnimatePresence, motion, useMotionValue, useTransform } from 'framer-motion';
 import { useMemo, useRef, useState } from 'react';
 import PhoneMock, { AppTabBar } from '@/components/PhoneMock';
-import { TIERS } from '@/lib/brand';
+import { APP_STORE_URL, TIERS } from '@/lib/brand';
+import { track } from '@/lib/track';
 import { fadeUp, stagger, VIEWPORT_ONCE } from '@/lib/motion';
 
 // Illustrative examples — each mirrors a real VAULT detector (idle cash,
@@ -229,7 +230,9 @@ function DemoScreen() {
                 Real accounts, real moves, real momentum.
               </p>
               <a
-                href="#download"
+                href={APP_STORE_URL ?? '#download'}
+                {...(APP_STORE_URL ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
+                onClick={() => track('appstore_cta_click', { location: 'demo', live: APP_STORE_URL != null })}
                 className="mt-4 inline-block rounded-full bg-gradient-to-r from-[#D4AA70] via-gold to-gold-deep px-5 py-2.5 text-[12px] font-bold text-night"
               >
                 Get VAULT

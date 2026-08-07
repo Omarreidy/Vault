@@ -1,6 +1,8 @@
 'use client';
 
 import { motion } from 'framer-motion';
+import { APP_STORE_URL } from '@/lib/brand';
+import { track } from '@/lib/track';
 import { fadeUp, stagger, VIEWPORT_ONCE } from '@/lib/motion';
 
 // Real member quotes go here as they arrive — name, detail, quote.
@@ -41,7 +43,9 @@ function FoundingInvite() {
         </motion.p>
         <motion.div variants={fadeUp} className="mt-10">
           <a
-            href="#download"
+            href={APP_STORE_URL ?? '#download'}
+            {...(APP_STORE_URL ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
+            onClick={() => track('appstore_cta_click', { location: 'founding', live: APP_STORE_URL != null })}
             className="inline-block rounded-full border border-gold-dark/40 px-8 py-4 text-[15px] font-semibold text-gold-dark transition-all duration-500 hover:bg-gold/10 hover:shadow-[0_8px_40px_rgba(201,169,110,0.25)]"
           >
             Become a founding member
