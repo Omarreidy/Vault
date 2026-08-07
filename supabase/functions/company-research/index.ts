@@ -35,6 +35,69 @@ type CacheState =
   | { kind: 'generating' }
   | { kind: 'absent' };
 
+/**
+ * Turn whatever the member typed into a REAL exchange symbol.
+ *
+ * The old input guard accepted any 1-6 letters, so "TESLA", "APPLE" and
+ * "AMAZON" all passed as tickers. No such symbols exist, so every FMP lookup
+ * came back empty, `companyName` fell back to the typed string, and the model
+ * was asked to write a research report with no financial data at all — which it
+ * duly invented, cached, and served beside the genuine TSLA report. Two
+ * different answers for the same company, one of them fabricated.
+ *
+ * Resolution runs on every request, including polls, so a poll for "tesla"
+ * reads the TSLA cache entry rather than stalling forever on a key that is
+ * never written. The in-memory map keeps that from costing an API call each
+ * time: polls repeat every few seconds and usually land on the same isolate.
+ */
+const symbolCache = new Map<string, { symbol: string; name: string } | null>();
+
+async function resolveSymbol(input: string): Promise<{ symbol: string; name: string } | null> {
+  const key = input.trim().toUpperCase();
+  if (symbolCache.has(key)) return symbolCache.get(key)!;
+
+  const fmp = Deno.env.get('FMP_KEY');
+  if (!fmp) {
+    // No key configured: fall back to treating a ticker-shaped input as-is
+    // rather than failing every search outright.
+    const guess = /^[A-Z.\-]{1,6}$/.test(key) ? { symbol: key, name: key } : null;
+    symbolCache.set(key, guess);
+    return guess;
+  }
+
+  const q = encodeURIComponent(input.trim());
+  const url = (p: string) => `https://financialmodelingprep.com/stable/${p}&apikey=${fmp}`;
+  // Prefer US listings — a name search for "apple" also matches foreign lines
+  // of the same company, and the fundamentals endpoints are US-centric.
+  const rank = (r: any) => (['NASDAQ', 'NYSE', 'AMEX'].includes(String(r?.exchangeShortName ?? r?.exchange ?? '').toUpperCase()) ? 0 : 1);
+
+  try {
+    const [bySymbol, byName] = await Promise.all([
+      fetch(url(`search-symbol?query=${q}&limit=10`)).then(r => r.json()).catch(() => []),
+      fetch(url(`search-name?query=${q}&limit=10`)).then(r => r.json()).catch(() => []),
+    ]);
+
+    const rows = [...(Array.isArray(bySymbol) ? bySymbol : []), ...(Array.isArray(byName) ? byName : [])]
+      .filter((r: any) => typeof r?.symbol === 'string' && r.symbol);
+
+    // An exact symbol match always wins — someone typing TSLA means TSLA, never
+    // a company whose NAME happens to contain those letters.
+    const exact = rows.find((r: any) => String(r.symbol).toUpperCase() === key);
+    const picked = exact ?? rows.sort((a: any, b: any) => rank(a) - rank(b))[0];
+
+    const out = picked
+      ? { symbol: String(picked.symbol).toUpperCase(), name: String(picked.name ?? picked.symbol) }
+      : null;
+    symbolCache.set(key, out);
+    return out;
+  } catch {
+    // Search itself failed — don't punish a valid ticker for it.
+    const guess = /^[A-Z.\-]{1,6}$/.test(key) ? { symbol: key, name: key } : null;
+    symbolCache.set(key, guess);
+    return guess;
+  }
+}
+
 /** What the cache currently knows about this ticker. Never throws. */
 async function readCacheState(ticker: string): Promise<CacheState> {
   try {
@@ -136,12 +199,25 @@ Deno.serve(async (req) => {
   // constrain it to a real symbol shape — no query params, paths, or prose.
   const body = await req.json().catch(() => ({}));
   const rawTicker = typeof body?.ticker === 'string' ? body.ticker.trim() : '';
-  if (!/^[A-Za-z][A-Za-z.\-]{0,5}$/.test(rawTicker)) {
+  // Charset stays strict — this value is interpolated into third-party URLs, so
+  // no query params, paths or prose. The LENGTH is what widened: a member who
+  // types "tesla" or "microsoft" is asking a reasonable question and used to get
+  // a fabricated report (see resolveSymbol).
+  if (!/^[A-Za-z][A-Za-z0-9 .&-]{0,39}$/.test(rawTicker)) {
     return new Response(JSON.stringify({ error: 'invalid ticker' }), {
       status: 400, headers: { ...cors, 'Content-Type': 'application/json' },
     });
   }
-  const ticker = rawTicker.toUpperCase();
+
+  const resolved = await resolveSymbol(rawTicker);
+  if (!resolved) {
+    return new Response(JSON.stringify({ error: 'unknown symbol', query: rawTicker }), {
+      status: 400, headers: { ...cors, 'Content-Type': 'application/json' },
+    });
+  }
+  // Everything downstream — cache key, market data, prompt — uses the REAL
+  // symbol, so "tesla" and "TSLA" are one report rather than two.
+  const ticker = resolved.symbol;
 
   // A poll — the client already has this ticker's market data and is only
   // waiting on the analysis. Answer from the cache alone: no market-data fetch
@@ -188,8 +264,19 @@ Deno.serve(async (req) => {
     const ratios = first(ratiosArr);
     const metrics = first(metricsArr);
 
+    // Never write a report with nothing to write it from. Resolution above
+    // makes an unknown symbol rare, but a delisted ticker or an FMP outage can
+    // still return empty everything — and the model will happily invent a full
+    // set of financials from a bare string rather than admit it has none.
+    // Refusing is the only honest answer; VAULT never fabricates figures.
+    if (!profile.companyName && !income.revenue) {
+      return new Response(JSON.stringify({ error: 'no data for symbol', ticker }), {
+        status: 404, headers: { ...cors, 'Content-Type': 'application/json' },
+      });
+    }
+
     const recentNews = Array.isArray(newsRes) ? newsRes.slice(0, 5).map((n: any) => n.headline).join('\n') : '';
-    const companyName = profile.companyName ?? ticker;
+    const companyName = profile.companyName ?? resolved.name ?? ticker;
     const sector = profile.sector ?? profile.industry ?? 'Technology';
 
     // Derived fundamentals from FMP
